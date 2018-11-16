@@ -1,13 +1,13 @@
 <?php
 /**
- * Plugin Name: WooCommerce Smart Coupons
- * Plugin URI: https://woocommerce.com/products/smart-coupons/
- * Description: <strong>WooCommerce Smart Coupons</strong> lets customers buy gift certificates, store credits or coupons easily. They can use purchased credits themselves or gift to someone else.
+ * Plugin Name: Smart Coupons
+ * Plugin URI: https://github.com/hypericumimpex/hyp-smart-coupons/
+ * Description: <strong>Smart Coupons</strong> permite clienților să cumpere cu ușurință vouchere cadou, credite sau cupoane.
  * Version: 3.8.2
  * Author: StoreApps
- * Author URI: https://www.storeapps.org/
+ * Author URI: https://github.com/hypericumimpex/
  * Developer: StoreApps
- * Developer URI: https://www.storeapps.org/
+ * Developer URI: https://github.com/hypericumimpex/
  * Requires at least: 4.4
  * Tested up to: 4.9.8
  * WC requires at least: 2.5.0
