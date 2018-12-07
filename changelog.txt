@@ -1,10 +1,19 @@
 *** WooCommerce Smart Coupons Changelog ***
 
+2018.11.28 - version 3.8.5
+* New: Shortcode [wc_sc_available_coupons] to show available coupons on any page or post
+* Fix: Sometimes while purchasing variable but fixed amount store credit, "Send coupons to..." section not visible on checkout page & also the coupons are not generated
+* Fix: Theme's button style not applying on shop page for products which are created for purchasing credit
+* Fix: Duplicate key error on inserting a value in table
+* Fix: Coupons remain visible even after disabling the show on cart/checkout option
+* Update: POT file
+
 2018.11.14 - version 3.8.2
 * Fix: Discounts applied from the store credit getting multiplied everytime when the page is refreshed, when "Apply before tax" setting of Smart Coupons is enabled
 * Fix: Sometimes the store credit is not showing discount applied in cart, it's displaying the discount as 0.00
 * Fix: Coupon with actions defined are not visible on cart, checkout & my account page when the coupon's amount is zero
 * Developer: Filter to handle display of zero amount coupon
+* Update: POT file
 
 2018.11.06 - version 3.8.1
 * New: WooCommerce 3.5.1 compatibility

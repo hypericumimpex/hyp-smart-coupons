@@ -68,6 +68,7 @@ if ( ! class_exists( 'WC_SC_Global_Coupons' ) ) {
 
 			if ( false === $global_coupons ) {
 				$wpdb->query( $wpdb->prepare( 'SET SESSION group_concat_max_len=%d', 999999 ) ); // phpcs:ignore
+				delete_option( 'sc_display_global_coupons' );
 				$wpdb->query( // phpcs:ignore
 					$wpdb->prepare(
 						"INSERT INTO {$wpdb->prefix}options (option_name, option_value, autoload)
@@ -151,7 +152,7 @@ if ( ! class_exists( 'WC_SC_Global_Coupons' ) ) {
 
 				$wpdb->query( // phpcs:ignore
 					$wpdb->prepare(
-						"UPDATE {$wpdb->prefix}options 
+						"UPDATE {$wpdb->prefix}options
 							SET autoload = %s
 							WHERE option_name = %s",
 						'no',
@@ -183,7 +184,7 @@ if ( ! class_exists( 'WC_SC_Global_Coupons' ) ) {
 
 			$global_coupons_list = get_option( 'sc_display_global_coupons' );
 			$global_coupons      = ( ! empty( $global_coupons_list ) ) ? explode( ',', $global_coupons_list ) : array();
-			$key                 = array_search( $post_id, $global_coupons, true );
+			$key                 = array_search( (string) $post_id, $global_coupons, true );
 
 			if ( ( 'publish' === $coupon_status
 					&& ( ! empty( $coupon_meta['customer_email'][0] ) && serialize( array() ) === $coupon_meta['customer_email'][0] ) // phpcs:ignore
@@ -203,7 +204,7 @@ if ( ! class_exists( 'WC_SC_Global_Coupons' ) ) {
 				}
 			}
 
-			update_option( 'sc_display_global_coupons', implode( ',', $global_coupons ), 'no' );
+			update_option( 'sc_display_global_coupons', implode( ',', array_unique( $global_coupons ) ), 'no' );
 		}
 
 		/**

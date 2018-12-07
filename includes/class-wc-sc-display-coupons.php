@@ -563,12 +563,19 @@ if ( ! class_exists( 'WC_SC_Display_Coupons' ) ) {
 
 			if ( ! empty( $coupons ) && $this->is_coupon_amount_pick_from_product_price( $coupons ) && ! ( $product->get_price() > 0 ) ) {
 
-				$js = " jQuery('a[data-product_id=" . $product_id . "]').remove(); ";
+				$js = "
+						var wc_sc_old_element = jQuery('a[data-product_id=" . $product_id . "]');
+						var wc_sc_loop_button_classes = wc_sc_old_element.attr('class');
+						var target_class = 'wc_sc_loop_button_" . $product_id . "';
+						var wc_sc_loop_button = jQuery('.' + target_class);
+						wc_sc_loop_button.removeClass( target_class ).addClass( wc_sc_loop_button_classes ).show();
+						wc_sc_old_element.remove();
+					";
 
 				wc_enqueue_js( $js );
 
 				?>
-				<a href="<?php echo the_permalink(); ?>" class="button"><?php echo esc_html( get_option( 'sc_gift_certificate_shop_loop_button_text', __( 'Select options', 'woocommerce-smart-coupons' ) ) ); ?></a>
+				<a href="<?php echo the_permalink(); ?>" class="wc_sc_loop_button_<?php echo esc_attr( $product_id ); ?>" style="display: none;"><?php echo esc_html( get_option( 'sc_gift_certificate_shop_loop_button_text', __( 'Select options', 'woocommerce-smart-coupons' ) ) ); ?></a>
 				<?php
 			}
 		}
@@ -1064,6 +1071,8 @@ if ( ! class_exists( 'WC_SC_Display_Coupons' ) ) {
 
 					$option_nm = 'sc_display_custom_credit_' . $current_user->ID . '_' . $count_option_current_user;
 					$wpdb->query( $wpdb->prepare( 'SET SESSION group_concat_max_len=%d', 999999 ) ); // phpcs:ignore
+
+					delete_option( $option_nm );
 
 					$wpdb->query( // phpcs:ignore
 						$wpdb->prepare(

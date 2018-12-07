@@ -327,6 +327,14 @@ if ( ! class_exists( 'WC_SC_Purchase_Credit' ) ) {
 
 			foreach ( WC()->cart->cart_contents as $product ) {
 
+				if ( empty( $product['product_id'] ) ) {
+					$product['product_id'] = ( ! empty( $product['variation_id'] ) ) ? wp_get_post_parent_id( $product['variation_id'] ) : 0;
+				}
+
+				if ( empty( $product['product_id'] ) ) {
+					continue;
+				}
+
 				$coupon_titles = get_post_meta( $product['product_id'], '_coupon_title', true );
 
 				$_product = wc_get_product( $product['product_id'] );

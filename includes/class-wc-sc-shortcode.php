@@ -124,6 +124,7 @@ if ( ! class_exists( 'WC_SC_Shortcode' ) ) {
 		 */
 		public function register_smart_coupon_shortcode() {
 			add_shortcode( 'smart_coupons', array( $this, 'execute_smart_coupons_shortcode' ) );
+			add_shortcode( 'wc_sc_available_coupons', array( $this, 'show_available_coupons_shortcode' ) );
 		}
 
 		/**
@@ -482,6 +483,37 @@ if ( ! class_exists( 'WC_SC_Shortcode' ) ) {
 			echo '</div>
 				</div>';
 
+			return ob_get_clean();
+		}
+
+		/**
+		 * Show available coupons
+		 *
+		 * @param array $atts Shortcode attributees.
+		 * @return HTML code for coupon to be displayed
+		 */
+		public function show_available_coupons_shortcode( $atts ) {
+
+			$shortcode = shortcode_atts(
+				array(
+					'title' => get_option( 'smart_coupon_cart_page_text' ),
+				), $atts
+			);
+
+			$title = $shortcode['title'];
+			$title = ( ! empty( $title ) ) ? $title : __( 'Available Coupons (click on a coupon to use it)', 'woocommerce-smart-coupons' );
+
+			if ( ! class_exists( 'WC_SC_Display_Coupons' ) ) {
+				include_once 'class-wc-sc-display-coupons.php';
+			}
+			$wc_sc_display_coupons = WC_SC_Display_Coupons::get_instance();
+
+			if ( ! is_object( $wc_sc_display_coupons ) || ! is_callable( array( $wc_sc_display_coupons, 'show_available_coupons' ) ) ) {
+				return '';
+			}
+
+			ob_start();
+			$wc_sc_display_coupons->show_available_coupons( $title, get_the_title() );
 			return ob_get_clean();
 		}
 
