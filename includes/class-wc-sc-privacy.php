@@ -165,7 +165,8 @@ if ( ! class_exists( 'WC_SC_Privacy' ) ) {
 						'generated_from_order_id',
 						'smart_coupon',
 						'%' . $wpdb->esc_like( $email_address ) . '%'
-					), ARRAY_A
+					),
+					ARRAY_A
 				);
 				wp_cache_set( 'wc_sc_coupon_data_' . sanitize_key( $email_address ), $results, 'woocommerce_smart_coupons' );
 				$this->maybe_add_cache_key( 'wc_sc_coupon_data_' . sanitize_key( $email_address ) );
@@ -616,7 +617,8 @@ if ( ! class_exists( 'WC_SC_Privacy' ) ) {
 						'shop_order',
 						'_customer_user',
 						$user->ID
-					), ARRAY_A
+					),
+					ARRAY_A
 				);
 				wp_cache_set( 'wc_sc_order_by_email_for_' . $user->ID, $orders, 'woocommerce_smart_coupons' );
 				$this->maybe_add_cache_key( 'wc_sc_order_by_email_for_' . $user->ID );

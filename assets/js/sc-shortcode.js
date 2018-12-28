@@ -8,12 +8,14 @@ jQuery( document ).ready(
 	function($) {
 
 		tinymce.create(
-			'tinymce.plugins.smart_coupons_shortcode_plugin', {
+			'tinymce.plugins.smart_coupons_shortcode_plugin',
+			{
 				init : function(ed, url) {
 					var assetsUrl = url.substr( 0, url.lastIndexOf( "/js" ) );
 					// Register command for when button is clicked.
 					ed.addCommand(
-						'smart_coupons_insert_shortcode', function() {
+						'smart_coupons_insert_shortcode',
+						function() {
 
 							ed.windowManager.open(
 								{
@@ -21,7 +23,8 @@ jQuery( document ).ready(
 									width : "auto",
 									height : "auto",
 									wpDialog : true
-								}, {
+								},
+								{
 									plugin_url : url // Plugin absolute URL.
 								}
 							);

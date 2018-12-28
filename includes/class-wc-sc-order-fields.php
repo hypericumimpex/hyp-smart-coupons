@@ -101,15 +101,17 @@ if ( ! class_exists( 'WC_SC_Order_Fields' ) ) {
 
 				foreach ( $coupons as $item_id => $item ) {
 
-					if ( empty( $item['name'] ) ) {
-						continue;
-					}
-
-					$coupon = new WC_Coupon( $item['name'] );
-
 					if ( $this->is_wc_gte_30() ) {
-						$discount_type = $coupon->get_discount_type();
+						$coupon_data = ( is_object( $item ) && is_callable( array( $item, 'get_meta' ) ) ) ? $item->get_meta( 'coupon_data' ) : array();
+						if ( empty( $coupon_data ) ) {
+							continue;
+						}
+						$discount_type = ( ! empty( $coupon_data['discount_type'] ) ) ? $coupon_data['discount_type'] : '';
 					} else {
+						if ( empty( $item['name'] ) ) {
+							continue;
+						}
+						$coupon        = new WC_Coupon( $item['name'] );
 						$discount_type = ( ! empty( $coupon->discount_type ) ) ? $coupon->discount_type : '';
 					}
 

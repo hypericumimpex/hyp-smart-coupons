@@ -589,7 +589,9 @@ if ( ! class_exists( 'WC_SC_Coupon_Process' ) ) {
 						$is_auto_generate = $amount > 0 || 'yes' === $is_free_shipping;
 
 						$is_auto_generate = apply_filters(
-							'wc_sc_is_auto_generate', $is_auto_generate, array(
+							'wc_sc_is_auto_generate',
+							$is_auto_generate,
+							array(
 								'coupon_id'     => $coupon_id,
 								'auto_generate' => $auto_generation_of_code,
 								'coupon_obj'    => $coupon,

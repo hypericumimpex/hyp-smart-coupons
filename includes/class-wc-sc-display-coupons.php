@@ -1071,9 +1071,7 @@ if ( ! class_exists( 'WC_SC_Display_Coupons' ) ) {
 
 					$option_nm = 'sc_display_custom_credit_' . $current_user->ID . '_' . $count_option_current_user;
 					$wpdb->query( $wpdb->prepare( 'SET SESSION group_concat_max_len=%d', 999999 ) ); // phpcs:ignore
-
-					delete_option( $option_nm );
-
+					$wpdb->delete( $wpdb->prefix . 'options', array( 'option_name' => $option_nm ) ); // WPCS: db call ok.
 					$wpdb->query( // phpcs:ignore
 						$wpdb->prepare(
 							"INSERT INTO {$wpdb->prefix}options (option_name, option_value, autoload)
@@ -1275,7 +1273,8 @@ if ( ! class_exists( 'WC_SC_Display_Coupons' ) ) {
 				$user_order_ids_query = $wpdb->prepare(
 					"SELECT DISTINCT postmeta.post_id FROM {$wpdb->prefix}postmeta AS postmeta
 						WHERE postmeta.meta_key = %s
-						AND postmeta.meta_value", '_customer_user'
+						AND postmeta.meta_value",
+					'_customer_user'
 				);
 
 				if ( count( $user_ids ) === 1 ) {

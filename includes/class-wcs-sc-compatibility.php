@@ -41,6 +41,8 @@ if ( ! class_exists( 'WCS_SC_Compatibility' ) ) {
 				add_filter( 'wc_smart_coupons_settings', array( $this, 'smart_coupons_settings' ) );
 				add_action( 'admin_footer', array( $this, 'sc_wcs_styles_and_scripts' ) );
 				add_action( 'admin_init', array( $this, 'sc_wcs_settings' ) );
+				add_filter( 'wcs_bypass_coupon_removal', array( $this, 'bypass_removal_of_coupon_having_coupon_actions' ), 10, 4 );
+				add_filter( 'woocommerce_subscriptions_calculated_total', array( $this, 'modify_recurring_cart' ) );
 			}
 
 		}
@@ -789,6 +791,73 @@ if ( ! class_exists( 'WCS_SC_Compatibility' ) ) {
 					update_option( 'pay_from_smart_coupon_of_original_order', $is_pay_from_store_credit );
 				}
 			}
+		}
+
+		/**
+		 * Whether to bypass coupon removal from recurring item
+		 *
+		 * @param  boolean   $bypass           Bypass or not.
+		 * @param  WC_Coupon $coupon           The coupon object.
+		 * @param  string    $coupon_type      The discount type.
+		 * @param  string    $calculation_type The calculation type of subscription.
+		 * @return boolean   $bypass           Bypass or not
+		 */
+		public function bypass_removal_of_coupon_having_coupon_actions( $bypass = false, $coupon = null, $coupon_type = '', $calculation_type = '' ) {
+
+			if ( $this->is_wc_gte_30() ) {
+				$coupon_code = ( is_object( $coupon ) && is_callable( array( $coupon, 'get_code' ) ) ) ? $coupon->get_code() : '';
+			} else {
+				$coupon_code = ( ! empty( $coupon->code ) ) ? $coupon->code : '';
+			}
+
+			if ( ! class_exists( 'WC_SC_Coupon_Actions' ) ) {
+				include_once 'class-wc-sc-coupon-actions.php';
+			}
+
+			$wc_sc_coupon_actions = WC_SC_Coupon_Actions::get_instance();
+
+			$coupon_actions = $wc_sc_coupon_actions->get_coupon_actions( $coupon_code );
+
+			if ( false === $bypass && ! empty( $coupon_actions ) ) {
+				return true;
+			}
+
+			return $bypass;
+		}
+
+		/**
+		 * Modify recurring cart
+		 * Specifically, remove coupons having coupon actions from recurring carts
+		 *
+		 * @param  mixed $total The total.
+		 * @return mixed $total
+		 */
+		public function modify_recurring_cart( $total ) {
+
+			$recurring_carts = WC()->cart->recurring_carts;
+
+			if ( ! empty( $recurring_carts ) ) {
+
+				if ( ! class_exists( 'WC_SC_Coupon_Actions' ) ) {
+					include_once 'class-wc-sc-coupon-actions.php';
+				}
+
+				$wc_sc_coupon_actions = WC_SC_Coupon_Actions::get_instance();
+
+				foreach ( WC()->cart->recurring_carts as $cart_item_key => $cart ) {
+					if ( ! empty( $cart->applied_coupons ) ) {
+						foreach ( $cart->applied_coupons as $index => $coupon_code ) {
+							$coupon_actions = $wc_sc_coupon_actions->get_coupon_actions( $coupon_code );
+							if ( ! empty( $coupon_actions ) ) {
+								unset( WC()->cart->recurring_carts[ $cart_item_key ]->applied_coupons[ $index ] );
+							}
+						}
+					}
+				}
+			}
+
+			return $total;
+
 		}
 
 		/**

@@ -1,5 +1,18 @@
 *** WooCommerce Smart Coupons Changelog ***
 
+2018.12.24 - version 3.8.6
+* Fix: Sometimes store credit is discounting double than it's actual amount on checkout page [WooCommerce AvaTax]
+* Fix: WordPress database error Duplicate entry
+* Fix: Store credit used data are not shown in order admin page if that store credit is deleted from the store (Thanks to: Jarrad Grigg)
+* Fix: Coupon actions not working when a subscription product is in the cart [WooCommerce Subscriptions 2.3.4+]
+* Tweak: Addition of product from coupon actions
+* Tweak: Move checking of WooCommerce version from constructor to functions
+* Tweak: Code Indentation
+* Update: Initialization of Smart Coupons plugin
+* Update: Number of arguments for hook 'woocommerce_coupon_is_valid'
+* Update: Context for logging errors for Smart Coupons plugin
+* Update: POT file
+
 2018.11.28 - version 3.8.5
 * New: Shortcode [wc_sc_available_coupons] to show available coupons on any page or post
 * Fix: Sometimes while purchasing variable but fixed amount store credit, "Send coupons to..." section not visible on checkout page & also the coupons are not generated

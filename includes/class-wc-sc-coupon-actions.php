@@ -224,7 +224,9 @@ if ( ! class_exists( 'WC_SC_Coupon_Actions' ) ) {
 			if ( ( is_array( $cart_item ) && isset( $cart_item['wc_sc_product_source'] ) ) || ( is_object( $cart_item ) && $cart_item->get_meta( '_wc_sc_product_source' ) ) ) {
 				if ( wc_price( 0 ) === $product_price ) {
 					$product_price = apply_filters(
-						'wc_sc_price_zero_text', $product_price, array(
+						'wc_sc_price_zero_text',
+						$product_price,
+						array(
 							'cart_item'     => $cart_item,
 							'cart_item_key' => $cart_item_key,
 						)
@@ -295,24 +297,38 @@ if ( ! class_exists( 'WC_SC_Coupon_Actions' ) ) {
 					if ( empty( $coupon_action['product_id'] ) ) {
 						continue;
 					}
+
 					$id = absint( $coupon_action['product_id'] );
 
 					$product = wc_get_product( $id );
 
 					$product_data = $this->get_product_data( $product );
 
-					$qty = absint( $coupon_action['quantity'] );
+					$product_id   = ( ! empty( $product_data['product_id'] ) ) ? absint( $product_data['product_id'] ) : 0;
+					$variation_id = ( ! empty( $product_data['variation_id'] ) ) ? absint( $product_data['variation_id'] ) : 0;
+					$variation    = array();
 
-					$is_added = WC()->cart->add_to_cart( $product_data['product_id'], $qty, $product_data['variation_id'], $product_data['variation_data'], array( 'wc_sc_product_source' => $coupon_code ) );
+					if ( ! empty( $variation_id ) ) {
+						$variation = $product->get_variation_attributes();
+					}
 
-					if ( false !== $is_added ) {
+					$quantity = absint( $coupon_action['quantity'] );
+
+					$cart_item_data = array(
+						'wc_sc_product_source' => $coupon_code,
+					);
+
+					$cart_item_key = WC()->cart->add_to_cart( $product_id, $quantity, $variation_id, $variation, $cart_item_data );
+
+					if ( ! empty( $cart_item_key ) ) {
 						if ( $this->is_wc_gte_30() ) {
-							$product_names[] = $product->get_name();
+							$product_names[] = ( is_object( $product ) && is_callable( array( $product, 'get_name' ) ) ) ? $product->get_name() : '';
 						} else {
-							$product_names[] = $product->get_title();
+							$product_names[] = ( is_object( $product ) && is_callable( array( $product, 'get_title' ) ) ) ? $product->get_title() : '';
 						}
 					}
 				}
+
 				if ( ! empty( $product_names ) ) {
 					/* translators: 1. Product title */
 					wc_add_notice( sprintf( __( '%s has been added to your cart!', 'woocommerce-smart-coupons' ), implode( ', ', $product_names ) ) );

@@ -165,7 +165,8 @@ if ( ! class_exists( 'WC_SC_Shortcode' ) ) {
 					'customer_email'             => '',
 					'coupon_style'               => '',
 					'disable_email'              => 'no',
-				), $atts
+				),
+				$atts
 			);
 
 			$_coupon_code     = $shortcode['coupon_code'];
@@ -497,7 +498,8 @@ if ( ! class_exists( 'WC_SC_Shortcode' ) ) {
 			$shortcode = shortcode_atts(
 				array(
 					'title' => get_option( 'smart_coupon_cart_page_text' ),
-				), $atts
+				),
+				$atts
 			);
 
 			$title = $shortcode['title'];

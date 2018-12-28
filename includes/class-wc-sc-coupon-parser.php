@@ -117,7 +117,8 @@ if ( ! class_exists( 'WC_SC_Coupon_Parser' ) ) {
 			);
 
 			$this->postmeta_defaults = apply_filters(
-				'smart_coupons_parser_postmeta_defaults', array(
+				'smart_coupons_parser_postmeta_defaults',
+				array(
 					'discount_type'                => 'fixed_cart',
 					'coupon_amount'                => '',
 					'free_shipping'                => '',

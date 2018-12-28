@@ -643,7 +643,8 @@ if ( class_exists( 'WP_Importer' ) ) {
 							'page' => 'wc-smart-coupons',
 							'tab'  => 'import-smart-coupons',
 							'step' => '2',
-						), admin_url( 'admin.php' )
+						),
+						admin_url( 'admin.php' )
 					);
 				?>
 				<form action="<?php echo esc_url( $import_step_2_url ); ?>" method="post">
@@ -753,7 +754,8 @@ if ( class_exists( 'WP_Importer' ) ) {
 									'page' => 'wc-smart-coupons',
 									'tab'  => 'import-smart-coupons',
 									'step' => '1',
-								), 'admin.php'
+								),
+								'admin.php'
 							);
 
 							$bytes      = apply_filters( 'import_upload_size_limit', wp_max_upload_size() );

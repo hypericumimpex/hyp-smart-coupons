@@ -301,7 +301,8 @@ if ( ! class_exists( 'WC_SC_Admin_Welcome' ) ) {
 								array(
 									'page' => 'wc-settings',
 									'tab'  => 'checkout',
-								), admin_url( 'admin.php' )
+								),
+								admin_url( 'admin.php' )
 							) . '" target="_blank">' . __( 'here', 'woocommerce-smart-coupons' ) . '</a>.',
 						),
 						array(

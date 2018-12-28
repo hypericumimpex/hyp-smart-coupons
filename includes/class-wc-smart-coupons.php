@@ -101,7 +101,7 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 			add_option( 'wc_sc_setting_max_coupon_to_show', '5' );
 			add_option( 'smart_coupons_show_invalid_coupons_on_myaccount', 'no' );
 
-			add_filter( 'woocommerce_coupon_is_valid', array( $this, 'is_smart_coupon_valid' ), 10, 2 );
+			add_filter( 'woocommerce_coupon_is_valid', array( $this, 'is_smart_coupon_valid' ), 10, 3 );
 			add_filter( 'woocommerce_coupon_is_valid', array( $this, 'is_user_usage_limit_valid' ), 10, 3 );
 			add_filter( 'woocommerce_coupon_is_valid_for_product', array( $this, 'smart_coupons_is_valid_for_product' ), 10, 4 );
 			add_filter( 'woocommerce_apply_individual_use_coupon', array( $this, 'smart_coupons_override_individual_use' ), 10, 3 );
@@ -120,10 +120,8 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 
 			add_action( 'wc_sc_new_coupon_generated', array( $this, 'smart_coupons_plugin_used' ) );
 
-			if ( $this->is_wc_gte_26() ) {
-				// Actions used to insert a new endpoint in the WordPress.
-				add_action( 'init', array( $this, 'sc_add_endpoints' ) );
-			}
+			// Actions used to insert a new endpoint in the WordPress.
+			add_action( 'init', array( $this, 'sc_add_endpoints' ) );
 
 			add_action( 'init', array( $this, 'register_plugin_styles' ) );
 
@@ -136,9 +134,7 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 
 			add_filter( 'plugin_action_links_' . plugin_basename( WC_SC_PLUGIN_FILE ), array( $this, 'plugin_action_links' ) );
 
-			if ( ! $this->is_wc_gte_25() ) {
-				add_action( 'admin_notices', array( $this, 'needs_wc_25_above' ) );
-			}
+			add_action( 'admin_notices', array( $this, 'needs_wc_25_above' ) );
 
 			add_action( 'wp_loaded', array( $this, 'sc_handle_store_credit_application' ), 15 );
 
@@ -224,12 +220,12 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 
 			if ( function_exists( 'wc_get_logger' ) ) {
 				$logger  = wc_get_logger();
-				$context = array( 'source' => $this->slug );
+				$context = array( 'source' => 'woocommerce-smart-coupons' );
 				$logger->log( $level, $message, $context );
 			} else {
 				include_once plugin_dir_path( WC_PLUGIN_FILE ) . 'includes/class-wc-logger.php';
 				$logger = new WC_Logger();
-				$logger->add( $this->slug, $message );
+				$logger->add( 'woocommerce-smart-coupons', $message );
 			}
 
 		}
@@ -459,8 +455,11 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 		 */
 		public function sc_add_endpoints() {
 
-			add_rewrite_endpoint( WC_SC_Display_Coupons::$endpoint, EP_ROOT | EP_PAGES );
-			$this->sc_check_if_flushed_rules();
+			if ( $this->is_wc_gte_26() ) {
+				add_rewrite_endpoint( WC_SC_Display_Coupons::$endpoint, EP_ROOT | EP_PAGES );
+				$this->sc_check_if_flushed_rules();
+			}
+
 		}
 
 		/**
@@ -482,7 +481,7 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 
 			$is_frontend         = ( ! is_admin() ) ? true : false;
 			$is_valid_post_page  = ( ! empty( $pagenow ) && in_array( $pagenow, array( 'edit.php', 'post.php', 'post-new.php' ), true ) ) ? true : false;
-			$is_valid_admin_page = ( ( ! empty( $_GET['page'] ) && 'wc-smart-coupons' === wc_clean( wp_unslash( $_GET['page'] ) ) ) || ( ! empty( $_GET['tab'] ) && 'wc-smart-coupons' === wc_clean( wp_unslash( $_GET['tab'] ) ) ) ) ? true : false; // phpcs:ignore
+            $is_valid_admin_page = ( ( ! empty( $_GET['page'] ) && 'wc-smart-coupons' === wc_clean( wp_unslash( $_GET['page'] ) ) ) || ( ! empty( $_GET['tab'] ) && 'wc-smart-coupons' === wc_clean( wp_unslash( $_GET['tab'] ) ) ) ) ? true : false; // phpcs:ignore
 
 			if ( $is_frontend || $is_valid_admin_page || $is_valid_post_page ) {
 
@@ -606,22 +605,22 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 
 				$old_customers_email_id = $current_user->data->user_email;
 
-				$post_email = ( isset( $_POST['email'] ) ) ? wc_clean( wp_unslash( $_POST['email'] ) ) : ''; // phpcs:ignore
+                $post_email = ( isset( $_POST['email'] ) ) ? wc_clean( wp_unslash( $_POST['email'] ) ) : ''; // phpcs:ignore
 
 				if ( ! empty( $post_email ) && $post_email !== $old_customers_email_id ) {
 
 					$result = wp_cache_get( 'wc_sc_customers_coupon_ids_' . sanitize_key( $old_customers_email_id ), 'woocommerce_smart_coupons' );
 
 					if ( false === $result ) {
-						$result = $wpdb->get_col( // phpcs:ignore
+                        $result = $wpdb->get_col( // phpcs:ignore
 							$wpdb->prepare(
 								"SELECT post_id
-									FROM $wpdb->postmeta
-									WHERE meta_key = %s
-									AND meta_value LIKE %s
-									AND post_id IN ( SELECT ID
-														FROM $wpdb->posts
-														WHERE post_type = %s)",
+                                    FROM $wpdb->postmeta
+                                    WHERE meta_key = %s
+                                    AND meta_value LIKE %s
+                                    AND post_id IN ( SELECT ID
+                                                        FROM $wpdb->posts
+                                                        WHERE post_type = %s)",
 								'customer_email',
 								'%' . $wpdb->esc_like( $old_customers_email_id ) . '%',
 								'shop_coupon'
@@ -885,8 +884,8 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 
 			$order_actions = array( 'woocommerce_add_coupon_discount', 'woocommerce_calc_line_taxes', 'woocommerce_save_order_items' );
 
-			$post_action    = ( ! empty( $_POST['action'] ) ) ? wc_clean( wp_unslash( $_POST['action'] ) ) : ''; // phpcs:ignore
-			$post_post_type = ( ! empty( $_POST['post_type'] ) ) ? wc_clean( wp_unslash( $_POST['post_type'] ) ) : ''; // phpcs:ignore
+            $post_action    = ( ! empty( $_POST['action'] ) ) ? wc_clean( wp_unslash( $_POST['action'] ) ) : ''; // phpcs:ignore
+            $post_post_type = ( ! empty( $_POST['post_type'] ) ) ? wc_clean( wp_unslash( $_POST['post_type'] ) ) : ''; // phpcs:ignore
 
 			if ( $order instanceof WC_Order && ! empty( $post_action ) && ( in_array( $post_action, $order_actions, true ) || ( ! empty( $post_post_type ) && 'shop_order' === $post_post_type && 'editpost' === $post_action ) ) ) {
 				if ( ! is_object( $order ) || ! is_callable( array( $order, 'get_id' ) ) ) {
@@ -1042,8 +1041,14 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 
 			$applied_coupons = ( is_object( WC()->cart ) && is_callable( array( WC()->cart, 'get_applied_coupons' ) ) ) ? WC()->cart->get_applied_coupons() : array();
 
+			$smart_coupon_credit_used = ( is_object( WC()->cart ) && isset( WC()->cart->smart_coupon_credit_used ) ) ? WC()->cart->smart_coupon_credit_used : array();
+
 			if ( ! empty( $applied_coupons ) ) {
 				foreach ( $applied_coupons as $code ) {
+					$request_wc_ajax = ( ! empty( $_REQUEST['wc-ajax'] ) ) ? wc_clean( wp_unslash( $_REQUEST['wc-ajax'] ) ) : ''; // WPCS: sanitization ok. CSRF ok, input var ok.
+					if ( ! empty( $request_wc_ajax ) && 'update_order_review' === $request_wc_ajax && array_key_exists( $code, $smart_coupon_credit_used ) && true !== $cart_contains_subscription ) {
+						continue;
+					}
 					$coupon   = new WC_Coupon( $code );
 					$discount = $this->sc_cart_get_discount_amount( $total, $coupon );
 
@@ -1310,7 +1315,7 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 					return $total;
 				}
 
-				$called_by = ( ! empty( $_POST['action'] ) ) ? wc_clean( wp_unslash( $_POST['action'] ) ) : ''; // phpcs:ignore
+                $called_by = ( ! empty( $_POST['action'] ) ) ? wc_clean( wp_unslash( $_POST['action'] ) ) : ''; // phpcs:ignore
 
 				if ( 'woocommerce_calc_line_taxes' !== $called_by ) {
 					return $total;
@@ -1382,11 +1387,12 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 		/**
 		 * Function to return validity of Store Credit / Gift Certificate
 		 *
-		 * @param boolean   $valid Coupon validity.
-		 * @param WC_Coupon $coupon Coupon object.
+		 * @param boolean      $valid Coupon validity.
+		 * @param WC_Coupon    $coupon Coupon object.
+		 * @param WC_Discounts $discounts Discounts object.
 		 * @return boolean  $valid TRUE if smart coupon valid, FALSE otherwise
 		 */
-		public function is_smart_coupon_valid( $valid, $coupon ) {
+		public function is_smart_coupon_valid( $valid, $coupon, $discounts ) {
 
 			if ( $this->is_wc_gte_30() ) {
 				$coupon_amount = ( is_object( $coupon ) && is_callable( array( $coupon, 'get_amount' ) ) ) ? $coupon->get_amount() : 0;
@@ -1460,17 +1466,17 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 
 				$email = ( ! empty( $current_user->data->user_email ) ) ? $current_user->data->user_email : '';
 
-				$email = ( ! empty( $_REQUEST['billing_email'] ) ) ? sanitize_email( wp_unslash( $_REQUEST['billing_email'] ) ) : $email; // phpcs:ignore
+                $email = ( ! empty( $_REQUEST['billing_email'] ) ) ? sanitize_email( wp_unslash( $_REQUEST['billing_email'] ) ) : $email; // phpcs:ignore
 
 				if ( ! empty( $email ) && is_email( $email ) ) {
 
 					$user_id_1 = wp_cache_get( 'wc_sc_user_id_by_user_email_' . sanitize_key( $email ), 'woocommerce_smart_coupons' );
 					if ( false === $user_id_1 ) {
-						$user_id_1 = $wpdb->get_var( // phpcs:ignore
+                        $user_id_1 = $wpdb->get_var( // phpcs:ignore
 							$wpdb->prepare(
 								"SELECT ID
-									FROM {$wpdb->prefix}users
-									WHERE user_email = %s",
+                                    FROM {$wpdb->prefix}users
+                                    WHERE user_email = %s",
 								$email
 							)
 						);
@@ -1480,12 +1486,12 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 
 					$user_id_2 = wp_cache_get( 'wc_sc_user_id_by_billing_email_' . sanitize_key( $email ), 'woocommerce_smart_coupons' );
 					if ( false === $user_id_2 ) {
-						$user_id_2 = $wpdb->get_var( // phpcs:ignore
+                        $user_id_2 = $wpdb->get_var( // phpcs:ignore
 							$wpdb->prepare(
 								"SELECT user_id
-									FROM {$wpdb->prefix}usermeta
-									WHERE meta_key = %s
-										AND meta_value = %s",
+                                    FROM {$wpdb->prefix}usermeta
+                                    WHERE meta_key = %s
+                                        AND meta_value = %s",
 								'billing_email',
 								$email
 							)
@@ -1509,11 +1515,11 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 					if ( false === $order_id ) {
 						$query = $wpdb->prepare(
 							"SELECT ID
-								FROM $wpdb->posts AS p
-								LEFT JOIN $wpdb->postmeta AS pm
-									ON ( p.ID = pm.post_id AND pm.meta_key = %s )
-								WHERE p.post_type = %s
-									AND p.post_status IN ( %s, %s )",
+                                FROM $wpdb->posts AS p
+                                LEFT JOIN $wpdb->postmeta AS pm
+                                    ON ( p.ID = pm.post_id AND pm.meta_key = %s )
+                                WHERE p.post_type = %s
+                                    AND p.post_status IN ( %s, %s )",
 							'_customer_user',
 							'shop_order',
 							'wc-processing',
@@ -1523,14 +1529,14 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 						$how_many_user_ids = count( $user_ids );
 						$id_placeholder    = array_fill( 0, $how_many_user_ids, '%s' );
 
-						// phpcs:disable
-						$query .= $wpdb->prepare(
-							' AND pm.meta_value IN (' . implode( ',', $id_placeholder ) . ')',
-							$user_ids
-						);
-						// phpcs:enable
+                        // phpcs:disable
+                        $query .= $wpdb->prepare(
+                            ' AND pm.meta_value IN (' . implode( ',', $id_placeholder ) . ')',
+                            $user_ids
+                        );
+                        // phpcs:enable
 
-						$order_id = $wpdb->get_var( $query ); // phpcs:ignore
+                        $order_id = $wpdb->get_var( $query ); // phpcs:ignore
 
 						wp_cache_set( 'wc_sc_order_for_user_id_' . implode( '_', $unique_user_ids ), $order_id, 'woocommerce_smart_coupons' );
 						$this->maybe_add_cache_key( 'wc_sc_order_for_user_id_' . implode( '_', $unique_user_ids ) );
@@ -1544,14 +1550,14 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 					$order_id = wp_cache_get( 'wc_sc_order_id_by_billing_email_' . sanitize_key( $email ), 'woocommerce_smart_coupons' );
 
 					if ( false === $order_id ) {
-						$order_id = $wpdb->get_var( // phpcs:ignore
+                        $order_id = $wpdb->get_var( // phpcs:ignore
 							$wpdb->prepare(
 								"SELECT ID
-									FROM $wpdb->posts AS p
-									LEFT JOIN $wpdb->postmeta AS pm
-										ON ( p.ID = pm.post_id AND pm.meta_key = %s )
-									WHERE p.post_type = %s
-										AND pm.meta_value = %s",
+                                    FROM $wpdb->posts AS p
+                                    LEFT JOIN $wpdb->postmeta AS pm
+                                        ON ( p.ID = pm.post_id AND pm.meta_key = %s )
+                                    WHERE p.post_type = %s
+                                        AND pm.meta_value = %s",
 								'_billing_email',
 								'shop_order',
 								$email
@@ -1638,11 +1644,11 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 		 */
 		public function generate_unique_code( $email = '', $coupon = '' ) {
 			$unique_code = '';
-			srand( (double) microtime( true ) * 1000000 ); // phpcs:ignore
+            srand( (double) microtime( true ) * 1000000 ); // phpcs:ignore
 
 			$chars = array_merge( range( 'a', 'z' ), range( '1', '9' ) );
 			for ( $rand = 1; $rand <= WC_SC_COUPON_CODE_LENGTH; $rand++ ) {
-				$random       = rand( 0, count( $chars ) - 1 ); // phpcs:ignore
+                $random       = rand( 0, count( $chars ) - 1 ); // phpcs:ignore
 				$unique_code .= $chars[ $random ];
 			}
 
@@ -1659,7 +1665,9 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 			}
 
 			return apply_filters(
-				'wc_sc_generate_unique_coupon_code', $unique_code, array(
+				'wc_sc_generate_unique_coupon_code',
+				$unique_code,
+				array(
 					'email'  => $email,
 					'coupon' => $coupon,
 				)
@@ -1843,7 +1851,8 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 				 * Reference coupon ref_coupon This is the coupon from which meta will be copied to newly created coupon
 				 */
 				do_action(
-					'wc_sc_new_coupon_generated', array(
+					'wc_sc_new_coupon_generated',
+					array(
 						'new_coupon_id' => $smart_coupon_id,
 						'ref_coupon'    => $coupon,
 					)
@@ -1925,12 +1934,12 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 				$post_ids = wp_cache_get( 'wc_sc_search_customer_coupon_ids_for_' . sanitize_key( $email ), 'woocommerce_smart_coupons' );
 
 				if ( false === $post_ids ) {
-					$post_ids = $wpdb->get_col( // phpcs:ignore
+                    $post_ids = $wpdb->get_col( // phpcs:ignore
 						$wpdb->prepare(
 							"SELECT post_id
-								FROM {$wpdb->postmeta}
-								WHERE meta_key = %s
-									AND meta_value LIKE %s;",
+                                FROM {$wpdb->postmeta}
+                                WHERE meta_key = %s
+                                    AND meta_value LIKE %s;",
 							'customer_email',
 							'%' . $wpdb->esc_like( $email ) . '%'
 						)
@@ -2007,7 +2016,7 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 				<div class="alignright" style="margin-top: 1px;" >
 					<?php
 					if ( ! empty( $_SERVER['QUERY_STRING'] ) ) {
-						echo '<input type="hidden" name="sc_export_query_args" value="' . esc_attr( wc_clean( wp_unslash( $_SERVER['QUERY_STRING'] ) ) ) . '">'; // phpcs:ignore
+                        echo '<input type="hidden" name="sc_export_query_args" value="' . esc_attr( wc_clean( wp_unslash( $_SERVER['QUERY_STRING'] ) ) ) . '">'; // phpcs:ignore
 					}
 					?>
 					<button type="submit" class="button" id="export_coupons" name="export_coupons" value="<?php echo esc_attr__( 'Export', 'woocommerce-smart-coupons' ); ?>"><span class="dashicons dashicons-upload"></span><?php echo esc_html__( 'Export', 'woocommerce-smart-coupons' ); ?></button>
@@ -2021,7 +2030,7 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 		public function woocommerce_export_coupons() {
 			global $typenow, $wp_query,$wp,$post;
 
-			if ( is_admin() && isset( $_GET['export_coupons'] ) && current_user_can( 'manage_woocommerce' ) ) { // phpcs:ignore
+            if ( is_admin() && isset( $_GET['export_coupons'] ) && current_user_can( 'manage_woocommerce' ) ) { // phpcs:ignore
 
 				$args = array(
 					'post_status'    => '',
@@ -2031,16 +2040,16 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 					'fields'         => 'ids',
 				);
 
-				if ( ! empty( $_REQUEST['sc_export_query_args'] ) ) { // phpcs:ignore
-					parse_str( wc_clean( wp_unslash( $_REQUEST['sc_export_query_args'] ) ), $sc_args ); // phpcs:ignore
+                if ( ! empty( $_REQUEST['sc_export_query_args'] ) ) { // phpcs:ignore
+                    parse_str( wc_clean( wp_unslash( $_REQUEST['sc_export_query_args'] ) ), $sc_args ); // phpcs:ignore
 				}
 				$args = array_merge( $args, $sc_args );
 
-				$get_coupon_type = ( ! empty( $_GET['coupon_type'] ) ) ? wc_clean( wp_unslash( $_GET['coupon_type'] ) ) : ''; // phpcs:ignore
-				$get_post        = ( ! empty( $_GET['post'] ) ) ? wc_clean( wp_unslash( $_GET['post'] ) ) : ''; // phpcs:ignore
+                $get_coupon_type = ( ! empty( $_GET['coupon_type'] ) ) ? wc_clean( wp_unslash( $_GET['coupon_type'] ) ) : ''; // phpcs:ignore
+                $get_post        = ( ! empty( $_GET['post'] ) ) ? wc_clean( wp_unslash( $_GET['post'] ) ) : ''; // phpcs:ignore
 
 				if ( isset( $get_coupon_type ) && '' !== $get_coupon_type ) {
-					$args['meta_query'] = array( // phpcs:ignore
+                    $args['meta_query'] = array( // phpcs:ignore
 						array(
 							'key'   => 'discount_type',
 							'value' => $get_coupon_type,
@@ -2053,8 +2062,8 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 				}
 
 				foreach ( $args as $key => $value ) {
-					if ( array_key_exists( $key, wc_clean( wp_unslash( $_GET ) ) ) ) { // phpcs:ignore
-						$args[ $key ] = wc_clean( wp_unslash( $_GET[ $key ] ) ); // phpcs:ignore
+                    if ( array_key_exists( $key, wc_clean( wp_unslash( $_GET ) ) ) ) { // phpcs:ignore
+                        $args[ $key ] = wc_clean( wp_unslash( $_GET[ $key ] ) ); // phpcs:ignore
 					}
 				}
 
@@ -2067,7 +2076,7 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 
 				$post_ids = $query->posts;
 
-				$this->export_coupon( '', wc_clean( wp_unslash( $_GET ) ), $post_ids ); // phpcs:ignore
+                $this->export_coupon( '', wc_clean( wp_unslash( $_GET ) ), $post_ids ); // phpcs:ignore
 			}
 		}
 
@@ -2175,32 +2184,32 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 				$how_many_ids   = count( $post_ids );
 				$id_placeholder = array_fill( 0, $how_many_ids, '%d' );
 
-				$wpdb->query( $wpdb->prepare( 'SET SESSION group_concat_max_len=%d', 999999 ) ); // phpcs:ignore
+                $wpdb->query( $wpdb->prepare( 'SET SESSION group_concat_max_len=%d', 999999 ) ); // phpcs:ignore
 
 				$unique_post_ids = array_unique( $post_ids );
 
 				$results = wp_cache_get( 'wc_sc_exported_coupon_data_' . implode( '_', $unique_post_ids ), 'woocommerce_smart_coupons' );
 
 				if ( false === $results ) {
-					$results = $wpdb->get_results( // phpcs:ignore
-						// phpcs:disable
-						$wpdb->prepare(
-							"SELECT p.ID,
-									p.post_title,
-									p.post_excerpt,
-									p.post_status,
-									p.post_parent,
-									p.menu_order,
-									DATE_FORMAT(p.post_date,'%%d-%%m-%%Y %%h:%%i') AS post_date,
-									GROUP_CONCAT(pm.meta_key order by pm.meta_id SEPARATOR '###') AS coupon_meta_key,
-									GROUP_CONCAT(pm.meta_value order by pm.meta_id SEPARATOR '###') AS coupon_meta_value
-								FROM {$wpdb->prefix}posts as p JOIN {$wpdb->prefix}postmeta as pm ON (p.ID = pm.post_id
-									AND pm.meta_key IN (" . implode( ',', $header_placeholder ) . ') )
-								WHERE p.ID IN (' . implode( ',', $id_placeholder ) . ')
-								GROUP BY p.id  ORDER BY p.id',
-							array_merge( $headers, $post_ids )
-						),
-						// phpcs:enable
+                    $results = $wpdb->get_results( // phpcs:ignore
+                        // phpcs:disable
+                        $wpdb->prepare(
+                            "SELECT p.ID,
+                                    p.post_title,
+                                    p.post_excerpt,
+                                    p.post_status,
+                                    p.post_parent,
+                                    p.menu_order,
+                                    DATE_FORMAT(p.post_date,'%%d-%%m-%%Y %%h:%%i') AS post_date,
+                                    GROUP_CONCAT(pm.meta_key order by pm.meta_id SEPARATOR '###') AS coupon_meta_key,
+                                    GROUP_CONCAT(pm.meta_value order by pm.meta_id SEPARATOR '###') AS coupon_meta_value
+                                FROM {$wpdb->prefix}posts as p JOIN {$wpdb->prefix}postmeta as pm ON (p.ID = pm.post_id
+                                    AND pm.meta_key IN (" . implode( ',', $header_placeholder ) . ') )
+                                WHERE p.ID IN (' . implode( ',', $id_placeholder ) . ')
+                                GROUP BY p.id  ORDER BY p.id',
+                            array_merge( $headers, $post_ids )
+                        ),
+                        // phpcs:enable
 						ARRAY_A
 					);
 					wp_cache_set( 'wc_sc_exported_coupon_data_' . implode( '_', $unique_post_ids ), $results, 'woocommerce_smart_coupons' );
@@ -2237,7 +2246,9 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 									$temp_data = implode( ',', $temp_data );
 								} else {
 									$temp_data = apply_filters(
-										'wc_sc_export_coupon_meta_data', $temp_data, array(
+										'wc_sc_export_coupon_meta_data',
+										$temp_data,
+										array(
 											'coupon_id'   => $id,
 											'index'       => $index,
 											'meta_keys'   => $coupon_meta_key,
@@ -2423,7 +2434,7 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 				header( 'Content-Transfer-Encoding: binary' );
 				header( 'Content-Disposition: attachment; filename="' . sanitize_file_name( $file_data['file_name'] ) . '";' );
 
-				echo $file_data['file_content']; // phpcs:ignore
+                echo $file_data['file_content']; // phpcs:ignore
 				exit;
 			} else {
 
@@ -2431,9 +2442,9 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 				$csv_folder  = $file_data['wp_upload_dir'];
 				$filename    = str_replace( array( '\'', '"', ',', ';', '<', '>', '/', ':' ), '', $file_data['file_name'] );
 				$csvfilename = $csv_folder . $filename;
-				$fp          = fopen( $csvfilename, 'w' ); // phpcs:ignore
-				file_put_contents( $csvfilename, $file_data['file_content'] ); // phpcs:ignore
-				fclose( $fp ); // phpcs:ignore
+                $fp          = fopen( $csvfilename, 'w' ); // phpcs:ignore
+                file_put_contents( $csvfilename, $file_data['file_content'] ); // phpcs:ignore
+                fclose( $fp ); // phpcs:ignore
 
 				return $csvfilename;
 			}
@@ -2448,8 +2459,8 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 
 			if ( ! empty( $pagenow ) ) {
 				$show_css_for_smart_coupon_tab = false;
-				$get_post_type                 = ( ! empty( $_GET['post_type'] ) ) ? wc_clean( wp_unslash( $_GET['post_type'] ) ) : ''; // phpcs:ignore
-				$get_page                      = ( ! empty( $_GET['page'] ) ) ? wc_clean( wp_unslash( $_GET['page'] ) ) : ''; // phpcs:ignore
+                $get_post_type                 = ( ! empty( $_GET['post_type'] ) ) ? wc_clean( wp_unslash( $_GET['post_type'] ) ) : ''; // phpcs:ignore
+                $get_page                      = ( ! empty( $_GET['page'] ) ) ? wc_clean( wp_unslash( $_GET['page'] ) ) : ''; // phpcs:ignore
 				if ( 'edit.php' === $pagenow && 'shop_coupon' === $get_post_type ) {
 					$show_css_for_smart_coupon_tab = true;
 				}
@@ -2470,7 +2481,9 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 			if ( ! empty( $post->post_type ) && 'product' === $post->post_type ) {
 				if ( wp_script_is( 'select2' ) ) {
 					wp_localize_script(
-						'select2', 'smart_coupons_select_params', array(
+						'select2',
+						'smart_coupons_select_params',
+						array(
 							'i18n_matches_1'            => _x( 'One result is available, press enter to select it.', 'enhanced select', 'woocommerce-smart-coupons' ),
 							'i18n_matches_n'            => _x( '%qty% results are available, use up and down arrow keys to navigate.', 'enhanced select', 'woocommerce-smart-coupons' ),
 							'i18n_no_matches'           => _x( 'No matches found', 'enhanced select', 'woocommerce-smart-coupons' ),
@@ -2563,12 +2576,12 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 				include_once WC()->plugin_path() . '/includes/gateways/paypal/class-wc-gateway-paypal.php';
 			}
 			// We have the data in the correct format, so get the order.
-			if ( ( $custom = json_decode( $raw_custom ) ) && is_object( $custom ) ) { // phpcs:ignore
+            if ( ( $custom = json_decode( $raw_custom ) ) && is_object( $custom ) ) { // phpcs:ignore
 				$order_id  = $custom->order_id;
 				$order_key = $custom->order_key;
 
 				// Fallback to serialized data if safe. This is @deprecated in 2.3.11.
-			} elseif ( preg_match( '/^a:2:{/', $raw_custom ) && ! preg_match( '/[CO]:\+?[0-9]+:"/', $raw_custom ) && ( $custom = maybe_unserialize( $raw_custom ) ) ) { // phpcs:ignore
+            } elseif ( preg_match( '/^a:2:{/', $raw_custom ) && ! preg_match( '/[CO]:\+?[0-9]+:"/', $raw_custom ) && ( $custom = maybe_unserialize( $raw_custom ) ) ) { // phpcs:ignore
 				$order_id  = $custom[0];
 				$order_key = $custom[1];
 
@@ -2578,7 +2591,7 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 				return false;
 			}
 
-			if ( ! $order = wc_get_order( $order_id ) ) { // phpcs:ignore
+            if ( ! $order = wc_get_order( $order_id ) ) { // phpcs:ignore
 				// We have an invalid $order_id, probably because invoice_prefix has changed.
 				$order_id = wc_get_order_id_by_order_key( $order_key );
 				$order    = wc_get_order( $order_id );
@@ -2700,6 +2713,10 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 		 * Show notice on admin panel about minimum required version of WooCommerce
 		 */
 		public function needs_wc_25_above() {
+			if ( $this->is_wc_gte_25() ) {
+				return;
+			}
+
 			$plugin_data = self::get_smart_coupons_plugin_data();
 			$plugin_name = $plugin_data['Name'];
 			?>

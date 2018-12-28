@@ -122,7 +122,8 @@ if ( ! class_exists( 'WC_SC_Admin_Pages' ) ) {
 								array(
 									'page' => 'wc-smart-coupons',
 									'tab'  => 'import-smart-coupons',
-								), admin_url( 'admin.php' )
+								),
+								admin_url( 'admin.php' )
 							)
 						) . '" class="nav-tab">' . esc_html__( 'Import Coupons', 'woocommerce-smart-coupons' ) . '</a>';
 						echo '<a href="' . esc_url(
@@ -130,7 +131,8 @@ if ( ! class_exists( 'WC_SC_Admin_Pages' ) ) {
 								array(
 									'page' => 'wc-smart-coupons',
 									'tab'  => 'send-smart-coupons',
-								), admin_url( 'admin.php' )
+								),
+								admin_url( 'admin.php' )
 							)
 							/* translators: %s: singular name for store credit */
 						) . '" class="nav-tab">' . ( ! empty( $store_credit_label['singular'] ) ? sprintf( esc_html__( 'Send %s', 'woocommerce-smart-coupons' ), esc_html( ucwords( $store_credit_label['singular'] ) ) ) : esc_html__( 'Send Store Credit', 'woocommerce-smart-coupons' ) ) . '</a>';
@@ -231,8 +233,10 @@ if ( ! class_exists( 'WC_SC_Admin_Pages' ) ) {
 				'rounding_precision'            => WC_ROUNDING_PRECISION,
 				'tax_rounding_mode'             => WC_TAX_ROUNDING_MODE,
 				'product_types'                 => array_map(
-					'sanitize_title', get_terms(
-						'product_type', array(
+					'sanitize_title',
+					get_terms(
+						'product_type',
+						array(
 							'hide_empty' => false,
 							'fields'     => 'names',
 						)
@@ -339,14 +343,17 @@ if ( ! class_exists( 'WC_SC_Admin_Pages' ) ) {
 					<p>
 						<?php
 						echo '<strong>' . esc_html__( 'Important', 'woocommerce-smart-coupons' ) . ':</strong> ' . esc_html__( 'Setting "Enable the use of coupon codes" is disabled.', 'woocommerce-smart-coupons' ) . ' ' . sprintf(
-							'<a href="%s">%s</a>', esc_url(
+							'<a href="%s">%s</a>',
+							esc_url(
 								add_query_arg(
 									array(
 										'page' => 'wc-settings',
 										'tab'  => 'general',
-									), admin_url( 'admin.php' )
+									),
+									admin_url( 'admin.php' )
 								)
-							), esc_html__( 'Enable', 'woocommerce-smart-coupons' )
+							),
+							esc_html__( 'Enable', 'woocommerce-smart-coupons' )
 						) . ' ' . esc_html__( 'it to use', 'woocommerce-smart-coupons' ) . ' <strong>' . esc_html__( 'WooCommerce Smart Coupons', 'woocommerce-smart-coupons' ) . '</strong> ' . esc_html__( 'features.', 'woocommerce-smart-coupons' );
 						?>
 					</p>
@@ -605,7 +612,8 @@ if ( ! class_exists( 'WC_SC_Admin_Pages' ) ) {
 						array(
 							'page' => 'wc-smart-coupons',
 							'tab'  => 'import-smart-coupons',
-						), admin_url( 'admin.php' )
+						),
+						admin_url( 'admin.php' )
 					)
 				);
 				exit;
@@ -671,7 +679,8 @@ if ( ! class_exists( 'WC_SC_Admin_Pages' ) ) {
 								array(
 									'page' => 'wc-smart-coupons',
 									'tab'  => 'import-smart-coupons',
-								), admin_url( 'admin.php' )
+								),
+								admin_url( 'admin.php' )
 							);
 						?>
 						<a href="<?php echo esc_url( $import_tab_url ); ?>" class="nav-tab <?php echo ( 'import-smart-coupons' === $tab ) ? 'nav-tab-active' : ''; ?>"><?php echo esc_html__( 'Import Coupons', 'woocommerce-smart-coupons' ); ?></a>
@@ -680,7 +689,8 @@ if ( ! class_exists( 'WC_SC_Admin_Pages' ) ) {
 								array(
 									'page' => 'wc-smart-coupons',
 									'tab'  => 'send-smart-coupons',
-								), admin_url( 'admin.php' )
+								),
+								admin_url( 'admin.php' )
 							);
 						?>
 						<a href="<?php echo esc_url( $send_credit_tab_url ); ?>" class="nav-tab <?php echo ( 'send-smart-coupons' === $tab ) ? 'nav-tab-active' : ''; ?>">
@@ -876,7 +886,8 @@ if ( ! class_exists( 'WC_SC_Admin_Pages' ) ) {
 						array(
 							'page'   => 'wc-smart-coupons',
 							'action' => 'sent_gift_certificate',
-						), admin_url( 'admin.php' )
+						),
+						admin_url( 'admin.php' )
 					)
 				);
 				?>
@@ -1106,7 +1117,8 @@ if ( ! class_exists( 'WC_SC_Admin_Pages' ) ) {
 							'page' => 'wc-smart-coupons',
 							'tab'  => 'import-smart-coupons',
 							'step' => '2',
-						), admin_url( 'admin.php' )
+						),
+						admin_url( 'admin.php' )
 					);
 				?>
 				<form id="generate_coupons" action="<?php echo esc_url( $import_step_2_url ); ?>" method="post">
@@ -1138,7 +1150,8 @@ if ( ! class_exists( 'WC_SC_Admin_Pages' ) ) {
 													array(
 														'page' => 'wc-smart-coupons',
 														'tab'  => 'import-smart-coupons',
-													), admin_url( 'admin.php' )
+													),
+													admin_url( 'admin.php' )
 												);
 											?>
 											<span class="description">
