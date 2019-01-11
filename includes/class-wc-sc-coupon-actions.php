@@ -111,7 +111,12 @@ if ( ! class_exists( 'WC_SC_Coupon_Actions' ) ) {
 
 			if ( ! is_wp_error( $coupon ) ) {
 
-				$actions = $coupon->get_meta( 'wc_sc_add_product_details' );
+				if ( $this->is_wc_gte_30() ) {
+					$actions = $coupon->get_meta( 'wc_sc_add_product_details' );
+				} else {
+					$coupon_id = ( ! empty( $coupon->id ) ) ? $coupon->id : 0;
+					$actions   = get_post_meta( $coupon_id, 'wc_sc_add_product_details', true );
+				}
 
 				return apply_filters( 'wc_sc_coupon_actions', $actions, array( 'coupon_code' => $coupon_code ) );
 
@@ -221,7 +226,7 @@ if ( ! class_exists( 'WC_SC_Coupon_Actions' ) ) {
 		 */
 		public function modify_cart_item_price( $product_price = '', $cart_item = array(), $cart_item_key = '' ) {
 
-			if ( ( is_array( $cart_item ) && isset( $cart_item['wc_sc_product_source'] ) ) || ( is_object( $cart_item ) && $cart_item->get_meta( '_wc_sc_product_source' ) ) ) {
+			if ( ( is_array( $cart_item ) && isset( $cart_item['wc_sc_product_source'] ) ) || ( is_object( $cart_item ) && is_callable( array( $cart_item, 'get_meta' ) ) && $cart_item->get_meta( '_wc_sc_product_source' ) ) ) {
 				if ( wc_price( 0 ) === $product_price ) {
 					$product_price = apply_filters(
 						'wc_sc_price_zero_text',
@@ -254,7 +259,7 @@ if ( ! class_exists( 'WC_SC_Coupon_Actions' ) ) {
 					$coupon_code = '';
 					if ( is_array( $item->object ) && isset( $item->object['wc_sc_product_source'] ) ) {
 						$coupon_code = $item->object['wc_sc_product_source'];
-					} elseif ( is_a( $item->object, 'WC_Order_Item' ) && $item->object->get_meta( '_wc_sc_product_source' ) ) {
+					} elseif ( is_a( $item->object, 'WC_Order_Item' ) && is_callable( array( $item->object, 'get_meta' ) ) && $item->object->get_meta( '_wc_sc_product_source' ) ) {
 						$coupon_code = $item->object->get_meta( '_wc_sc_product_source' );
 					}
 					if ( ! empty( $coupon_code ) ) {
@@ -575,7 +580,7 @@ if ( ! class_exists( 'WC_SC_Coupon_Actions' ) ) {
 			}
 
 			$add_product_details = array();
-			if ( $this->is_wc_gte_26() ) {
+			if ( $this->is_wc_gte_30() ) {
 				$add_product_details = $coupon->get_meta( 'wc_sc_add_product_details' );
 			} else {
 				$old_coupon_id       = ( ! empty( $coupon->id ) ) ? $coupon->id : 0;

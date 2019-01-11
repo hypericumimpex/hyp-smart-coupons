@@ -565,7 +565,7 @@ if ( ! class_exists( 'WC_SC_Purchase_Credit' ) ) {
 			foreach ( $order_items as $item_id => $order_item ) {
 
 				if ( $this->is_wc_gte_30() ) {
-					$item_sc_called_credit = $order_item->get_meta( 'sc_called_credit' );
+					$item_sc_called_credit = ( is_object( $order_item ) && is_callable( array( $order_item, 'get_meta' ) ) ) ? $order_item->get_meta( 'sc_called_credit' ) : array();
 				} else {
 					$item_sc_called_credit = ( ! empty( $order_item['sc_called_credit'] ) ) ? $order_item['sc_called_credit'] : 0;
 				}
@@ -792,6 +792,7 @@ if ( ! class_exists( 'WC_SC_Purchase_Credit' ) ) {
 		 * @param array  $cart_item_data The cart item data.
 		 */
 		public function save_called_credit_in_session( $cart_item_key, $product_id, $quantity, $variation_id, $variation, $cart_item_data ) {
+
 			if ( ! empty( $variation_id ) && $variation_id > 0 ) {
 				return;
 			}

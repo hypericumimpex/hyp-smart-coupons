@@ -184,6 +184,7 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 			include_once 'compat/class-sa-wc-compatibility-3-3.php';
 			include_once 'compat/class-sa-wc-compatibility-3-4.php';
 			include_once 'class-wc-sc-admin-welcome.php';
+			include_once 'class-wc-sc-background-coupon-importer.php';
 			include_once 'class-wc-sc-admin-pages.php';
 
 			include_once 'class-wc-sc-ajax.php';
@@ -469,7 +470,7 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 			$sc_check_flushed_rules = get_option( 'sc_flushed_rules', 'notfound' );
 			if ( 'notfound' === $sc_check_flushed_rules ) {
 				flush_rewrite_rules();
-				update_option( 'sc_flushed_rules', 'found' );
+				update_option( 'sc_flushed_rules', 'found', 'no' );
 			}
 		}
 
@@ -1898,7 +1899,7 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 			$is_show_review_notice = get_option( 'wc_sc_is_show_review_notice' );
 
 			if ( false === $is_show_review_notice ) {
-				update_option( 'wc_sc_is_show_review_notice', time() );
+				update_option( 'wc_sc_is_show_review_notice', time(), 'no' );
 			}
 
 		}
@@ -2520,7 +2521,7 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 					}
 					if ( ! in_array( $key, $all_cache_key, true ) ) {
 						$all_cache_key[] = $key;
-						update_option( 'wc_sc_all_cache_key', $all_cache_key );
+						update_option( 'wc_sc_all_cache_key', $all_cache_key, 'no' );
 					}
 				}
 			}

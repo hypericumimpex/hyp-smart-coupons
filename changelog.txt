@@ -1,6 +1,16 @@
 *** WooCommerce Smart Coupons Changelog ***
 
-2018.12.24 - version 3.8.6
+2019.01.09 - version 3.9.0
+* New: Introduction of background process for importing or bulk generation of coupons
+* New: Search/Filter coupon's list by restricted email
+* Fix: Call to undefined method WC_Coupon::get_meta() [WC 2.6.14 or lower]
+* Fix: Import coupons from uploaded file on the server not working
+* Fix: Support for coupon field 'Active for x payments' during auto/bulk coupon generation & import [WooCommerce Subscriptions 2.3.0+]
+* Tweak: Disable autoload of few options
+* Tweak: Loading of class for compatibility with WooCommerce Subscriptions
+* Update: POT file
+
+2018.12.20 - version 3.8.6
 * Fix: Sometimes store credit is discounting double than it's actual amount on checkout page [WooCommerce AvaTax]
 * Fix: WordPress database error Duplicate entry
 * Fix: Store credit used data are not shown in order admin page if that store credit is deleted from the store (Thanks to: Jarrad Grigg)

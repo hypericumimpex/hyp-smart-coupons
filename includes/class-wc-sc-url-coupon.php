@@ -163,7 +163,7 @@ if ( ! class_exists( 'WC_SC_URL_Coupon' ) ) {
 			}
 
 			if ( 0 === $user_id ) {
-				update_option( 'sc_applied_coupon_profile_' . $unique_id, $applied_coupon_from_url );
+				update_option( 'sc_applied_coupon_profile_' . $unique_id, $applied_coupon_from_url, 'no' );
 			} else {
 				update_user_meta( $user_id, 'sc_applied_coupon_from_url', $applied_coupon_from_url );
 			}
@@ -208,7 +208,7 @@ if ( ! class_exists( 'WC_SC_URL_Coupon' ) ) {
 					$applied_coupons[] = $coupon_args['coupon-code'];
 				}
 
-				update_option( 'sc_applied_coupon_profile_' . $unique_id, $applied_coupons );
+				update_option( 'sc_applied_coupon_profile_' . $unique_id, $applied_coupons, 'no' );
 
 				wc_setcookie( 'sc_applied_coupon_profile_id', $unique_id, $this->get_cookie_life() );
 

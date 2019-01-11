@@ -107,13 +107,14 @@ if ( ! class_exists( 'WC_SC_Coupon_Parser' ) ) {
 				'post_status'    => 'publish',
 				'post_title'     => '',
 				'post_name'      => '',
-				'comment_status' => 'open',
+				'comment_status' => 'closed',
 				'post_date'      => '',
 				'post_date_gmt'  => '',
 				'post_content'   => '',
 				'post_excerpt'   => '',
 				'post_parent'    => 0,
 				'post_password'  => '',
+				'post_author'    => get_current_user_id(),
 			);
 
 			$this->postmeta_defaults = apply_filters(

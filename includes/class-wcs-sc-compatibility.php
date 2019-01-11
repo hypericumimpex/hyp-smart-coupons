@@ -43,6 +43,7 @@ if ( ! class_exists( 'WCS_SC_Compatibility' ) ) {
 				add_action( 'admin_init', array( $this, 'sc_wcs_settings' ) );
 				add_filter( 'wcs_bypass_coupon_removal', array( $this, 'bypass_removal_of_coupon_having_coupon_actions' ), 10, 4 );
 				add_filter( 'woocommerce_subscriptions_calculated_total', array( $this, 'modify_recurring_cart' ) );
+				add_action( 'wp_loaded', array( $this, 'hooks_for_wcs_230' ) );
 			}
 
 		}
@@ -786,9 +787,9 @@ if ( ! class_exists( 'WCS_SC_Compatibility' ) ) {
 			$is_pay_from_store_credit = get_option( 'pay_from_smart_coupon_of_original_order' );
 			if ( $is_apply_before_tax === $is_pay_from_store_credit ) {
 				if ( 'yes' === $is_apply_before_tax ) {
-					update_option( 'pay_from_smart_coupon_of_original_order', 'no' );
+					update_option( 'pay_from_smart_coupon_of_original_order', 'no', 'no' );
 				} else {
-					update_option( 'pay_from_smart_coupon_of_original_order', $is_pay_from_store_credit );
+					update_option( 'pay_from_smart_coupon_of_original_order', $is_pay_from_store_credit, 'no' );
 				}
 			}
 		}
@@ -861,6 +862,90 @@ if ( ! class_exists( 'WCS_SC_Compatibility' ) ) {
 		}
 
 		/**
+		 * Hooks for WCS 2.3.0+
+		 */
+		public function hooks_for_wcs_230() {
+			if ( $this->is_wcs_gte( '2.3.0' ) ) {
+				add_filter( 'wc_smart_coupons_export_headers', array( $this, 'export_headers' ) );
+				add_filter( 'smart_coupons_parser_postmeta_defaults', array( $this, 'postmeta_defaults' ) );
+				add_filter( 'sc_generate_coupon_meta', array( $this, 'generate_coupon_meta' ), 10, 2 );
+				add_action( 'wc_sc_new_coupon_generated', array( $this, 'copy_subscriptions_coupon_meta' ) );
+			}
+		}
+
+		/**
+		 * Add subscriptions coupon meta in export headers
+		 *
+		 * @param  array $headers Existing headers.
+		 * @return array
+		 */
+		public function export_headers( $headers = array() ) {
+
+			$action_headers = array(
+				'_wcs_number_payments' => __( 'Active for x payments', 'woocommerce-smart-coupons' ),
+			);
+
+			return array_merge( $headers, $action_headers );
+
+		}
+
+		/**
+		 * Post meta defaults for subscriptions coupon meta
+		 *
+		 * @param  array $defaults Existing postmeta defaults.
+		 * @return array
+		 */
+		public function postmeta_defaults( $defaults = array() ) {
+
+			$actions_defaults = array(
+				'_wcs_number_payments' => '',
+			);
+
+			return array_merge( $defaults, $actions_defaults );
+		}
+
+		/**
+		 * Add subscriptions coupons meta with value in coupon meta
+		 *
+		 * @param  array $data The row data.
+		 * @param  array $post The POST values.
+		 * @return array Modified data
+		 */
+		public function generate_coupon_meta( $data = array(), $post = array() ) {
+
+			if ( isset( $post['wcs_number_payments'] ) ) {
+				$data['_wcs_number_payments'] = trim( $post['wcs_number_payments'] );
+			}
+
+			return $data;
+		}
+
+		/**
+		 * Function to copy subscription coupon meta in newly generated coupon
+		 *
+		 * @param  array $args The arguments.
+		 */
+		public function copy_subscriptions_coupon_meta( $args = array() ) {
+
+			$new_coupon_id = ( ! empty( $args['new_coupon_id'] ) ) ? absint( $args['new_coupon_id'] ) : 0;
+			$coupon        = ( ! empty( $args['ref_coupon'] ) ) ? $args['ref_coupon'] : false;
+
+			if ( empty( $new_coupon_id ) || empty( $coupon ) ) {
+				return;
+			}
+
+			$wcs_number_payments = '';
+			if ( $this->is_wc_gte_30() ) {
+				$wcs_number_payments = $coupon->get_meta( '_wcs_number_payments' );
+			} else {
+				$old_coupon_id       = ( ! empty( $coupon->id ) ) ? $coupon->id : 0;
+				$wcs_number_payments = get_post_meta( $old_coupon_id, '_wcs_number_payments', true );
+			}
+			update_post_meta( $new_coupon_id, '_wcs_number_payments', $wcs_number_payments );
+
+		}
+
+		/**
 		 * Function to check if cart contains subscription
 		 *
 		 * @return bool whether cart contains subscription or not
@@ -887,8 +972,6 @@ if ( ! class_exists( 'WCS_SC_Compatibility' ) ) {
 			}
 			return version_compare( WC_Subscriptions::$version, $version, '>=' );
 		}
-
-
 
 	}
 

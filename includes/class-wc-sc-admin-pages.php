@@ -48,6 +48,9 @@ if ( ! class_exists( 'WC_SC_Admin_Pages' ) ) {
 
 			add_action( 'smart_coupons_display_views', array( $this, 'smart_coupons_display_views' ) );
 
+			add_action( 'parse_request', array( $this, 'filter_coupons_using_meta' ) );
+			add_filter( 'get_search_query', array( $this, 'filter_coupons_using_meta_label' ), 100 );
+
 		}
 
 		/**
@@ -296,7 +299,7 @@ if ( ! class_exists( 'WC_SC_Admin_Pages' ) ) {
 				$option = 'no';
 			}
 
-			update_option( 'wc_sc_is_show_review_notice', $option );
+			update_option( 'wc_sc_is_show_review_notice', $option, 'no' );
 
 			wp_send_json( array( 'success' => 'yes' ) );
 
@@ -309,7 +312,7 @@ if ( ! class_exists( 'WC_SC_Admin_Pages' ) ) {
 
 			check_ajax_referer( 'wc-sc-380-notice-action', 'security' );
 
-			update_option( 'wc_sc_is_show_380_notice', 'no' );
+			update_option( 'wc_sc_is_show_380_notice', 'no', 'no' );
 
 			wp_send_json( array( 'success' => 'yes' ) );
 
@@ -1025,7 +1028,7 @@ if ( ! class_exists( 'WC_SC_Admin_Pages' ) ) {
 					'post_type'   => 'shop_coupon',
 				);
 				$reference_post_id = wp_insert_post( $args );
-				update_option( 'empty_reference_smart_coupons', $reference_post_id );
+				update_option( 'empty_reference_smart_coupons', $reference_post_id, 'no' );
 			} else {
 				$reference_post_id = $empty_reference_coupon;
 			}
@@ -1038,7 +1041,7 @@ if ( ! class_exists( 'WC_SC_Admin_Pages' ) ) {
 					'post_type'   => 'shop_coupon',
 				);
 				$reference_post_id = wp_insert_post( $args );
-				update_option( 'empty_reference_smart_coupons', $reference_post_id );
+				update_option( 'empty_reference_smart_coupons', $reference_post_id, 'no' );
 				$post = get_post( $reference_post_id ); // phpcs:ignore
 			}
 
@@ -1186,6 +1189,98 @@ if ( ! class_exists( 'WC_SC_Admin_Pages' ) ) {
 			</div>
 			<?php
 
+		}
+
+		/**
+		 * Funtion to show search result based on email in coupon's usage restrictions
+		 *
+		 * @param  object $wp WP object.
+		 */
+		public function filter_coupons_using_meta( $wp ) {
+			global $pagenow, $wpdb;
+
+			if ( 'edit.php' !== $pagenow ) {
+				return;
+			}
+			if ( ! isset( $wp->query_vars['s'] ) ) {
+				return;
+			}
+			if ( 'shop_coupon' !== $wp->query_vars['post_type'] ) {
+				return;
+			}
+
+			$e = substr( $wp->query_vars['s'], 0, 5 );
+
+			if ( 'email:' === substr( $wp->query_vars['s'], 0, 6 ) ) {
+
+				$email = trim( substr( $wp->query_vars['s'], 6 ) );
+
+				if ( ! $email ) {
+					return;
+				}
+
+				$post_ids = wp_cache_get( 'wc_sc_get_coupon_ids_by_email_' . sanitize_key( $email ), 'woocommerce_smart_coupons' );
+
+				if ( false === $post_ids ) {
+					$post_ids = $wpdb->get_col(
+						$wpdb->prepare(
+							"SELECT pm.post_id
+								FROM {$wpdb->postmeta} AS pm
+									LEFT JOIN {$wpdb->posts} AS p
+									ON (p.ID = pm.post_id AND p.post_type = 'shop_coupon')
+								WHERE pm.meta_key = 'customer_email'
+									AND pm.meta_value LIKE %s",
+							'%' . $wpdb->esc_like( $email ) . '%'
+						)
+					); // WPCS: db call ok.
+					wp_cache_set( 'wc_sc_get_coupon_ids_by_email_' . sanitize_key( $email ), $post_ids, 'woocommerce_smart_coupons' );
+					$this->maybe_add_cache_key( 'wc_sc_get_coupon_ids_by_email_' . sanitize_key( $email ) );
+				}
+
+				if ( empty( $post_ids ) ) {
+					return;
+				}
+
+				unset( $wp->query_vars['s'] );
+
+				$wp->query_vars['post__in'] = $post_ids;
+
+				$wp->query_vars['email'] = $email;
+			}
+
+		}
+
+		/**
+		 * Function to show label of the search result on coupon
+		 *
+		 * @param  mixed $query Query.
+		 * @return mixed $query
+		 */
+		public function filter_coupons_using_meta_label( $query ) {
+			global $pagenow, $typenow, $wp;
+
+			if ( 'edit.php' !== $pagenow ) {
+				return $query;
+			}
+			if ( 'shop_coupon' !== $typenow ) {
+				return $query;
+			}
+
+			$s = get_query_var( 's' );
+			if ( ! empty( $s ) ) {
+				return $query;
+			}
+
+			$email = get_query_var( 'email' );
+
+			if ( ! empty( $email ) ) {
+
+				$post_type = get_post_type_object( $wp->query_vars['post_type'] );
+				/* translators: 1: Singular name for post type 2: Email */
+				return sprintf( __( '[%1$s restricted with email: %2$s]', 'woocommerce-smart-coupons' ), $post_type->labels->name, $email );
+			}
+
+			return $query;
 		}
 
 	}
