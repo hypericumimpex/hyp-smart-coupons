@@ -1,5 +1,8 @@
 *** WooCommerce Smart Coupons Changelog ***
 
+2019.01.17 - version 3.9.1
+* Fix: Applying the store credit amount twice after creating orders
+
 2019.01.09 - version 3.9.0
 * New: Introduction of background process for importing or bulk generation of coupons
 * New: Search/Filter coupon's list by restricted email

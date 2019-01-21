@@ -1046,8 +1046,9 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 
 			if ( ! empty( $applied_coupons ) ) {
 				foreach ( $applied_coupons as $code ) {
-					$request_wc_ajax = ( ! empty( $_REQUEST['wc-ajax'] ) ) ? wc_clean( wp_unslash( $_REQUEST['wc-ajax'] ) ) : ''; // WPCS: sanitization ok. CSRF ok, input var ok.
-					if ( ! empty( $request_wc_ajax ) && 'update_order_review' === $request_wc_ajax && array_key_exists( $code, $smart_coupon_credit_used ) && true !== $cart_contains_subscription ) {
+					$request_wc_ajax    = ( ! empty( $_REQUEST['wc-ajax'] ) ) ? wc_clean( wp_unslash( $_REQUEST['wc-ajax'] ) ) : ''; // WPCS: sanitization ok. CSRF ok, input var ok.
+					$ignore_ajax_action = array( 'update_order_review', 'checkout' );
+					if ( ! empty( $request_wc_ajax ) && in_array( $request_wc_ajax, $ignore_ajax_action, true ) && array_key_exists( $code, $smart_coupon_credit_used ) && true !== $cart_contains_subscription ) {
 						continue;
 					}
 					$coupon   = new WC_Coupon( $code );
