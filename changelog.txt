@@ -1,5 +1,22 @@
 *** WooCommerce Smart Coupons Changelog ***
 
+2019.02.25 - version 4.0.0
+* New: Restrict Coupons By Location (Supports country, state, city, zip code)
+* New: Action - Display Message on cart and checkout pages on successful application of the coupon
+* New: Gutenberg block to display coupon for shortcode [smart_coupons]
+* Fix: Setting for showing maximum number of coupons is not controlling the number of coupons to be shown (Thanks to: Scott Lewis)
+* Fix: Incorrect expiry message for expired coupons
+* Update: Show notice on admin panel when coupons are getting generated/imported in the background
+* Update: Code improvements to get post_type
+* Update: Welcome page
+* Update: Quick links for Settings & FAQ's on Plugins page, Coupons page and tabs
+* Update: Admin Footer text for Smart Coupons pages
+* Update: Show 'Connect your store' notice on Smart Coupons pages
+* Update: Tested upto WordPress 5.0.3
+* Update: Compat files reordering
+* Update: sample.csv file
+* Update: POT file
+
 2019.01.17 - version 3.9.1
 * Fix: Applying the store credit amount twice after creating orders
 

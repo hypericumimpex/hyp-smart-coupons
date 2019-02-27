@@ -177,4 +177,3 @@ if ( function_exists( 'wc_get_template' ) ) {
 } else {
 	woocommerce_get_template( 'emails/email-footer.php' );
 }
-?>

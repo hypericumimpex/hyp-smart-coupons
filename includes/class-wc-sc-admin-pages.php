@@ -36,10 +36,6 @@ if ( ! class_exists( 'WC_SC_Admin_Pages' ) ) {
 			add_action( 'admin_enqueue_scripts', array( $this, 'generate_coupon_styles_and_scripts' ) );
 			add_action( 'admin_notices', array( $this, 'woocommerce_show_import_message' ) );
 
-			add_action( 'wp_ajax_wc_sc_review_notice_action', array( $this, 'wc_sc_review_notice_action' ) );
-			add_action( 'wp_ajax_wc_sc_380_notice_action', array( $this, 'wc_sc_380_notice_action' ) );
-			add_action( 'admin_notices', array( $this, 'show_plugin_notice' ) );
-
 			add_action( 'admin_menu', array( $this, 'woocommerce_coupon_admin_menu' ) );
 			add_action( 'admin_head', array( $this, 'woocommerce_coupon_admin_head' ) );
 
@@ -139,6 +135,22 @@ if ( ! class_exists( 'WC_SC_Admin_Pages' ) ) {
 							)
 							/* translators: %s: singular name for store credit */
 						) . '" class="nav-tab">' . ( ! empty( $store_credit_label['singular'] ) ? sprintf( esc_html__( 'Send %s', 'woocommerce-smart-coupons' ), esc_html( ucwords( $store_credit_label['singular'] ) ) ) : esc_html__( 'Send Store Credit', 'woocommerce-smart-coupons' ) ) . '</a>';
+						echo '<div class="sc-quick-links"><a href="' . esc_url(
+							add_query_arg(
+								array(
+									'page' => 'wc-settings',
+									'tab'  => 'wc-smart-coupons',
+								),
+								admin_url( 'admin.php' )
+							)
+						) . '" target="_blank">' . esc_html__( 'Smart Coupons Settings', 'woocommerce-smart-coupons' ) . '</a> | <a href="' . esc_url(
+							add_query_arg(
+								array(
+									'page' => 'sc-faqs',
+								),
+								admin_url( 'admin.php' )
+							)
+						) . '" target="_blank">' . esc_html__( 'FAQ\'s', 'woocommerce-smart-coupons' ) . '</a></div>';
 					?>
 				</h2>
 			</div>
@@ -286,235 +298,31 @@ if ( ! class_exists( 'WC_SC_Admin_Pages' ) ) {
 		}
 
 		/**
-		 * Handle Smart Coupons review notice action
-		 */
-		public function wc_sc_review_notice_action() {
-
-			check_ajax_referer( 'wc-sc-review-notice-action', 'security' );
-
-			$post_do = ( ! empty( $_POST['do'] ) ) ? wc_clean( wp_unslash( $_POST['do'] ) ) : ''; // phpcs:ignore
-
-			$option = strtotime( '+1 month' );
-			if ( 'remove' === $post_do ) {
-				$option = 'no';
-			}
-
-			update_option( 'wc_sc_is_show_review_notice', $option, 'no' );
-
-			wp_send_json( array( 'success' => 'yes' ) );
-
-		}
-
-		/**
-		 * Handle Smart Coupons version 3.8.0 notice action
-		 */
-		public function wc_sc_380_notice_action() {
-
-			check_ajax_referer( 'wc-sc-380-notice-action', 'security' );
-
-			update_option( 'wc_sc_is_show_380_notice', 'no', 'no' );
-
-			wp_send_json( array( 'success' => 'yes' ) );
-
-		}
-
-		/**
-		 * Show plugin review notice
-		 */
-		public function show_plugin_notice() {
-
-			global $pagenow, $post;
-
-			$valid_post_types      = array( 'shop_coupon', 'shop_order', 'product' );
-			$valid_pagenow         = array( 'edit.php', 'post.php' );
-			$is_show_review_notice = get_option( 'wc_sc_is_show_review_notice' );
-			$is_show_380_notice    = get_option( 'wc_sc_is_show_380_notice', 'yes' );
-			$is_coupon_enabled     = get_option( 'woocommerce_enable_coupons' );
-			$get_post_type         = ( ! empty( $_GET['post_type'] ) ) ? wc_clean( wp_unslash( $_GET['post_type'] ) ) : ''; // phpcs:ignore
-			$get_page              = ( ! empty( $_GET['page'] ) ) ? wc_clean( wp_unslash( $_GET['page'] ) ) : ''; // phpcs:ignore
-			$get_tab               = ( ! empty( $_GET['tab'] ) ) ? wc_clean( wp_unslash( $_GET['tab'] ) ) : ''; // phpcs:ignore
-			$current_post_type     = ( ! empty( $post->post_type ) ) ? $post->post_type : '';
-
-			$is_page = (
-							( in_array( $pagenow, $valid_pagenow, true ) && in_array( $get_post_type, $valid_post_types, true ) )
-							|| ( 'admin.php' === $pagenow && ( 'wc-smart-coupons' === $get_page || 'wc-smart-coupons' === $get_tab ) )
-						);
-
-			if ( $is_page && 'yes' !== $is_coupon_enabled ) {
-				?>
-				<div id="wc_sc_coupon_disabled" class="updated fade error">
-					<p>
-						<?php
-						echo '<strong>' . esc_html__( 'Important', 'woocommerce-smart-coupons' ) . ':</strong> ' . esc_html__( 'Setting "Enable the use of coupon codes" is disabled.', 'woocommerce-smart-coupons' ) . ' ' . sprintf(
-							'<a href="%s">%s</a>',
-							esc_url(
-								add_query_arg(
-									array(
-										'page' => 'wc-settings',
-										'tab'  => 'general',
-									),
-									admin_url( 'admin.php' )
-								)
-							),
-							esc_html__( 'Enable', 'woocommerce-smart-coupons' )
-						) . ' ' . esc_html__( 'it to use', 'woocommerce-smart-coupons' ) . ' <strong>' . esc_html__( 'WooCommerce Smart Coupons', 'woocommerce-smart-coupons' ) . '</strong> ' . esc_html__( 'features.', 'woocommerce-smart-coupons' );
-						?>
-					</p>
-				</div>
-				<?php
-			}
-
-			if ( $is_page && ! empty( $is_show_review_notice ) && 'no' !== $is_show_review_notice && time() >= absint( $is_show_review_notice ) ) {
-				if ( ! wp_script_is( 'jquery' ) ) {
-					wp_enqueue_script( 'jquery' );
-				}
-				?>
-				<style type="text/css" media="screen">
-					#wc_sc_review_notice .wc_sc_review_notice_action {
-						float: right;
-						padding: 0.5em 0;
-						text-align: right;
-					}
-				</style>
-				<script type="text/javascript">
-					jQuery(function(){
-						jQuery('body').on('click', '#wc_sc_review_notice .wc_sc_review_notice_action a.wc_sc_review_notice_remind', function( e ){
-							jQuery.ajax({
-								url: '<?php echo esc_url( admin_url( 'admin-ajax.php' ) ); ?>',
-								type: 'post',
-								dataType: 'json',
-								data: {
-									action: 'wc_sc_review_notice_action',
-									security: '<?php echo esc_html( wp_create_nonce( 'wc-sc-review-notice-action' ) ); ?>',
-									do: 'remind'
-								},
-								success: function( response ){
-									if ( response.success != undefined && response.success != '' && response.success == 'yes' ) {
-										jQuery('#wc_sc_review_notice').fadeOut(500, function(){ jQuery('#wc_sc_review_notice').remove(); });
-									}
-								}
-							});
-							return false;
-						});
-						jQuery('body').on('click', '#wc_sc_review_notice .wc_sc_review_notice_action a.wc_sc_review_notice_remove', function(){
-							jQuery.ajax({
-								url: '<?php echo esc_url( admin_url( 'admin-ajax.php' ) ); ?>',
-								type: 'post',
-								dataType: 'json',
-								data: {
-									action: 'wc_sc_review_notice_action',
-									security: '<?php echo esc_html( wp_create_nonce( 'wc-sc-review-notice-action' ) ); ?>',
-									do: 'remove'
-								},
-								success: function( response ){
-									if ( response.success != undefined && response.success != '' && response.success == 'yes' ) {
-										jQuery('#wc_sc_review_notice').fadeOut(500, function(){ jQuery('#wc_sc_review_notice').remove(); });
-									}
-								}
-							});
-							return false;
-						});
-					});
-				</script>
-				<div id="wc_sc_review_notice" class="updated fade">
-					<div class="wc_sc_review_notice_action">
-						<a href="javascript:void(0)" class="wc_sc_review_notice_remind"><?php echo esc_html__( 'Remind me after a month', 'woocommerce-smart-coupons' ); ?></a><br>
-						<a href="javascript:void(0)" class="wc_sc_review_notice_remove"><?php echo esc_html__( 'Never show again', 'woocommerce-smart-coupons' ); ?></a>
-					</div>
-					<p>
-						<?php echo esc_html__( 'Awesome, you successfully auto-generated a coupon! Are you having a great experience with', 'woocommerce-smart-coupons' ) . ' <strong>' . esc_html__( 'WooCommerce Smart Coupons', 'woocommerce-smart-coupons' ) . '</strong> ' . esc_html__( 'so far?', 'woocommerce-smart-coupons' ) . '<br>' . esc_html__( 'Please consider', 'woocommerce-smart-coupons' ) . ' <a href="' . esc_url( 'https://woocommerce.com/products/smart-coupons/#comments' ) . '">' . esc_html__( 'leaving a review', 'woocommerce-smart-coupons' ) . '</a> ' . esc_html__( '! If things aren\'t going quite as expected, we\'re happy to help -- please reach out to', 'woocommerce-smart-coupons' ) . ' <a href="' . esc_url( 'https://woocommerce.com/my-account/create-a-ticket/' ) . '">' . esc_html__( 'our support team', 'woocommerce-smart-coupons' ) . '</a>.'; ?>
-					</p>
-				</div>
-				<?php
-			}
-
-			if ( $is_page && 'yes' === $is_show_380_notice ) {
-				if ( ! wp_script_is( 'jquery' ) ) {
-					wp_enqueue_script( 'jquery' );
-				}
-				?>
-				<style type="text/css" media="screen">
-					#wc_sc_380_notice .wc_sc_380_notice_action {
-						float: right;
-						padding: 0.5em 0;
-						text-align: right;
-					}
-					#wc_sc_380_notice .wc_sc_380_notice_action.bottom {
-						margin-top: -3em;
-					}
-				</style>
-				<script type="text/javascript">
-					jQuery(function(){
-						jQuery('body').on('click', '#wc_sc_380_notice .wc_sc_380_notice_action a.wc_sc_380_notice_remove', function( e ){
-							jQuery.ajax({
-								url: '<?php echo esc_url( admin_url( 'admin-ajax.php' ) ); ?>',
-								type: 'post',
-								dataType: 'json',
-								data: {
-									action: 'wc_sc_380_notice_action',
-									security: '<?php echo esc_html( wp_create_nonce( 'wc-sc-380-notice-action' ) ); ?>'
-								},
-								success: function( response ){
-									if ( response.success != undefined && response.success != '' && response.success == 'yes' ) {
-										jQuery('#wc_sc_380_notice').fadeOut(500, function(){ jQuery('#wc_sc_380_notice').remove(); });
-									}
-								}
-							});
-							return false;
-						});
-						jQuery( '#wc_sc_380_notice a.wc-sc-rating-link' ).click( function() {
-							jQuery( this ).parent().text( jQuery( this ).data( 'rated' ) );
-						});
-					});
-				</script>
-				<div id="wc_sc_380_notice" class="updated fade">
-					<div class="wc_sc_380_notice_action">
-						<a href="javascript:void(0)" class="wc_sc_380_notice_remove" title="<?php echo esc_attr__( 'Dismiss', 'woocommerce-smart-coupons' ); ?>"><?php echo esc_html__( 'I have seen these features, now hide this', 'woocommerce-smart-coupons' ); ?></a>
-					</div>
-					<div class="wc_sc_380_notice_content">
-						<p><strong><?php echo esc_html__( '[New Features]', 'woocommerce-smart-coupons' ); ?></strong> <?php echo esc_html__( 'WooCommerce Smart Coupons', 'woocommerce-smart-coupons' ); ?></p>
-						<ol>
-							<li><?php echo esc_html__( 'Customizable coupons designs', 'woocommerce-smart-coupons' ); ?> &mdash; <small><i><a href="https://docs.woocommerce.com/document/smart-coupons/#section-17" target="sa_wc_smart_coupons_docs"><?php echo esc_html__( '[Know more]', 'woocommerce-smart-coupons' ); ?></a></i></small></li>
-							<li><?php echo esc_html__( 'Coupon for new users only', 'woocommerce-smart-coupons' ); ?> &mdash; <small><i><a href="https://docs.woocommerce.com/document/smart-coupons/#section-18" target="sa_wc_smart_coupons_docs"><?php echo esc_html__( '[Know more]', 'woocommerce-smart-coupons' ); ?></a></i></small></li>
-							<li><?php echo esc_html__( 'Coupon action - Add products with/without discount', 'woocommerce-smart-coupons' ); ?> &mdash; <small><i><a href="https://docs.woocommerce.com/document/smart-coupons/#section-19" target="sa_wc_smart_coupons_docs"><?php echo esc_html__( '[Know more]', 'woocommerce-smart-coupons' ); ?></a></i></small></li>
-							<li><?php echo esc_html__( 'Label "Store Credit / Gift Certificate"', 'woocommerce-smart-coupons' ); ?> &mdash; <small><i><a href="https://docs.woocommerce.com/document/smart-coupons/#section-20" target="sa_wc_smart_coupons_docs"><?php echo esc_html__( '[Know more]', 'woocommerce-smart-coupons' ); ?></a></i></small></li>
-							<li><?php echo esc_html__( 'Customizable coupon code length', 'woocommerce-smart-coupons' ); ?> &mdash; <small><i><a href="https://docs.woocommerce.com/document/smart-coupons/#section-21" target="sa_wc_smart_coupons_docs"><?php echo esc_html__( '[Know more]', 'woocommerce-smart-coupons' ); ?></a></i></small></li>
-						</ol>
-					</div>
-					<div class="wc_sc_380_notice_action bottom">
-						<?php echo esc_html__( 'Rate', 'woocommerce-smart-coupons' ); ?>&nbsp;<a href="https://woocommerce.com/products/smart-coupons/#comments" target="_blank" class="wc-sc-rating-link" data-rated="<?php echo esc_attr__( 'Thanks :)', 'woocommerce-smart-coupons' ); ?>" title="<?php echo esc_attr__( 'Rate WooCommerce Smart Coupons', 'woocommerce-smart-coupons' ); ?>">&#9733;&#9733;&#9733;&#9733;&#9733;</a>
-					</div>
-				</div>
-				<?php
-			}
-
-		}
-
-		/**
 		 * Function to include script in admin footer
 		 */
 		public function smart_coupons_script_in_footer() {
 
-			global $pagenow, $wp_scripts;
+			global $pagenow;
+
 			if ( empty( $pagenow ) || 'admin.php' !== $pagenow ) {
 				return;
 			}
 			$get_page = ( ! empty( $_GET['page'] ) ) ? wc_clean( wp_unslash( $_GET['page'] ) ) : ''; // phpcs:ignore
-			if ( 'wc-smart-coupons' !== $get_page ) {
-				return;
-			}
 
-			?>
-			<script type="text/javascript">
-				jQuery(function(){
-					jQuery(document).on('ready', function(){
-						var element = jQuery('li#toplevel_page_woocommerce ul li').find('a[href="edit.php?post_type=shop_coupon"]');
-						element.addClass('current');
-						element.parent().addClass('current');
+			// Highlight Coupons menu when visiting Bulk Generate/Import Coupons/Send Store Credit tab.
+			if ( 'wc-smart-coupons' === $get_page ) {
+				?>
+				<script type="text/javascript">
+					jQuery(function(){
+						jQuery(document).on('ready', function(){
+							var element = jQuery('li#toplevel_page_woocommerce ul li').find('a[href="edit.php?post_type=shop_coupon"]');
+							element.addClass('current');
+							element.parent().addClass('current');
+						});
 					});
-				});
-			</script>
-			<?php
+				</script>
+				<?php
+			}
 
 		}
 
@@ -702,6 +510,37 @@ if ( ! class_exists( 'WC_SC_Admin_Pages' ) ) {
 								echo ( ! empty( $store_credit_label['singular'] ) ? sprintf( esc_html__( 'Send %s', 'woocommerce-smart-coupons' ), esc_html( ucwords( $store_credit_label['singular'] ) ) ) : esc_html__( 'Send Store Credit', 'woocommerce-smart-coupons' ) );
 							?>
 						</a>
+						<div class="sc-quick-links">
+							<a target="_blank" href="
+							<?php
+							echo esc_url(
+								add_query_arg(
+									array(
+										'page' => 'wc-settings',
+										'tab'  => 'wc-smart-coupons',
+									),
+									admin_url( 'admin.php' )
+								)
+							);
+							?>
+								">
+								<?php echo esc_html__( 'Smart Coupons Settings', 'woocommerce-smart-coupons' ); ?>
+							</a> |
+							<a target="_blank" href="
+							<?php
+							echo esc_url(
+								add_query_arg(
+									array(
+										'page' => 'sc-faqs',
+									),
+									admin_url( 'admin.php' )
+								)
+							);
+							?>
+								">
+								<?php echo esc_html__( 'FAQ\'s', 'woocommerce-smart-coupons' ); ?>
+							</a>
+						</div>
 					</h2>
 				</div>
 				<?php
@@ -955,13 +794,13 @@ if ( ! class_exists( 'WC_SC_Admin_Pages' ) ) {
 							$coupon_code = $wpdb->get_var( // phpcs:ignore
 								$wpdb->prepare(
 									"SELECT post_title
-										FROM $wpdb->posts AS p
-											LEFT JOIN $wpdb->postmeta AS pm
-												ON (p.ID = pm.post_id)
-										WHERE post_status = %s
-											AND post_type = %s
-											AND ( pm.meta_key = %s AND pm.meta_value = %s )
-										LIMIT 1",
+											FROM $wpdb->posts AS p
+												LEFT JOIN $wpdb->postmeta AS pm
+													ON (p.ID = pm.post_id)
+											WHERE post_status = %s
+												AND post_type = %s
+												AND ( pm.meta_key = %s AND pm.meta_value = %s )
+											LIMIT 1",
 									'publish',
 									'shop_coupon',
 									'discount_type',
@@ -974,8 +813,10 @@ if ( ! class_exists( 'WC_SC_Admin_Pages' ) ) {
 
 						if ( ! empty( $coupon_code ) ) {
 							?>
-						<input type="button" id="sc-preview-email" class="button button-secondary" value="<?php echo esc_attr__( 'Preview Email', 'woocommerce-smart-coupons' ); ?>">
-						<?php } ?>
+								<input type="button" id="sc-preview-email" class="button button-secondary" value="<?php echo esc_attr__( 'Preview Email', 'woocommerce-smart-coupons' ); ?>">
+								<?php
+						}
+						?>
 					</p>
 				</form>
 			</div>

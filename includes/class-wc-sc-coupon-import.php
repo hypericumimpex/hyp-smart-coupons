@@ -30,12 +30,14 @@ if ( ! class_exists( 'WC_SC_Coupon_Import' ) ) {
 		 * @var $id
 		 */
 		public $id;
+
 		/**
 		 * CSV attachment url
 		 *
 		 * @var $file_url
 		 */
 		public $file_url;
+
 		/**
 		 * The import page
 		 *
@@ -56,12 +58,14 @@ if ( ! class_exists( 'WC_SC_Coupon_Import' ) ) {
 		 * @var $processed_terms
 		 */
 		public $processed_terms = array();
+
 		/**
 		 * Processed Posts
 		 *
 		 * @var $processed_posts
 		 */
 		public $processed_posts = array();
+
 		/**
 		 * Post orphans
 		 *
@@ -75,6 +79,7 @@ if ( ! class_exists( 'WC_SC_Coupon_Import' ) ) {
 		 * @var $fetch_attachments
 		 */
 		public $fetch_attachments = false;
+
 		/**
 		 * The URL remap
 		 *
@@ -88,18 +93,21 @@ if ( ! class_exists( 'WC_SC_Coupon_Import' ) ) {
 		 * @var $log
 		 */
 		public $log;
+
 		/**
 		 * Merged
 		 *
 		 * @var $merged
 		 */
 		public $merged;
+
 		/**
 		 * Skipped item count
 		 *
 		 * @var $skipped
 		 */
 		public $skipped = 0;
+
 		/**
 		 * Imported item count
 		 *
@@ -384,6 +392,18 @@ if ( ! class_exists( 'WC_SC_Coupon_Import' ) ) {
 							}
 							break;
 
+						default:
+							$meta_value = apply_filters(
+								'wc_sc_process_coupon_meta_value_for_import',
+								$meta_value,
+								array(
+									'meta_key'        => $meta_key, // phpcs:ignore
+									'postmeta'        => $postmeta,
+									'post'            => $post,
+									'coupon_importer' => $this,
+								)
+							);
+
 					}
 
 					if ( $meta_key ) {
@@ -393,7 +413,19 @@ if ( ! class_exists( 'WC_SC_Coupon_Import' ) ) {
 						if ( '_used_by' === $meta_key ) {
 							continue;
 						}
-						update_post_meta( $post_id, $meta_key, maybe_unserialize( $meta_value ) );
+						$is_import_meta = apply_filters(
+							'wc_sc_is_import_meta',
+							true,
+							array(
+								'meta_key'        => $meta_key, // phpcs:ignore
+								'postmeta'        => $postmeta,
+								'post'            => $post,
+								'coupon_importer' => $this,
+							)
+						);
+						if ( true === $is_import_meta ) {
+							update_post_meta( $post_id, $meta_key, maybe_unserialize( $meta_value ) );
+						}
 					}
 				}
 

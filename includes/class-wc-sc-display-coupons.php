@@ -131,7 +131,7 @@ if ( ! class_exists( 'WC_SC_Display_Coupons' ) ) {
 				<?php
 
 				$max_coupon_to_show = get_option( 'wc_sc_setting_max_coupon_to_show', 5 );
-				$show_max           = apply_filters( 'wc_sc_max_coupon_to_show', $max_coupon_to_show );
+				$max_coupon_to_show = apply_filters( 'wc_sc_max_coupon_to_show', $max_coupon_to_show );
 
 				$coupons_applied = ( is_object( WC()->cart ) && is_callable( array( WC()->cart, 'get_applied_coupons' ) ) ) ? WC()->cart->get_applied_coupons() : array();
 

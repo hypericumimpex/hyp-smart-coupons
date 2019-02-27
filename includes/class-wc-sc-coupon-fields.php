@@ -497,6 +497,7 @@ if ( ! class_exists( 'WC_SC_Coupon_Fields' ) ) {
 						<?php echo wc_help_tip( esc_html__( 'When this coupon will be applied, selected products will be added to cart with set discount. If discount is not set, this coupon\'s discount will be applied to these products.', 'woocommerce-smart-coupons' ) ); // phpcs:ignore ?>
 					</p>
 				</div>
+				<?php do_action( 'wc_smart_coupons_actions', $coupon_id, $coupon ); ?>
 			</div>
 			<?php
 			$is_js_ended = did_action( 'wc_sc_enhanced_select_script_end' );
