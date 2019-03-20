@@ -1,5 +1,16 @@
 *** WooCommerce Smart Coupons Changelog ***
 
+2019.03.19 - version 4.0.1
+* New: Support for adding Coupon Description when Bulk Generating coupons
+* New: Use selectWoo (For WooCommerce 3.2.0+)
+* Fix: Missing row of applied store credit in renewal order (admin & email order table)
+* Fix: PHP Warning: Illegal string offset 'address'
+* Fix: Incorrect text domain at few places
+* Fix: Welcome page CSS getting added on all admin pages
+* Update: Show tip where to enter email addresses when Emailing to recipients from Bulk Generate tab
+* Update: Scroll to top of the page to error notice on Bulk Generate tab
+* Update: POT file
+
 2019.02.25 - version 4.0.0
 * New: Restrict Coupons By Location (Supports country, state, city, zip code)
 * New: Action - Display Message on cart and checkout pages on successful application of the coupon

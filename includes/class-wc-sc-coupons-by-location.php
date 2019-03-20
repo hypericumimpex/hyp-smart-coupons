@@ -165,7 +165,7 @@ if ( ! class_exists( 'WC_SC_Coupons_By_Location' ) ) {
 
 			$this->locations_lookup_in = get_post_meta( $post->ID, 'sa_cbl_locations_lookup_in', true );
 			if ( empty( $this->locations_lookup_in ) ) {
-				$this->locations_lookup_in['address'] = 'billing';
+				$this->locations_lookup_in = array( 'address' => 'billing' );
 				update_post_meta( $post->ID, 'sa_cbl_locations_lookup_in', $this->locations_lookup_in );
 			}
 

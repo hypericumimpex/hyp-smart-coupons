@@ -81,44 +81,49 @@ if ( ! class_exists( 'WC_SC_Admin_Welcome' ) ) {
 			remove_submenu_page( 'woocommerce', 'sc-about' );
 			remove_submenu_page( 'woocommerce', 'sc-faqs' );
 
-			?>
-			<style type="text/css">
-				/*<![CDATA[*/
-				.about-wrap h3 {
-					margin-top: 1em;
-					margin-right: 0em;
-					margin-bottom: 0.1em;
-					font-size: 1.25em;
-					line-height: 1.3em;
-				}
-				.about-wrap .button-primary {
-					margin-top: 18px;
-				}
-				.about-wrap .button-hero {
-					color: #FFF!important;
-					border-color: #03a025!important;
-					background: #03a025 !important;
-					box-shadow: 0 1px 0 #03a025;
-					font-size: 1em;
-					font-weight: bold;
-				}
-				.about-wrap .button-hero:hover {
-					color: #FFF!important;
-					background: #0AAB2E!important;
-					border-color: #0AAB2E!important;
-				}
-				.about-wrap p {
-					margin-top: 0.6em;
-					margin-bottom: 0.8em;
-					line-height: 1.6em;
-					font-size: 14px;
-				}
-				.about-wrap .feature-section {
-					padding-bottom: 5px;
-				}
-				/*]]>*/
-			</style>
-			<?php
+			$get_page = ( ! empty( $_GET['page'] ) ) ? wc_clean( wp_unslash( $_GET['page'] ) ) : ''; // phpcs:ignore
+
+			if ( ! empty( $get_page ) && ( 'sc-faqs' === $get_page || 'sc-about' === $get_page ) ) {
+				?>
+				<style type="text/css">
+					/*<![CDATA[*/
+					.about-wrap h3 {
+						margin-top: 1em;
+						margin-right: 0em;
+						margin-bottom: 0.1em;
+						font-size: 1.25em;
+						line-height: 1.3em;
+					}
+					.about-wrap .button-primary {
+						margin-top: 18px;
+					}
+					.about-wrap .button-hero {
+						color: #FFF!important;
+						border-color: #03a025!important;
+						background: #03a025 !important;
+						box-shadow: 0 1px 0 #03a025;
+						font-size: 1em;
+						font-weight: bold;
+					}
+					.about-wrap .button-hero:hover {
+						color: #FFF!important;
+						background: #0AAB2E!important;
+						border-color: #0AAB2E!important;
+					}
+					.about-wrap p {
+						margin-top: 0.6em;
+						margin-bottom: 0.8em;
+						line-height: 1.6em;
+						font-size: 14px;
+					}
+					.about-wrap .feature-section {
+						padding-bottom: 5px;
+					}
+					/*]]>*/
+				</style>
+				<?php
+			}
+
 		}
 
 		/**
@@ -389,7 +394,6 @@ if ( ! class_exists( 'WC_SC_Admin_Welcome' ) ) {
 							'que' => esc_html__( 'I\'m using WPML & WPML provides support for multi-currency, but Smart Coupons only changes currency symbol & the price value remains same. Can Smart Coupons change the currency symbol and the price value associated with it?', 'woocommerce-smart-coupons' ),
 							'ans' => esc_html__( 'Currently, It can only change the currency symbol the price value remains the same. Smart Coupon is not compatible with multi-currency plugin. You may find this in some future version.', 'woocommerce-smart-coupons' ),
 						),
-
 					);
 
 					$faqs                = array_chunk( $faqs, 2 );
@@ -423,7 +427,6 @@ if ( ! class_exists( 'WC_SC_Admin_Welcome' ) ) {
 			</div>
 			<?php
 		}
-
 
 		/**
 		 * Sends user to the welcome page on first activation.

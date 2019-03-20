@@ -137,6 +137,7 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 			add_action( 'wp_loaded', array( $this, 'sc_handle_store_credit_application' ), 15 );
 
 			add_filter( 'woocommerce_debug_tools', array( $this, 'clear_cache_tool' ) );
+
 		}
 
 		/**
@@ -2179,6 +2180,7 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 					$data[ $i ]['coupon_title_suffix']          = ( isset( $post['coupon_title_suffix'] ) ) ? $post['coupon_title_suffix'] : '';
 					$data[ $i ]['sc_restrict_to_new_user']      = ( isset( $post['sc_restrict_to_new_user'] ) ) ? $post['sc_restrict_to_new_user'] : '';
 					$data[ $i ]['post_status']                  = 'publish';
+					$data[ $i ]['post_excerpt']                 = ( isset( $post['excerpt'] ) ) ? $post['excerpt'] : '';
 
 					$data[ $i ] = apply_filters( 'sc_generate_coupon_meta', $data[ $i ], $post );
 

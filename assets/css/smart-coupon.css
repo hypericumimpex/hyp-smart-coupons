@@ -242,3 +242,9 @@ div#invalid_coupons_list div#all_coupon_container .coupon-container .coupon-cont
 .variation-sc_called_credit {
 	display: none;
 }
+
+/* Bulk Generate tab - Coupon Description */
+.sc_bulk_description textarea#woocommerce-coupon-description {
+	width: 90%;
+	margin-left: 0.5em;
+}

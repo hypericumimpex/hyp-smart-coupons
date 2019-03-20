@@ -183,16 +183,16 @@ if ( ! class_exists( 'WC_SC_Admin_Pages' ) ) {
 
 			$woocommerce_admin_params = array(
 				/* translators: Decimal point */
-				'i18n_decimal_error'               => sprintf( __( 'Please enter in decimal (%s) format without thousand separators.', 'woocommerce' ), $decimal ),
+				'i18n_decimal_error'               => sprintf( __( 'Please enter in decimal (%s) format without thousand separators.', 'woocommerce-smart-coupons' ), $decimal ),
 				/* translators: Decimal point */
-				'i18n_mon_decimal_error'           => sprintf( __( 'Please enter in monetary decimal (%s) format without thousand separators and currency symbols.', 'woocommerce' ), wc_get_price_decimal_separator() ),
-				'i18n_country_iso_error'           => __( 'Please enter in country code with two capital letters.', 'woocommerce' ),
-				'i18_sale_less_than_regular_error' => __( 'Please enter in a value less than the regular price.', 'woocommerce' ),
+				'i18n_mon_decimal_error'           => sprintf( __( 'Please enter in monetary decimal (%s) format without thousand separators and currency symbols.', 'woocommerce-smart-coupons' ), wc_get_price_decimal_separator() ),
+				'i18n_country_iso_error'           => __( 'Please enter in country code with two capital letters.', 'woocommerce-smart-coupons' ),
+				'i18_sale_less_than_regular_error' => __( 'Please enter in a value less than the regular price.', 'woocommerce-smart-coupons' ),
 				'decimal_point'                    => $decimal,
 				'mon_decimal_point'                => wc_get_price_decimal_separator(),
 				'strings'                          => array(
-					'import_products' => __( 'Import', 'woocommerce' ),
-					'export_products' => __( 'Export', 'woocommerce' ),
+					'import_products' => __( 'Import', 'woocommerce-smart-coupons' ),
+					'export_products' => __( 'Export', 'woocommerce-smart-coupons' ),
 				),
 				'urls'                             => array(
 					'import_products' => esc_url_raw( admin_url( 'edit.php?post_type=product&page=product_importer' ) ),
@@ -201,30 +201,30 @@ if ( ! class_exists( 'WC_SC_Admin_Pages' ) ) {
 			);
 
 			$woocommerce_admin_meta_boxes_params = array(
-				'remove_item_notice'            => __( 'Are you sure you want to remove the selected items? If you have previously reduced this item\'s stock, or this order was submitted by a customer, you will need to manually restore the item\'s stock.', 'woocommerce' ),
-				'i18n_select_items'             => __( 'Please select some items.', 'woocommerce' ),
-				'i18n_do_refund'                => __( 'Are you sure you wish to process this refund? This action cannot be undone.', 'woocommerce' ),
-				'i18n_delete_refund'            => __( 'Are you sure you wish to delete this refund? This action cannot be undone.', 'woocommerce' ),
-				'i18n_delete_tax'               => __( 'Are you sure you wish to delete this tax column? This action cannot be undone.', 'woocommerce' ),
-				'remove_item_meta'              => __( 'Remove this item meta?', 'woocommerce' ),
-				'remove_attribute'              => __( 'Remove this attribute?', 'woocommerce' ),
-				'name_label'                    => __( 'Name', 'woocommerce' ),
-				'remove_label'                  => __( 'Remove', 'woocommerce' ),
-				'click_to_toggle'               => __( 'Click to toggle', 'woocommerce' ),
-				'values_label'                  => __( 'Value(s)', 'woocommerce' ),
-				'text_attribute_tip'            => __( 'Enter some text, or some attributes by pipe (|) separating values.', 'woocommerce' ),
-				'visible_label'                 => __( 'Visible on the product page', 'woocommerce' ),
-				'used_for_variations_label'     => __( 'Used for variations', 'woocommerce' ),
-				'new_attribute_prompt'          => __( 'Enter a name for the new attribute term:', 'woocommerce' ),
-				'calc_totals'                   => __( 'Calculate totals based on order items, discounts, and shipping?', 'woocommerce' ),
-				'calc_line_taxes'               => __( 'Calculate line taxes? This will calculate taxes based on the customers country. If no billing/shipping is set it will use the store base country.', 'woocommerce' ),
-				'copy_billing'                  => __( 'Copy billing information to shipping information? This will remove any currently entered shipping information.', 'woocommerce' ),
-				'load_billing'                  => __( 'Load the customer\'s billing information? This will remove any currently entered billing information.', 'woocommerce' ),
-				'load_shipping'                 => __( 'Load the customer\'s shipping information? This will remove any currently entered shipping information.', 'woocommerce' ),
-				'featured_label'                => __( 'Featured', 'woocommerce' ),
+				'remove_item_notice'            => __( 'Are you sure you want to remove the selected items? If you have previously reduced this item\'s stock, or this order was submitted by a customer, you will need to manually restore the item\'s stock.', 'woocommerce-smart-coupons' ),
+				'i18n_select_items'             => __( 'Please select some items.', 'woocommerce-smart-coupons' ),
+				'i18n_do_refund'                => __( 'Are you sure you wish to process this refund? This action cannot be undone.', 'woocommerce-smart-coupons' ),
+				'i18n_delete_refund'            => __( 'Are you sure you wish to delete this refund? This action cannot be undone.', 'woocommerce-smart-coupons' ),
+				'i18n_delete_tax'               => __( 'Are you sure you wish to delete this tax column? This action cannot be undone.', 'woocommerce-smart-coupons' ),
+				'remove_item_meta'              => __( 'Remove this item meta?', 'woocommerce-smart-coupons' ),
+				'remove_attribute'              => __( 'Remove this attribute?', 'woocommerce-smart-coupons' ),
+				'name_label'                    => __( 'Name', 'woocommerce-smart-coupons' ),
+				'remove_label'                  => __( 'Remove', 'woocommerce-smart-coupons' ),
+				'click_to_toggle'               => __( 'Click to toggle', 'woocommerce-smart-coupons' ),
+				'values_label'                  => __( 'Value(s)', 'woocommerce-smart-coupons' ),
+				'text_attribute_tip'            => __( 'Enter some text, or some attributes by pipe (|) separating values.', 'woocommerce-smart-coupons' ),
+				'visible_label'                 => __( 'Visible on the product page', 'woocommerce-smart-coupons' ),
+				'used_for_variations_label'     => __( 'Used for variations', 'woocommerce-smart-coupons' ),
+				'new_attribute_prompt'          => __( 'Enter a name for the new attribute term:', 'woocommerce-smart-coupons' ),
+				'calc_totals'                   => __( 'Calculate totals based on order items, discounts, and shipping?', 'woocommerce-smart-coupons' ),
+				'calc_line_taxes'               => __( 'Calculate line taxes? This will calculate taxes based on the customers country. If no billing/shipping is set it will use the store base country.', 'woocommerce-smart-coupons' ),
+				'copy_billing'                  => __( 'Copy billing information to shipping information? This will remove any currently entered shipping information.', 'woocommerce-smart-coupons' ),
+				'load_billing'                  => __( 'Load the customer\'s billing information? This will remove any currently entered billing information.', 'woocommerce-smart-coupons' ),
+				'load_shipping'                 => __( 'Load the customer\'s shipping information? This will remove any currently entered shipping information.', 'woocommerce-smart-coupons' ),
+				'featured_label'                => __( 'Featured', 'woocommerce-smart-coupons' ),
 				'prices_include_tax'            => esc_attr( get_option( 'woocommerce_prices_include_tax' ) ),
 				'round_at_subtotal'             => esc_attr( get_option( 'woocommerce_tax_round_at_subtotal' ) ),
-				'no_customer_selected'          => __( 'No customer selected', 'woocommerce' ),
+				'no_customer_selected'          => __( 'No customer selected', 'woocommerce-smart-coupons' ),
 				'plugin_url'                    => WC()->plugin_url(),
 				'ajax_url'                      => admin_url( 'admin-ajax.php' ),
 				'order_item_nonce'              => wp_create_nonce( 'order-item' ),
@@ -257,10 +257,10 @@ if ( ! class_exists( 'WC_SC_Admin_Pages' ) ) {
 						)
 					)
 				),
-				'i18n_download_permission_fail' => __( 'Could not grant access - the user may already have permission for this file or billing email is not set. Ensure the billing email is set, and the order has been saved.', 'woocommerce' ),
-				'i18n_permission_revoke'        => __( 'Are you sure you want to revoke access to this download?', 'woocommerce' ),
-				'i18n_tax_rate_already_exists'  => __( 'You cannot add the same tax rate twice!', 'woocommerce' ),
-				'i18n_product_type_alert'       => __( 'Your product has variations! Before changing the product type, it is a good idea to delete the variations to avoid errors in the stock reports.', 'woocommerce' ),
+				'i18n_download_permission_fail' => __( 'Could not grant access - the user may already have permission for this file or billing email is not set. Ensure the billing email is set, and the order has been saved.', 'woocommerce-smart-coupons' ),
+				'i18n_permission_revoke'        => __( 'Are you sure you want to revoke access to this download?', 'woocommerce-smart-coupons' ),
+				'i18n_tax_rate_already_exists'  => __( 'You cannot add the same tax rate twice!', 'woocommerce-smart-coupons' ),
+				'i18n_product_type_alert'       => __( 'Your product has variations! Before changing the product type, it is a good idea to delete the variations to avoid errors in the stock reports.', 'woocommerce-smart-coupons' ),
 			);
 
 			if ( ! wp_script_is( 'wc-admin-coupon-meta-boxes' ) ) {
@@ -889,6 +889,10 @@ if ( ! class_exists( 'WC_SC_Admin_Pages' ) ) {
 			if ( ! class_exists( 'WC_Meta_Box_Coupon_Data' ) ) {
 				require_once WC()->plugin_path() . '/includes/admin/meta-boxes/class-wc-meta-box-coupon-data.php';
 			}
+			if ( ! class_exists( 'WC_Admin_Post_Types' ) ) {
+				require_once WC()->plugin_path() . '/includes/admin/class-wc-admin-post-types.php';
+			}
+			$admin_post_types = new WC_Admin_Post_Types();
 
 			$upload_url  = wp_upload_dir();
 			$upload_path = $upload_url['path'];
@@ -898,19 +902,17 @@ if ( ! class_exists( 'WC_SC_Admin_Pages' ) ) {
 			$post_smart_coupons_generate_action = ( ! empty( $_POST['smart_coupons_generate_action'] ) ) ? wc_clean( wp_unslash( $_POST['smart_coupons_generate_action'] ) ) : ''; // phpcs:ignore
 
 			if ( $is_post_generate_and_import && 'sc_export_and_import' === $post_smart_coupons_generate_action ) {
-
 				$this->export_coupon( $_POST, '', '' ); // phpcs:ignore
 			}
 			?>
 
 			<script type="text/javascript">
 				jQuery(function(){
-
 					jQuery('input#generate_and_import').on('click', function(){
-
 						if( jQuery('input#no_of_coupons_to_generate').val() == "" ){
 							jQuery("div#message").removeClass("updated fade").addClass("error fade");
 							jQuery('div#message p').html( "<?php echo esc_html__( 'Please enter a valid value for Number of Coupons to Generate', 'woocommerce-smart-coupons' ); ?>");
+							scrollTop();
 							return false;
 						} else {
 							jQuery("div#message").removeClass("error fade").addClass("updated fade").hide();
@@ -933,6 +935,12 @@ if ( ! class_exists( 'WC_SC_Admin_Pages' ) ) {
 						}, 101);
 					});
 
+					jQuery('body').on('click', '#woo_sc_is_email_imported_coupons', function() {
+						jQuery('span#sc_note_about_emailing_recipients').show();
+					});
+					jQuery('body').on('click', '#add_to_store, #sc_export_and_import', function() {
+						jQuery('span#sc_note_about_emailing_recipients').hide();
+					});
 				});
 			</script>
 
@@ -968,14 +976,14 @@ if ( ! class_exists( 'WC_SC_Admin_Pages' ) ) {
 				<form id="generate_coupons" action="<?php echo esc_url( $import_step_2_url ); ?>" method="post">
 					<?php wp_nonce_field( 'import-woocommerce-coupon' ); ?>
 					<div id="poststuff">
-						<div id="woocommerce-coupon-data" class="postbox " >
+						<div id="woocommerce-coupon-data" class="postbox">
 							<h3><span class="coupon_actions"><?php echo esc_html__( 'Action', 'woocommerce-smart-coupons' ); ?></span></h3>
 							<div class="inside">
 								<div class="panel-wrap">
 									<div id="smart-coupon-action-panel" class="panel woocommerce_options_panel">
 
 										<p class="form-field">
-											<label for="no_of_coupons_to_generate"><?php echo esc_html__( 'How many coupons do you want to generate?', 'woocommerce-smart-coupons' ); ?>&nbsp;<span title="<?php echo esc_attr__( 'Required', 'woocommerce-smart-coupons' ); ?>" class="sc-required-mark">*</span></label>
+											<label for="no_of_coupons_to_generate"><?php echo esc_html__( 'Number of coupons to generate', 'woocommerce-smart-coupons' ); ?>&nbsp;<span title="<?php echo esc_attr__( 'Required', 'woocommerce-smart-coupons' ); ?>" class="sc-required-mark">*</span></label>
 											<input type="number" name="no_of_coupons_to_generate" id="no_of_coupons_to_generate" placeholder="<?php echo esc_attr__( '10', 'woocommerce-smart-coupons' ); ?>" class="short" min="1" required />
 										</p>
 
@@ -986,7 +994,7 @@ if ( ! class_exists( 'WC_SC_Admin_Pages' ) ) {
 										</p>
 
 										<p class="form-field">
-											<label><?php echo '&nbsp;'; ?></label>
+											<label for="sc_export_and_import"><?php echo '&nbsp;'; ?></label>
 											<input type="radio" name="smart_coupons_generate_action" value="sc_export_and_import" id="sc_export_and_import" />&nbsp;
 											<strong><?php echo esc_html__( 'Export to CSV', 'woocommerce-smart-coupons' ); ?></strong>
 											<?php
@@ -999,9 +1007,9 @@ if ( ! class_exists( 'WC_SC_Admin_Pages' ) ) {
 												);
 											?>
 											<span class="description">
-											<?php
-											echo esc_html__( '(Does not add to store, but creates a .csv file, that you can', 'woocommerce-smart-coupons' ) . ' <a href="' . esc_url( $import_tab_url ) . '">' . esc_html__( 'import', 'woocommerce-smart-coupons' ) . '</a> ' . esc_html__( 'later', 'woocommerce-smart-coupons' ) . ')';
-											?>
+												<?php
+												echo esc_html__( '(Does not add to store, but creates a .csv file, that you can', 'woocommerce-smart-coupons' ) . ' <a href="' . esc_url( $import_tab_url ) . '">' . esc_html__( 'import', 'woocommerce-smart-coupons' ) . '</a> ' . esc_html__( 'later', 'woocommerce-smart-coupons' ) . ')';
+												?>
 											</span>
 										</p>
 
@@ -1009,15 +1017,40 @@ if ( ! class_exists( 'WC_SC_Admin_Pages' ) ) {
 											<label><?php echo '&nbsp;'; ?></label>
 											<input type="radio" name="smart_coupons_generate_action" value="woo_sc_is_email_imported_coupons" id="woo_sc_is_email_imported_coupons" />&nbsp;
 											<strong><?php echo esc_html__( 'Email to recipients', 'woocommerce-smart-coupons' ); ?></strong>
-											<span class="description"><?php echo esc_html__( '(Add to store and email generated coupons to recipients)', 'woocommerce-smart-coupons' ); ?></span>
+											<span class="description">
+												<?php echo esc_html__( '(Add to store and email generated coupons to recipients)', 'woocommerce-smart-coupons' ); ?>
+											</span><br>
+											<span class="description" id="sc_note_about_emailing_recipients" style="display: none; margin-left: 24.5rem;">
+												<?php
+												/* translators: 1: Path to setting 2: Setting to set email address 3: Setting for number of coupons to generate */
+												echo sprintf( esc_html__( 'Enter the email addresses of the recipients separated by comma under %1$1s. Make sure to match the count of email addresses in %2$2s to %3$3s', 'woocommerce-smart-coupons' ), '<strong>' . esc_html__( 'Coupon Data > Usage restriction > Allowed emails', 'woocommerce-smart-coupons' ) . '</strong>', '<strong>' . esc_html__( 'Allowed emails', 'woocommerce-smart-coupons' ) . '</strong>', '<strong>' . esc_html__( 'Number of coupons to generate', 'woocommerce-smart-coupons' ) . '</strong>' );
+												?>
+											</span>
 										</p>
-
 									</div>
 								</div>
 							</div>
 						</div>
-						<div id="woocommerce-coupon-data" class="postbox " >
-							<h3><span class="coupon_actions"><?php echo esc_html__( 'Coupon Data', 'woocommerce-smart-coupons' ); ?></span></h3>
+						<div id="woocommerce-coupon-data" class="postbox">
+							<h3>
+								<span class="coupon_actions">
+									<?php
+										echo esc_html__( 'Coupon Description ', 'woocommerce-smart-coupons' );
+										/* translators: 1: HTML small tag start 2: HTML small tag end */
+										echo sprintf( esc_html__( '%1$s(This will add the same coupon description in all the bulk generated coupons)%2$s', 'woocommerce-smart-coupons' ), '<small>', '</small>' );
+									?>
+								</span>
+							</h3>
+							<div class="sc_bulk_description">
+								<?php $admin_post_types->edit_form_after_title( $post ); ?>
+							</div>
+						</div>
+						<div id="woocommerce-coupon-data" class="postbox">
+							<h3>
+								<span class="coupon_actions">
+									<?php echo esc_html__( 'Coupon Data', 'woocommerce-smart-coupons' ); ?>
+								</span>
+							</h3>
 							<div class="inside">
 								<?php WC_Meta_Box_Coupon_Data::output( $post ); ?>
 							</div>

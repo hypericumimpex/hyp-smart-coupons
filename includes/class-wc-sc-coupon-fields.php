@@ -518,11 +518,15 @@ if ( ! class_exists( 'WC_SC_Coupon_Fields' ) ) {
 			if ( ! wp_script_is( 'woocommerce_admin', 'registered' ) ) {
 				wp_register_script( 'woocommerce_admin', WC()->plugin_url() . '/assets/js/admin/woocommerce_admin' . $suffix . '.js', array( 'jquery', 'jquery-blockui', 'jquery-ui-sortable', 'jquery-ui-widget', 'jquery-ui-core', 'jquery-tiptip' ), WC()->version, false );
 			}
-			if ( ! wp_script_is( 'select2', 'registered' ) ) {
-				wp_register_script( 'select2', WC()->plugin_url() . '/assets/js/select2/select2' . $suffix . '.js', array( 'jquery', 'select2' ), WC()->version, false );
+
+			if ( $this->is_wc_gte_32() ) {
+				wp_register_script( 'wc-sc-select2', WC()->plugin_url() . '/assets/js/selectWoo/selectWoo.full' . $suffix . '.js', array( 'jquery' ), WC()->version, false );
+			} else {
+				wp_register_script( 'wc-sc-select2', WC()->plugin_url() . '/assets/js/select2/select2.full' . $suffix . '.js', array( 'jquery' ), WC()->version, false );
 			}
+
 			if ( ! wp_script_is( 'wc-enhanced-select', 'registered' ) ) {
-				wp_register_script( 'wc-enhanced-select', WC()->plugin_url() . '/assets/js/admin/wc-enhanced-select' . $suffix . '.js', array( 'jquery', 'select2' ), WC()->version, false );
+				wp_register_script( 'wc-enhanced-select', WC()->plugin_url() . '/assets/js/admin/wc-enhanced-select' . $suffix . '.js', array( 'jquery', 'wc-sc-select2' ), WC()->version, false );
 			}
 			$wc_sc_select_params = array(
 				'i18n_matches_1'            => _x( 'One result is available, press enter to select it.', 'enhanced select', 'woocommerce-smart-coupons' ),
@@ -554,14 +558,14 @@ if ( ! class_exists( 'WC_SC_Coupon_Fields' ) ) {
 			);
 
 			wp_localize_script( 'woocommerce_admin', 'woocommerce_admin', $params );
-			wp_localize_script( 'select2', 'wc_enhanced_select_params', $wc_sc_select_params );
+			wp_localize_script( 'wc-sc-select2', 'wc_enhanced_select_params', $wc_sc_select_params );
 
 			wp_enqueue_script( 'woocommerce_admin' );
 			wp_enqueue_style( 'woocommerce_admin_styles', WC()->plugin_url() . '/assets/css/admin.css', array(), WC()->version );
 
-			wp_enqueue_script( 'select2' );
+			wp_enqueue_script( 'wc-sc-select2' );
 			wp_enqueue_script( 'wc-enhanced-select' );
-			wp_enqueue_style( 'select2', $assets_path . 'css/select2.css', array(), WC()->version );
+			wp_enqueue_style( 'wc-sc-select2', $assets_path . 'css/select2.css', array(), WC()->version );
 
 		}
 
