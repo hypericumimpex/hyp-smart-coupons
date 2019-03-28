@@ -107,9 +107,6 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 			add_filter( 'woocommerce_apply_individual_use_coupon', array( $this, 'smart_coupons_override_individual_use' ), 10, 3 );
 			add_filter( 'woocommerce_apply_with_individual_use_coupon', array( $this, 'smart_coupons_override_with_individual_use' ), 10, 4 );
 
-			add_action( 'parse_request', array( $this, 'woocommerce_admin_coupon_search' ) );
-			add_filter( 'get_search_query', array( $this, 'woocommerce_admin_coupon_search_label' ) );
-
 			add_action( 'restrict_manage_posts', array( $this, 'woocommerce_restrict_manage_smart_coupons' ), 20 );
 			add_action( 'admin_init', array( $this, 'woocommerce_export_coupons' ) );
 
@@ -137,6 +134,8 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 			add_action( 'wp_loaded', array( $this, 'sc_handle_store_credit_application' ), 15 );
 
 			add_filter( 'woocommerce_debug_tools', array( $this, 'clear_cache_tool' ) );
+
+			add_action( 'woocommerce_checkout_update_order_review', array( $this, 'woocommerce_checkout_update_order_review' ) );
 
 		}
 
@@ -1396,6 +1395,35 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 		}
 
 		/**
+		 * WooCommerce Checkout Update Order Review
+		 *
+		 * @param array $post_data The post data.
+		 */
+		public function woocommerce_checkout_update_order_review( $post_data = array() ) {
+
+			wp_parse_str( $post_data, $posted_data );
+
+			if ( ! empty( $posted_data['billing_email'] ) ) {
+				$applied_coupons = ( is_object( WC()->cart ) && is_callable( array( WC()->cart, 'get_applied_coupons' ) ) ) ? WC()->cart->get_applied_coupons() : array();
+				if ( ! empty( $applied_coupons ) ) {
+					if ( empty( $_REQUEST['billing_email'] ) ) { // WPCS: CSRF ok.
+						$_REQUEST['billing_email'] = $posted_data['billing_email'];
+					}
+					foreach ( $applied_coupons as $coupon_code ) {
+						$coupon   = new WC_Coupon( $coupon_code );
+						$is_valid = $this->is_user_usage_limit_valid( true, $coupon );
+						if ( true !== $is_valid ) {
+							WC()->cart->remove_coupon( $coupon_code );
+							/* translators: The coupon code */
+							wc_add_notice( sprintf( __( 'Coupon %s is valid for a new user only, hence removed.', 'woocommerce-smart-coupons' ), '<code>' . $coupon_code . '</code>' ), 'error' );
+						}
+					}
+				}
+			}
+
+		}
+
+		/**
 		 * Function to return validity of Store Credit / Gift Certificate
 		 *
 		 * @param boolean      $valid Coupon validity.
@@ -1449,7 +1477,7 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 		 */
 		public function is_user_usage_limit_valid( $is_valid = false, $coupon = null, $discounts = null ) {
 
-			if ( is_admin() ) {
+			if ( is_admin() && ( ! defined( 'DOING_AJAX' ) || DOING_AJAX !== true ) ) {
 				return $is_valid;
 			}
 
@@ -1912,97 +1940,6 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 				update_option( 'wc_sc_is_show_review_notice', time(), 'no' );
 			}
 
-		}
-
-		/**
-		 * Funtion to show search result based on email id included in customer email
-		 *
-		 * @param object $wp WP object.
-		 */
-		public function woocommerce_admin_coupon_search( $wp ) {
-			global $pagenow, $wpdb;
-
-			if ( 'edit.php' !== $pagenow ) {
-				return;
-			}
-			if ( ! isset( $wp->query_vars['s'] ) ) {
-				return;
-			}
-			if ( 'shop_coupon' !== $wp->query_vars['post_type'] ) {
-				return;
-			}
-
-			$e = substr( $wp->query_vars['s'], 0, 6 );
-
-			if ( 'Email:' === substr( $wp->query_vars['s'], 0, 6 ) ) {
-
-				$email = trim( substr( $wp->query_vars['s'], 6 ) );
-
-				if ( ! $email ) {
-					return;
-				}
-
-				$post_ids = wp_cache_get( 'wc_sc_search_customer_coupon_ids_for_' . sanitize_key( $email ), 'woocommerce_smart_coupons' );
-
-				if ( false === $post_ids ) {
-					$post_ids = $wpdb->get_col( // phpcs:ignore
-						$wpdb->prepare(
-							"SELECT post_id
-								FROM {$wpdb->postmeta}
-								WHERE meta_key = %s
-									AND meta_value LIKE %s;",
-							'customer_email',
-							'%' . $wpdb->esc_like( $email ) . '%'
-						)
-					);
-					wp_cache_set( 'wc_sc_search_customer_coupon_ids_for_' . sanitize_key( $email ), $post_ids, 'woocommerce_smart_coupons' );
-					$this->maybe_add_cache_key( 'wc_sc_order_for_user_id_' . implode( '_', $unique_user_ids ) );
-				}
-
-				if ( ! $post_ids ) {
-					return;
-				}
-
-				unset( $wp->query_vars['s'] );
-
-				$wp->query_vars['post__in'] = $post_ids;
-
-				$wp->query_vars['email'] = $email;
-			}
-
-		}
-
-		/**
-		 * Function to show label of the search result on email
-		 *
-		 * @param string $query The query.
-		 * @return string $query
-		 */
-		public function woocommerce_admin_coupon_search_label( $query ) {
-				global $pagenow, $typenow, $wp;
-
-			if ( 'edit.php' !== $pagenow ) {
-				return $query;
-			}
-			if ( 'shop_coupon' !== $typenow ) {
-				return $query;
-			}
-
-			$s = get_query_var( 's' );
-			if ( $s ) {
-				return $query;
-			}
-
-			$email = get_query_var( 'email' );
-
-			if ( $email ) {
-
-				$post_type = get_post_type_object( $wp->query_vars['post_type'] );
-				/* translators: 1: Coupon 2: Search text */
-				return sprintf( __( '[%1$s with email: %2$s]', 'woocommerce-smart-coupons' ), $post_type->labels->singular_name, $email );
-			}
-
-			return $query;
 		}
 
 		/**

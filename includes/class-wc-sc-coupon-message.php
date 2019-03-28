@@ -229,6 +229,10 @@ if ( ! class_exists( 'WC_SC_Coupon_Message' ) ) {
 		 */
 		public function wc_coupon_message_display() {
 
+			if ( ! is_object( WC() ) || ! is_object( WC()->cart ) || WC()->cart->is_empty() ) {
+				return;
+			}
+
 			$applied_coupons = WC()->cart->get_applied_coupons();
 
 			?>

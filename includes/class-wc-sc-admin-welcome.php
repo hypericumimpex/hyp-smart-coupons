@@ -85,42 +85,42 @@ if ( ! class_exists( 'WC_SC_Admin_Welcome' ) ) {
 
 			if ( ! empty( $get_page ) && ( 'sc-faqs' === $get_page || 'sc-about' === $get_page ) ) {
 				?>
-				<style type="text/css">
-					/*<![CDATA[*/
-					.about-wrap h3 {
-						margin-top: 1em;
-						margin-right: 0em;
-						margin-bottom: 0.1em;
-						font-size: 1.25em;
-						line-height: 1.3em;
-					}
-					.about-wrap .button-primary {
-						margin-top: 18px;
-					}
-					.about-wrap .button-hero {
-						color: #FFF!important;
-						border-color: #03a025!important;
-						background: #03a025 !important;
-						box-shadow: 0 1px 0 #03a025;
-						font-size: 1em;
-						font-weight: bold;
-					}
-					.about-wrap .button-hero:hover {
-						color: #FFF!important;
-						background: #0AAB2E!important;
-						border-color: #0AAB2E!important;
-					}
-					.about-wrap p {
-						margin-top: 0.6em;
-						margin-bottom: 0.8em;
-						line-height: 1.6em;
-						font-size: 14px;
-					}
-					.about-wrap .feature-section {
-						padding-bottom: 5px;
-					}
-					/*]]>*/
-				</style>
+			<style type="text/css">
+				/*<![CDATA[*/
+				.about-wrap h3 {
+					margin-top: 1em;
+					margin-right: 0em;
+					margin-bottom: 0.1em;
+					font-size: 1.25em;
+					line-height: 1.3em;
+				}
+				.about-wrap .button-primary {
+					margin-top: 18px;
+				}
+				.about-wrap .button-hero {
+					color: #FFF!important;
+					border-color: #03a025!important;
+					background: #03a025 !important;
+					box-shadow: 0 1px 0 #03a025;
+					font-size: 1em;
+					font-weight: bold;
+				}
+				.about-wrap .button-hero:hover {
+					color: #FFF!important;
+					background: #0AAB2E!important;
+					border-color: #0AAB2E!important;
+				}
+				.about-wrap p {
+					margin-top: 0.6em;
+					margin-bottom: 0.8em;
+					line-height: 1.6em;
+					font-size: 14px;
+				}
+				.about-wrap .feature-section {
+					padding-bottom: 5px;
+				}
+				/*]]>*/
+			</style>
 				<?php
 			}
 

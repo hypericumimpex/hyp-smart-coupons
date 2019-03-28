@@ -102,7 +102,7 @@ if ( ! class_exists( 'WC_SC_Order_Fields' ) ) {
 				foreach ( $coupons as $item_id => $item ) {
 
 					if ( empty( $item['code'] ) ) {
-						continue;
+							continue;
 					}
 
 					$coupon = new WC_Coupon( $item['code'] );

@@ -58,6 +58,8 @@ if ( ! class_exists( 'WC_SC_Display_Coupons' ) ) {
 
 			add_action( 'wp_footer', array( $this, 'frontend_styles_and_scripts' ) );
 
+			add_filter( 'woocommerce_update_order_review_fragments', array( $this, 'woocommerce_update_order_review_fragments' ) );
+
 		}
 
 		/**
@@ -116,18 +118,19 @@ if ( ! class_exists( 'WC_SC_Display_Coupons' ) ) {
 			$foreground_color = get_option( 'wc_sc_setting_coupon_foreground_color', '#30050b' );
 
 			?>
-			<style type="text/css"><?php echo $this->get_coupon_styles( $design ); // WPCS: XSS ok. ?></style>
-			<style type="text/css">
-				.coupon-container.left:before,
-				.coupon-container.bottom:before {
-					background: <?php echo esc_html( $foreground_color ); ?> !important;
-				}
-				.coupon-container.left:hover, .coupon-container.left:focus, .coupon-container.left:active,
-				.coupon-container.bottom:hover, .coupon-container.bottom:focus, .coupon-container.bottom:active {
-					color: <?php echo esc_html( $background_color ); ?> !important;
-				}
-			</style>
-			<div id="coupons_list" style="display: none;"><h3><?php echo __( stripslashes( $available_coupons_heading ), 'woocommerce-smart-coupons' ); // phpcs:ignore ?></h3><div id="all_coupon_container">
+			<div id="coupons_list" style="display: none;">
+				<style type="text/css"><?php echo $this->get_coupon_styles( $design ); // WPCS: XSS ok. ?></style>
+				<style type="text/css">
+					.coupon-container.left:before,
+					.coupon-container.bottom:before {
+						background: <?php echo esc_html( $foreground_color ); ?> !important;
+					}
+					.coupon-container.left:hover, .coupon-container.left:focus, .coupon-container.left:active,
+					.coupon-container.bottom:hover, .coupon-container.bottom:focus, .coupon-container.bottom:active {
+						color: <?php echo esc_html( $background_color ); ?> !important;
+					}
+				</style>
+				<h3><?php echo __( stripslashes( $available_coupons_heading ), 'woocommerce-smart-coupons' ); // phpcs:ignore ?></h3><div id="all_coupon_container">
 				<?php
 
 				$max_coupon_to_show = get_option( 'wc_sc_setting_max_coupon_to_show', 5 );
@@ -1182,7 +1185,6 @@ if ( ! class_exists( 'WC_SC_Display_Coupons' ) ) {
 								jQuery('div#coupons_list').hide();
 							}
 						};
-						show_hide_coupon_list();
 
 						var coupon_container_height = jQuery('#all_coupon_container').height();
 						if ( coupon_container_height > 400 ) {
@@ -1204,6 +1206,21 @@ if ( ! class_exists( 'WC_SC_Display_Coupons' ) ) {
 						});
 
 					";
+
+			if ( is_checkout() ) {
+				$js .= "
+						jQuery(document.body).on('updated_checkout', function( e, data ){
+							if ( data.fragments.wc_sc_available_coupons ) {
+								jQuery('div#coupons_list').replaceWith( data.fragments.wc_sc_available_coupons );
+							}
+							show_hide_coupon_list();
+						});
+						";
+			} else {
+				$js .= '
+						show_hide_coupon_list();
+						';
+			}
 
 			if ( $this->is_wc_gte_26() ) {
 				$js .= "
@@ -1240,6 +1257,28 @@ if ( ! class_exists( 'WC_SC_Display_Coupons' ) ) {
 
 			do_action( 'wc_smart_coupons_frontend_styles_and_scripts' );
 
+		}
+
+		/**
+		 * Generate & add available coupons fragments
+		 *
+		 * @param  array $fragments Existing fragments.
+		 * @return array $fragments
+		 */
+		public function woocommerce_update_order_review_fragments( $fragments = array() ) {
+
+			if ( ! empty( $_POST['post_data'] ) ) { // WPCS: CSRF ok.
+				wp_parse_str( $_POST['post_data'], $posted_data ); // WPCS: sanitization ok. CSRF ok, input var ok.
+				if ( empty( $_REQUEST['billing_email'] ) && ! empty( $posted_data['billing_email'] ) ) { // WPCS: CSRF ok.
+					$_REQUEST['billing_email'] = $posted_data['billing_email'];
+				}
+			}
+
+			ob_start();
+			$this->show_available_coupons_before_checkout_form();
+			$fragments['wc_sc_available_coupons'] = ob_get_clean();
+
+			return $fragments;
 		}
 
 		/**

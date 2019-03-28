@@ -1,5 +1,15 @@
 *** WooCommerce Smart Coupons Changelog ***
 
+2019.03.27 - version 4.0.2
+* Fix: Uncaught Error: Call to a member function get_applied_coupons() on null
+* Fix: Re-validate available coupons on updating order review on checkout page
+* Fix: Incorrectly showing 'new user only' coupon to registered customer on cart page
+* Update: Add available coupon's list in ajax fragments on checkout page
+* Update: Reload available coupon's list on updating order review on checkout page
+* Update: [Admin] Make the prefix 'email' case-insensitive to filter or search coupon by email
+* Update: [HTML] Minor change in coupon list container
+* Update: POT file
+
 2019.03.19 - version 4.0.1
 * New: Support for adding Coupon Description when Bulk Generating coupons
 * New: Use selectWoo (For WooCommerce 3.2.0+)

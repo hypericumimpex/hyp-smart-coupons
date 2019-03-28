@@ -976,7 +976,7 @@ if ( ! class_exists( 'WC_SC_Admin_Pages' ) ) {
 				<form id="generate_coupons" action="<?php echo esc_url( $import_step_2_url ); ?>" method="post">
 					<?php wp_nonce_field( 'import-woocommerce-coupon' ); ?>
 					<div id="poststuff">
-						<div id="woocommerce-coupon-data" class="postbox">
+						<div id="woocommerce-coupon-data" class="postbox " >
 							<h3><span class="coupon_actions"><?php echo esc_html__( 'Action', 'woocommerce-smart-coupons' ); ?></span></h3>
 							<div class="inside">
 								<div class="panel-wrap">
@@ -1007,9 +1007,9 @@ if ( ! class_exists( 'WC_SC_Admin_Pages' ) ) {
 												);
 											?>
 											<span class="description">
-												<?php
-												echo esc_html__( '(Does not add to store, but creates a .csv file, that you can', 'woocommerce-smart-coupons' ) . ' <a href="' . esc_url( $import_tab_url ) . '">' . esc_html__( 'import', 'woocommerce-smart-coupons' ) . '</a> ' . esc_html__( 'later', 'woocommerce-smart-coupons' ) . ')';
-												?>
+											<?php
+											echo esc_html__( '(Does not add to store, but creates a .csv file, that you can', 'woocommerce-smart-coupons' ) . ' <a href="' . esc_url( $import_tab_url ) . '">' . esc_html__( 'import', 'woocommerce-smart-coupons' ) . '</a> ' . esc_html__( 'later', 'woocommerce-smart-coupons' ) . ')';
+											?>
 											</span>
 										</p>
 
@@ -1031,7 +1031,7 @@ if ( ! class_exists( 'WC_SC_Admin_Pages' ) ) {
 								</div>
 							</div>
 						</div>
-						<div id="woocommerce-coupon-data" class="postbox">
+						<div id="woocommerce-coupon-data" class="postbox " >
 							<h3>
 								<span class="coupon_actions">
 									<?php
@@ -1085,7 +1085,7 @@ if ( ! class_exists( 'WC_SC_Admin_Pages' ) ) {
 
 			$e = substr( $wp->query_vars['s'], 0, 5 );
 
-			if ( 'email:' === substr( $wp->query_vars['s'], 0, 6 ) ) {
+			if ( 'email:' === strtolower( substr( $wp->query_vars['s'], 0, 6 ) ) ) {
 
 				$email = trim( substr( $wp->query_vars['s'], 6 ) );
 
