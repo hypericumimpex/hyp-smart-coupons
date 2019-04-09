@@ -468,6 +468,26 @@ if ( ! class_exists( 'WCS_SC_Compatibility' ) ) {
 		}
 
 		/**
+		 * Get first order of a subscription to which the supplied order belongs
+		 *
+		 * @param  integer $order_id The order id.
+		 * @return integer
+		 */
+		public function get_first_order_id( $order_id = 0 ) {
+			if ( self::is_wcs_gte( '2.0.0' ) && ! empty( $order_id ) ) {
+				$subscriptions     = wcs_get_subscriptions_for_order( $order_id );
+				$related_order_ids = ( is_object( $subscriptions ) && is_callable( array( $subscriptions, 'get_related_order_ids' ) ) ) ? $subscriptions->get_related_order_ids() : array();
+				$related_order_ids = array_filter( $related_order_ids );
+				if ( ! empty( $related_order_ids ) ) {
+					sort( $related_order_ids, SORT_NUMERIC );
+					reset( $related_order_ids );
+					return current( $related_order_ids );
+				}
+			}
+			return 0;
+		}
+
+		/**
 		 * Set 'coupon_sent' as 'no' for renewal order to allow auto generation of coupons (if applicable)
 		 *
 		 * @param array  $order_items Associative array of order items.
@@ -478,6 +498,17 @@ if ( ! class_exists( 'WCS_SC_Compatibility' ) ) {
 		 * @return array $order_items
 		 */
 		public function sc_modify_renewal_order( $order_items = null, $original_order_id = 0, $renewal_order_id = 0, $product_id = 0, $new_order_role = null ) {
+
+			if ( empty( $original_order_id ) && empty( $renewal_order_id ) ) {
+				return $order_items;
+			}
+
+			if ( empty( $original_order_id ) ) {
+				$original_order_id = $this->get_first_order_id( $renewal_order_id );
+				if ( empty( $original_order_id ) ) {
+					return $order_items;
+				}
+			}
 
 			if ( self::is_wcs_gte( '2.0.0' ) ) {
 				$is_subscription_order = wcs_order_contains_subscription( $original_order_id );
@@ -524,6 +555,17 @@ if ( ! class_exists( 'WCS_SC_Compatibility' ) ) {
 		 * @return array $order_items
 		 */
 		public function sc_subscriptions_renewal_order_items( $order_items = null, $original_order_id = 0, $renewal_order_id = 0, $product_id = 0, $new_order_role = null ) {
+
+			if ( empty( $original_order_id ) && empty( $renewal_order_id ) ) {
+				return $order_items;
+			}
+
+			if ( empty( $original_order_id ) ) {
+				$original_order_id = $this->get_first_order_id( $renewal_order_id );
+				if ( empty( $original_order_id ) ) {
+					return $order_items;
+				}
+			}
 
 			if ( self::is_wcs_gte( '2.0.0' ) ) {
 				$is_subscription_order = wcs_order_contains_subscription( $original_order_id );

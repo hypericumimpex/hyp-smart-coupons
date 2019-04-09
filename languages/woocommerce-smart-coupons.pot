@@ -2,13 +2,13 @@
 # This file is distributed under the same license as the WooCommerce Smart Coupons package.
 msgid ""
 msgstr ""
-"Project-Id-Version: WooCommerce Smart Coupons 4.0.2\n"
+"Project-Id-Version: WooCommerce Smart Coupons 4.0.3\n"
 "Report-Msgid-Bugs-To: https://www.storeapps.org/support/contact-us/\n"
-"POT-Creation-Date: 2019-03-27 06:18:34+00:00\n"
+"POT-Creation-Date: 2019-04-04 10:19:07+00:00\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"PO-Revision-Date: Wed, 27 Mar 2019 11:48:34 +0530\n"
+"PO-Revision-Date: Thu, 04 Apr 2019 15:49:07 +0530\n"
 "Last-Translator: Ratnakar Dubey <support@storeapps.org>\n"
 "Language-Team: StoreApps <support@storeapps.org>\n"
 
@@ -46,7 +46,7 @@ msgstr ""
 msgid "it to use"
 msgstr ""
 
-#. #-#-#-#-#  woocommerce-smart-coupons.pot (WooCommerce Smart Coupons 4.0.2)  #-#-#-#-#
+#. #-#-#-#-#  woocommerce-smart-coupons.pot (WooCommerce Smart Coupons 4.0.3)  #-#-#-#-#
 #. Plugin Name of the plugin/theme
 #: includes/class-wc-sc-admin-notifications.php:172
 #: includes/class-wc-sc-admin-notifications.php:238
@@ -2681,31 +2681,31 @@ msgid "Please update WooCommerce to the latest version"
 msgstr ""
 
 #. translators: %s: singular name for store credit
-#: includes/compat/class-wcs-sc-compatibility.php:675
+#: includes/compat/class-wcs-sc-compatibility.php:717
 msgid "Order paid by %s"
 msgstr ""
 
-#: includes/compat/class-wcs-sc-compatibility.php:675
+#: includes/compat/class-wcs-sc-compatibility.php:717
 msgid "Order paid by store credit."
 msgstr ""
 
-#: includes/compat/class-wcs-sc-compatibility.php:729
+#: includes/compat/class-wcs-sc-compatibility.php:771
 msgid "Recurring Subscriptions"
 msgstr ""
 
-#: includes/compat/class-wcs-sc-compatibility.php:730
+#: includes/compat/class-wcs-sc-compatibility.php:772
 msgid ""
 "Use store credit applied in first subscription order for subsequent renewals "
 "until credit reaches zero"
 msgstr ""
 
-#: includes/compat/class-wcs-sc-compatibility.php:737
+#: includes/compat/class-wcs-sc-compatibility.php:779
 msgid ""
 "Renewal orders should not generate coupons even when they include a product "
 "that issues coupons"
 msgstr ""
 
-#: includes/compat/class-wcs-sc-compatibility.php:885
+#: includes/compat/class-wcs-sc-compatibility.php:927
 msgid "Active for x payments"
 msgstr ""
 

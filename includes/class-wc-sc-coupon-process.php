@@ -991,11 +991,38 @@ if ( ! class_exists( 'WC_SC_Coupon_Process' ) ) {
 		}
 
 		/**
+		 * Whether to auto generate coupon or not
+		 *
+		 * @param  int $order_id The order id.
+		 * @return boolean
+		 */
+		public function should_coupon_auto_generate( $order_id = 0 ) {
+			$valid_order_statuses = get_option( 'wc_sc_valid_order_statuses_for_coupon_auto_generation', 'processing,completed' );
+			if ( ! empty( $valid_order_statuses ) ) {
+				$valid_order_statuses = explode( ',', $valid_order_statuses );
+				if ( ! empty( $valid_order_statuses ) ) {
+					$valid_order_statuses = apply_filters( 'wc_sc_valid_order_statuses_for_coupon_auto_generation', $valid_order_statuses, $order_id );
+					if ( ! empty( $valid_order_statuses ) ) {
+						$order        = wc_get_order( $order_id );
+						$order_status = $order->get_status();
+						if ( ! in_array( $order_status, $valid_order_statuses, true ) ) {
+							return false;
+						}
+					}
+				}
+			}
+			return true;
+		}
+
+		/**
 		 * Function to add details to coupons
 		 *
 		 * @param int $order_id The order id.
 		 */
 		public function sa_add_coupons( $order_id ) {
+			if ( ! $this->should_coupon_auto_generate( $order_id ) ) {
+				return;
+			}
 			$this->process_coupons( $order_id, 'add' );
 		}
 

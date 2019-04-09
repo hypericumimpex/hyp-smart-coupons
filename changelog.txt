@@ -1,5 +1,10 @@
 *** WooCommerce Smart Coupons Changelog ***
 
+2019.04.04 - version 4.0.3
+* New: Option to allow coupon auto-generation on specific order statuses
+* Fix: Fatal error (Call to a member function meta_exists() on boolean) during renewal of those subscriptions which are created manually (Thanks to: Ted Barnett)
+* Update: POT file
+
 2019.03.27 - version 4.0.2
 * Fix: Uncaught Error: Call to a member function get_applied_coupons() on null
 * Fix: Re-validate available coupons on updating order review on checkout page
