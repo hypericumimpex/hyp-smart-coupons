@@ -148,7 +148,12 @@ if ( ! class_exists( 'WC_SC_Global_Coupons' ) ) {
 						'sc_display_global_coupons'
 					)
 				);
-			} elseif ( ( empty( $current_sc_version ) || version_compare( $current_sc_version, '3.3.6', '<' ) ) && false !== $global_coupons ) {
+
+				$global_coupons = get_option( 'sc_display_global_coupons' );
+
+			}
+
+			if ( ( empty( $current_sc_version ) || version_compare( $current_sc_version, '3.3.6', '<' ) ) && false !== $global_coupons ) {
 
 				$wpdb->query( // phpcs:ignore
 					$wpdb->prepare(
@@ -160,7 +165,9 @@ if ( ! class_exists( 'WC_SC_Global_Coupons' ) ) {
 					)
 				);
 
-				update_option( 'sa_sc_db_version', '3.3.6', 'no' );
+				$current_sc_version = '3.3.6';
+
+				update_option( 'sa_sc_db_version', $current_sc_version, 'no' );
 			}
 
 		}
@@ -187,7 +194,7 @@ if ( ! class_exists( 'WC_SC_Global_Coupons' ) ) {
 			$key                 = array_search( (string) $post_id, $global_coupons, true );
 
 			if ( ( 'publish' === $coupon_status
-					&& ( ! empty( $coupon_meta['customer_email'][0] ) && serialize( array() ) === $coupon_meta['customer_email'][0] ) // phpcs:ignore
+					&& ( empty( $coupon_meta['customer_email'][0] ) || serialize( array() ) === $coupon_meta['customer_email'][0] ) // phpcs:ignore
 					&& ( ! empty( $coupon_meta['sc_is_visible_storewide'][0] ) && 'yes' === $coupon_meta['sc_is_visible_storewide'][0] )
 					&& ( ! empty( $coupon_meta['auto_generate_coupon'][0] ) && 'yes' !== $coupon_meta['auto_generate_coupon'][0] )
 					&& ( ! empty( $coupon_meta['discount_type'][0] ) && 'smart_coupon' !== $coupon_meta['discount_type'][0] ) )

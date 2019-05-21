@@ -60,6 +60,8 @@ if ( ! class_exists( 'WC_SC_Display_Coupons' ) ) {
 
 			add_filter( 'woocommerce_update_order_review_fragments', array( $this, 'woocommerce_update_order_review_fragments' ) );
 
+			add_filter( 'woocommerce_coupon_get_date_expires', array( $this, 'wc_sc_get_date_expires' ), 10, 2 );
+
 		}
 
 		/**
@@ -1279,6 +1281,30 @@ if ( ! class_exists( 'WC_SC_Display_Coupons' ) ) {
 			$fragments['wc_sc_available_coupons'] = ob_get_clean();
 
 			return $fragments;
+		}
+
+		/**
+		 * Get date expires if not exists
+		 *
+		 * @param  mixed|WC_DateTime $value  The date expires value.
+		 * @param  WC_Coupon         $coupon The coupon object.
+		 * @return mixed|WC_DateTime
+		 */
+		public function wc_sc_get_date_expires( $value = null, $coupon = null ) {
+
+			if ( $this->is_wc_gte_30() && empty( $value ) ) {
+				$coupon_id   = ( is_object( $coupon ) && is_callable( array( $coupon, 'get_id' ) ) ) ? $coupon->get_id() : 0;
+				$expiry_date = ( ! empty( $coupon_id ) ) ? get_post_meta( $coupon_id, 'expiry_date', true ) : '';
+
+				if ( ! empty( $expiry_date ) ) {
+					$expiry_timestamp = strtotime( $expiry_date );
+					if ( false !== $expiry_timestamp ) {
+						$value = new WC_DateTime( "@{$expiry_timestamp}", new DateTimeZone( 'UTC' ) );
+					}
+				}
+			}
+
+			return $value;
 		}
 
 		/**

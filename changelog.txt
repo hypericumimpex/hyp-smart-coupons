@@ -1,5 +1,12 @@
 *** WooCommerce Smart Coupons Changelog ***
 
+2019.05.15 - version 4.0.4
+* Fix: Expiry date not setting in auto generated coupons
+* Fix: Coupon Setting "Show on cart/checkout page" not displaying the coupon on cart/checkout page
+* Fix: Adding product via Coupon Action with discount results in deducted price only showing after reload (Thanks to: Elias)
+* Update: New option 'expiry_days' in shortcode [smart_coupons] for setting number of days after which the generated coupon will expire
+* Update: POT file
+
 2019.04.04 - version 4.0.3
 * New: Option to allow coupon auto-generation on specific order statuses
 * Fix: Fatal error (Call to a member function meta_exists() on boolean) during renewal of those subscriptions which are created manually (Thanks to: Ted Barnett)

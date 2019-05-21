@@ -145,6 +145,29 @@ if ( ! class_exists( 'WC_SC_Coupon_Import' ) ) {
 		}
 
 		/**
+		 * Handle call to functions which is not available in this class
+		 *
+		 * @param string $function_name The function name.
+		 * @param array  $arguments Array of arguments passed while calling $function_name.
+		 * @return result of function call
+		 */
+		public function __call( $function_name, $arguments = array() ) {
+
+			global $woocommerce_smart_coupon;
+
+			if ( ! is_callable( array( $woocommerce_smart_coupon, $function_name ) ) ) {
+				return;
+			}
+
+			if ( ! empty( $arguments ) ) {
+				return call_user_func_array( array( $woocommerce_smart_coupon, $function_name ), $arguments );
+			} else {
+				return call_user_func( array( $woocommerce_smart_coupon, $function_name ) );
+			}
+
+		}
+
+		/**
 		 * Registered callback function for the WordPress Importer
 		 *
 		 * Manages the three separate stages of the CSV import process
@@ -345,7 +368,7 @@ if ( ! class_exists( 'WC_SC_Coupon_Import' ) ) {
 							break;
 
 						case 'expiry_date':
-							if ( empty( $expiry_date ) && ! empty( $postmeta['sc_coupon_validity'] ) && ! empty( $postmeta['validity_suffix'] ) ) {
+							if ( empty( $meta_value ) && ! empty( $postmeta['sc_coupon_validity'] ) && ! empty( $postmeta['validity_suffix'] ) ) {
 								$sc_coupon_validity = $postmeta['sc_coupon_validity'];
 								$validity_suffix    = $postmeta['validity_suffix'];
 								$meta_value         = date( 'Y-m-d', strtotime( "+$sc_coupon_validity $validity_suffix" ) );
@@ -424,7 +447,12 @@ if ( ! class_exists( 'WC_SC_Coupon_Import' ) ) {
 							)
 						);
 						if ( true === $is_import_meta ) {
-							update_post_meta( $post_id, $meta_key, maybe_unserialize( $meta_value ) );
+							if ( $this->is_wc_gte_30() && 'expiry_date' === $meta_key ) {
+								$meta_value = strtotime( $meta_value );
+								update_post_meta( $post_id, 'date_expires', $meta_value );
+							} else {
+								update_post_meta( $post_id, $meta_key, maybe_unserialize( $meta_value ) );
+							}
 						}
 					}
 				}

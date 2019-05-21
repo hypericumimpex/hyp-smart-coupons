@@ -1862,7 +1862,15 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 				update_post_meta( $smart_coupon_id, 'usage_limit', $usage_limit );
 				update_post_meta( $smart_coupon_id, 'usage_limit_per_user', $usage_limit_per_user );
 				update_post_meta( $smart_coupon_id, 'limit_usage_to_x_items', $limit_usage_to_x_items );
-				update_post_meta( $smart_coupon_id, 'expiry_date', $expiry_date );
+
+				if ( $this->is_wc_gte_30() ) {
+					if ( ! empty( $expiry_date ) ) {
+						$expiry_date = strtotime( $expiry_date );
+						update_post_meta( $smart_coupon_id, 'date_expires', $expiry_date );
+					}
+				} else {
+					update_post_meta( $smart_coupon_id, 'expiry_date', $expiry_date );
+				}
 
 				$is_disable_email_restriction = ( ! empty( $coupon_id ) ) ? get_post_meta( $coupon_id, 'sc_disable_email_restriction', true ) : '';
 				if ( empty( $is_disable_email_restriction ) || 'no' === $is_disable_email_restriction ) {
@@ -2126,7 +2134,10 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 
 			if ( ! empty( $get ) && isset( $get['export_coupons'] ) ) {
 
-				$headers            = array_keys( $coupon_postmeta_headers );
+				$headers = array_keys( $coupon_postmeta_headers );
+				if ( $this->is_wc_gte_30() ) {
+					$headers[] = 'date_expires';
+				}
 				$how_many_headers   = count( $headers );
 				$header_placeholder = array_fill( 0, $how_many_headers, '%s' );
 
@@ -2187,6 +2198,10 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 							}
 							$data[ $id ][ $key ] .= '|' . $coupon_meta_value[ $index ];
 							$data[ $id ][ $key ]  = trim( $data[ $id ][ $key ], '|' );
+						} elseif ( 'date_expires' === $key && $this->is_wc_gte_30() ) {
+							if ( ! empty( $coupon_meta_value[ $index ] ) ) {
+								$data[ $id ]['expiry_date'] = date( 'Y-m-d', $coupon_meta_value[ $index ] );
+							}
 						} elseif ( 'ID' !== $key ) {
 							if ( is_serialized( $coupon_meta_value[ $index ] ) ) {
 								$temp_data         = maybe_unserialize( stripslashes( $coupon_meta_value[ $index ] ) );

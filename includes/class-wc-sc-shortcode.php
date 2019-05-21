@@ -165,6 +165,7 @@ if ( ! class_exists( 'WC_SC_Shortcode' ) ) {
 					'customer_email'             => '',
 					'coupon_style'               => '',
 					'disable_email'              => 'no',
+					'expiry_days'                => '',
 				),
 				$atts
 			);
@@ -183,6 +184,7 @@ if ( ! class_exists( 'WC_SC_Shortcode' ) ) {
 			$usage_limit      = $shortcode['usage_limit'];
 			$apply_before_tax = $shortcode['apply_before_tax'];
 			$disable_email    = $shortcode['disable_email'];
+			$expiry_days      = $shortcode['expiry_days'];
 
 			if ( empty( $_coupon_code ) && empty( $_coupon_amount ) ) {
 				return;     // Minimum requirement for shortcode is either $_coupon_code or $_coupon_amount.
@@ -335,10 +337,17 @@ if ( ! class_exists( 'WC_SC_Shortcode' ) ) {
 						update_post_meta( $new_coupon_id, 'individual_use', $individual_use );
 						update_post_meta( $new_coupon_id, 'minimum_amount', $minimum_amount );
 						update_post_meta( $new_coupon_id, 'maximum_amount', $maximum_amount );
-						update_post_meta( $new_coupon_id, 'product_ids', array() );
-						update_post_meta( $new_coupon_id, 'exclude_product_ids', array() );
 						update_post_meta( $new_coupon_id, 'usage_limit', $usage_limit );
-						update_post_meta( $new_coupon_id, 'expiry_date', $_expiry_date );
+
+						if ( $this->is_wc_gte_30() ) {
+							if ( ! empty( $_expiry_date ) ) {
+								$_expiry_date = strtotime( $_expiry_date );
+								update_post_meta( $new_coupon_id, 'date_expires', $_expiry_date );
+							}
+						} else {
+							update_post_meta( $new_coupon_id, 'expiry_date', $_expiry_date );
+						}
+
 						update_post_meta( $new_coupon_id, 'customer_email', array( $customer_email ) );
 						update_post_meta( $new_coupon_id, 'apply_before_tax', $apply_before_tax );
 						update_post_meta( $new_coupon_id, 'free_shipping', $_free_shipping );
@@ -472,10 +481,17 @@ if ( ! class_exists( 'WC_SC_Shortcode' ) ) {
 				echo '<div class="discount-description">' . esc_html( $coupon_post->post_excerpt ) . '</div>';
 			}
 
-			$_expiry_date = get_post_meta( $coupon_id, 'expiry_date', true );
+			if ( $this->is_wc_gte_30() ) {
+				$_expiry_date = intval( get_post_meta( $coupon_id, 'date_expires', true ) );
+			} else {
+				$_expiry_date = get_post_meta( $coupon_id, 'expiry_date', true );
+			}
 
 			if ( ! empty( $_expiry_date ) ) {
-				$_expiry_date_text = $this->get_expiration_format( strtotime( $_expiry_date ) );
+				if ( ! $this->is_wc_gte_30() ) {
+					$_expiry_date = strtotime( $_expiry_date );
+				}
+				$_expiry_date_text = $this->get_expiration_format( $_expiry_date );
 				echo ' <div class="coupon-expire">' . esc_html( $_expiry_date_text ) . '</div>';
 			} else {
 				echo ' <div class="coupon-expire">' . esc_html__( 'Never Expires ', 'woocommerce-smart-coupons' ) . '</div>';
@@ -549,7 +565,7 @@ if ( ! class_exists( 'WC_SC_Shortcode' ) ) {
 				}
 			}
 
-			$session_shortcode_coupons = WC()->session->get( '_sc_session_shortcode_generated_coupons' );
+			$session_shortcode_coupons = ( is_object( WC()->session ) && is_callable( array( WC()->session, 'get' ) ) ) ? WC()->session->get( '_sc_session_shortcode_generated_coupons' ) : array();
 
 			if ( ! empty( $session_shortcode_coupons[ $code ] ) && count( $session_shortcode_coupons[ $code ] ) >= $max_in_a_session ) {
 				return end( $session_shortcode_coupons[ $code ] );
@@ -576,9 +592,9 @@ if ( ! class_exists( 'WC_SC_Shortcode' ) ) {
 
 			$code = ( ! empty( $coupon_code ) ) ? $coupon_code : 0;
 
-			$session_shortcode_coupons = WC()->session->get( '_sc_session_shortcode_generated_coupons' );
+			$session_shortcode_coupons = ( is_object( WC()->session ) && is_callable( array( WC()->session, 'get' ) ) ) ? WC()->session->get( '_sc_session_shortcode_generated_coupons' ) : array();
 
-			if ( empty( $session_shortcode_coupons ) ) {
+			if ( empty( $session_shortcode_coupons ) || ! is_array( $session_shortcode_coupons ) ) {
 				$session_shortcode_coupons = array();
 			}
 			if ( empty( $session_shortcode_coupons[ $code ] ) ) {
@@ -586,7 +602,9 @@ if ( ! class_exists( 'WC_SC_Shortcode' ) ) {
 			}
 			if ( ! in_array( $new_code, $session_shortcode_coupons[ $code ], true ) ) {
 				$session_shortcode_coupons[ $code ][] = $new_code;
-				WC()->session->set( '_sc_session_shortcode_generated_coupons', $session_shortcode_coupons );
+				if ( is_object( WC()->session ) && is_callable( array( WC()->session, 'set' ) ) ) {
+					WC()->session->set( '_sc_session_shortcode_generated_coupons', $session_shortcode_coupons );
+				}
 			}
 
 			if ( ! empty( $current_user->ID ) ) {

@@ -46,6 +46,8 @@ if ( ! class_exists( 'WC_SC_Coupon_Fields' ) ) {
 			add_action( 'wp_ajax_wc_sc_json_search_products_and_variations', array( $this, 'wc_sc_json_search_products_and_variations' ) );
 			add_filter( 'woocommerce_json_search_found_products', array( $this, 'exclude_variation_parent' ) );
 
+			add_action( 'admin_footer', array( $this, 'coupon_expiry_date' ) );
+
 		}
 
 		/**
@@ -847,6 +849,29 @@ if ( ! class_exists( 'WC_SC_Coupon_Fields' ) ) {
 			$discount_types['smart_coupon'] = ! empty( $store_credit_label['singular'] ) ? ucfirst( $store_credit_label['singular'] ) : __( 'Store Credit / Gift Certificate', 'woocommerce-smart-coupons' );
 
 			return $discount_types;
+		}
+
+		/**
+		 * Compatibility between expiry_date & date_expires meta field
+		 */
+		public function coupon_expiry_date() {
+			global $post;
+
+			if ( $this->is_wc_gte_30() && ! empty( $post->post_type ) && 'shop_coupon' === $post->post_type && ! empty( $post->ID ) ) {
+				$date_expires = intval( get_post_meta( $post->ID, 'date_expires', true ) );
+				$expiry_date  = get_post_meta( $post->ID, 'expiry_date', true );
+
+				if ( ! empty( $expiry_date ) && empty( $date_expires ) ) {
+					$date_expires = strtotime( $expiry_date );
+					if ( false !== $date_expires ) {
+						update_post_meta( $post->ID, 'date_expires', $date_expires );
+						delete_post_meta( $post->ID, 'expiry_date' );
+					}
+					$js = "jQuery('input#expiry_date').val('" . $expiry_date . "');";
+					wc_enqueue_js( $js );
+				}
+			}
+
 		}
 
 	}

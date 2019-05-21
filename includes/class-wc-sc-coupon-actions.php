@@ -32,7 +32,7 @@ if ( ! class_exists( 'WC_SC_Coupon_Actions' ) ) {
 		 */
 		public function __construct() {
 
-			add_filter( 'woocommerce_add_cart_item', array( $this, 'modify_cart_item_data' ), 15, 4 );
+			add_filter( 'woocommerce_add_cart_item', array( $this, 'modify_cart_item_data_in_add_to_cart' ), 15, 2 );
 			add_filter( 'woocommerce_get_cart_item_from_session', array( $this, 'modify_cart_item_in_session' ), 15, 3 );
 			add_filter( 'woocommerce_cart_item_quantity', array( $this, 'modify_cart_item_quantity' ), 5, 3 );
 			add_filter( 'woocommerce_cart_item_price', array( $this, 'modify_cart_item_price' ), 10, 3 );
@@ -175,6 +175,21 @@ if ( ! class_exists( 'WC_SC_Coupon_Actions' ) ) {
 						}
 					}
 				}
+			}
+
+			return $cart_item_data;
+		}
+
+		/**
+		 * Modify cart item in WC_Cart::add_to_cart()
+		 *
+		 * @param array  $cart_item_data The cart item data as passed by filter 'woocommerce_add_cart_item'.
+		 * @param string $cart_item_key The cart item key.
+		 * @return array $cart_item_data
+		 */
+		public function modify_cart_item_data_in_add_to_cart( $cart_item_data = array(), $cart_item_key = '' ) {
+			if ( ! empty( $cart_item_data['wc_sc_product_source'] ) ) {
+				$cart_item_data = $this->modify_cart_item_data( $cart_item_data, $cart_item_data['product_id'], $cart_item_data['variation_id'], $cart_item_data['quantity'] );
 			}
 
 			return $cart_item_data;

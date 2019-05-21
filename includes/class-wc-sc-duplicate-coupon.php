@@ -107,7 +107,7 @@ if ( ! class_exists( 'WC_SC_Duplicate_Coupon' ) ) {
 		public function woocommerce_duplicate_coupon_post_meta( $id, $new_id ) {
 			global $wpdb;
 
-			$meta_keys = array( 'expiry_date', 'usage_count', '_used_by' );
+			$meta_keys = array( 'expiry_date', 'usage_count', '_used_by', 'date_expires' );
 
 			$how_many     = count( $meta_keys );
 			$placeholders = array_fill( 0, $how_many, '%s' );
