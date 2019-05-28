@@ -39,8 +39,6 @@ if ( ! class_exists( 'WCS_SC_Compatibility' ) ) {
 				add_action( 'wp_loaded', array( $this, 'sc_wcs_renewal_filters' ), 20 );
 				add_filter( 'woocommerce_subscriptions_validate_coupon_type', array( $this, 'smart_coupon_as_valid_subscription_coupon_type' ), 10, 3 );
 				add_filter( 'wc_smart_coupons_settings', array( $this, 'smart_coupons_settings' ) );
-				add_action( 'admin_footer', array( $this, 'sc_wcs_styles_and_scripts' ) );
-				add_action( 'admin_init', array( $this, 'sc_wcs_settings' ) );
 				add_filter( 'wcs_bypass_coupon_removal', array( $this, 'bypass_removal_of_coupon_having_coupon_actions' ), 10, 4 );
 				add_filter( 'woocommerce_subscriptions_calculated_total', array( $this, 'modify_recurring_cart' ) );
 				add_action( 'wp_loaded', array( $this, 'hooks_for_wcs_230' ) );
@@ -545,6 +543,19 @@ if ( ! class_exists( 'WCS_SC_Compatibility' ) ) {
 		}
 
 		/**
+		 * Get order item subtotal
+		 *
+		 * @param  WC_Order_Item_Product $order_item The order item.
+		 * @return mixed
+		 */
+		public function sc_get_order_item_subtotal( $order_item = null ) {
+			if ( is_object( $order_item ) && is_callable( array( $order_item, 'get_total' ) ) ) {
+				return $order_item->get_total();
+			}
+			return floatval( 0 );
+		}
+
+		/**
 		 * Function to modify order_items of renewal order
 		 *
 		 * @param array  $order_items Associative array of order items.
@@ -593,6 +604,10 @@ if ( ! class_exists( 'WCS_SC_Compatibility' ) ) {
 			$original_order = wc_get_order( $original_order_id );
 			$renewal_order  = wc_get_order( $renewal_order_id );
 
+			$subscriptions = wcs_get_subscriptions_for_order( $original_order, array( 'order_type' => 'parent' ) );
+			reset( $subscriptions );
+			$subscription = current( $subscriptions );
+
 			$coupon_used_in_original_order = ( is_object( $original_order ) && is_callable( array( $original_order, 'get_used_coupons' ) ) ) ? $original_order->get_used_coupons() : array();
 			$coupon_used_in_renewal_order  = ( is_object( $renewal_order ) && is_callable( array( $renewal_order, 'get_used_coupons' ) ) ) ? $renewal_order->get_used_coupons() : array();
 
@@ -606,23 +621,76 @@ if ( ! class_exists( 'WCS_SC_Compatibility' ) ) {
 			$all_coupons = array_unique( $all_coupons );
 
 			if ( count( $all_coupons ) > 0 ) {
+				$apply_before_tax = get_option( 'woocommerce_smart_coupon_apply_before_tax', 'no' );
+
 				$smart_coupons_contribution = array();
 				foreach ( $all_coupons as $coupon_code ) {
 					$coupon = new WC_Coupon( $coupon_code );
 					if ( $this->is_wc_gte_30() ) {
-						$coupon_amount = $coupon->get_amount();
-						$discount_type = $coupon->get_discount_type();
+						$coupon_amount       = $coupon->get_amount();
+						$discount_type       = $coupon->get_discount_type();
+						$coupon_product_ids  = $coupon->get_product_ids();
+						$coupon_category_ids = $coupon->get_product_categories();
 					} else {
-						$coupon_amount = ( ! empty( $coupon->amount ) ) ? $coupon->amount : 0;
-						$discount_type = ( ! empty( $coupon->discount_type ) ) ? $coupon->discount_type : '';
+						$coupon_amount       = ( ! empty( $coupon->amount ) ) ? $coupon->amount : 0;
+						$discount_type       = ( ! empty( $coupon->discount_type ) ) ? $coupon->discount_type : '';
+						$coupon_product_ids  = ( ! empty( $coupon->product_ids ) ) ? $coupon->product_ids : array();
+						$coupon_category_ids = ( ! empty( $coupon->product_categories ) ) ? $coupon->product_categories : array();
 					}
 
 					if ( ! empty( $discount_type ) && 'smart_coupon' === $discount_type && ! empty( $coupon_amount ) ) {
 						if ( 'yes' !== $pay_from_credit_of_original_order && in_array( $coupon_code, $coupon_used_in_original_order, true ) ) {
 							continue;
 						}
-						$renewal_order_total = $renewal_order->get_total();
-						$discount            = min( $renewal_order_total, $coupon_amount );
+						if ( $this->is_wc_gte_30() && 'yes' === $apply_before_tax ) {
+							$renewal_order_items = ( is_object( $subscription ) && is_callable( array( $subscription, 'get_items' ) ) ) ? $subscription->get_items( 'line_item' ) : array();
+							if ( empty( $renewal_order_items ) ) {
+								break;
+							}
+							$subtotal              = 0;
+							$items_to_apply_credit = array();
+							if ( count( $coupon_product_ids ) > 0 || count( $coupon_category_ids ) > 0 ) {
+								foreach ( $renewal_order_items as $renewal_order_item_id => $renewal_order_item ) {
+									$product_category_ids = wc_get_product_cat_ids( $renewal_order_item['product_id'] );
+									if ( count( $coupon_product_ids ) > 0 && count( $coupon_category_ids ) > 0 ) {
+										if ( ( in_array( $renewal_order_item['product_id'], $coupon_product_ids, true ) || in_array( $renewal_order_item['variation_id'], $coupon_product_ids, true ) ) && count( array_intersect( $product_category_ids, $coupon_category_ids ) ) > 0 ) {
+											$items_to_apply_credit[ $renewal_order_item_id ] = $renewal_order_item;
+										}
+									} else {
+										if ( in_array( $renewal_order_item['product_id'], $coupon_product_ids, true ) || in_array( $renewal_order_item['variation_id'], $coupon_product_ids, true ) || count( array_intersect( $product_category_ids, $coupon_category_ids ) ) > 0 ) {
+											$items_to_apply_credit[ $renewal_order_item_id ] = $renewal_order_item;
+										}
+									}
+								}
+							} else {
+								$items_to_apply_credit = $renewal_order_items;
+							}
+							if ( empty( $items_to_apply_credit ) ) {
+								continue;
+							}
+							$subtotal = array_sum( array_map( array( $this, 'sc_get_order_item_subtotal' ), $items_to_apply_credit ) );
+							if ( $subtotal <= 0 ) {
+								continue;
+							}
+							if ( ! class_exists( 'WC_SC_Apply_Before_Tax' ) ) {
+								include_once '../class-wc-sc-apply-before-tax.php';
+							}
+							$sc_apply_before_tax = WC_SC_Apply_Before_Tax::get_instance();
+							foreach ( $renewal_order_items as $renewal_order_item_id => $renewal_order_item ) {
+								if ( array_key_exists( $renewal_order_item_id, $items_to_apply_credit ) ) {
+									$discounting_amount = $renewal_order_item->get_total();
+									$quantity           = $renewal_order_item->get_quantity();
+									$discount           = $sc_apply_before_tax->sc_get_discounted_price( $discounting_amount, $quantity, $subtotal, $coupon_amount );
+									$discount          *= $quantity;
+									$renewal_order_items[ $renewal_order_item_id ]->set_total( $discounting_amount - $discount );
+								}
+							}
+							$renewal_order_total = $subtotal;
+							$order_items         = $renewal_order_items;
+						} else {
+							$renewal_order_total = $renewal_order->get_total();
+						}
+						$discount = min( $renewal_order_total, $coupon_amount );
 						if ( $discount > 0 ) {
 							$new_order_total = $renewal_order_total - $discount;
 							update_post_meta( $renewal_order_id, '_order_total', $new_order_total );
@@ -650,6 +718,7 @@ if ( ! class_exists( 'WCS_SC_Compatibility' ) ) {
 				}
 				if ( ! empty( $smart_coupons_contribution ) ) {
 					update_post_meta( $renewal_order_id, 'smart_coupons_contribution', $smart_coupons_contribution );
+					$renewal_order->sc_total_credit_used = $smart_coupons_contribution;
 				}
 			}
 
@@ -774,6 +843,7 @@ if ( ! class_exists( 'WCS_SC_Compatibility' ) ) {
 					'type'          => 'checkbox',
 					'default'       => 'no',
 					'checkboxgroup' => 'start',
+					'autoload'      => false,
 				),
 				array(
 					'desc'          => __( 'Renewal orders should not generate coupons even when they include a product that issues coupons', 'woocommerce-smart-coupons' ),
@@ -781,6 +851,7 @@ if ( ! class_exists( 'WCS_SC_Compatibility' ) ) {
 					'type'          => 'checkbox',
 					'default'       => 'no',
 					'checkboxgroup' => 'end',
+					'autoload'      => false,
 				),
 			);
 
@@ -788,52 +859,6 @@ if ( ! class_exists( 'WCS_SC_Compatibility' ) ) {
 
 			return $settings;
 
-		}
-
-		/**
-		 * Function to add styles & scripts for WCS compatibility
-		 */
-		public function sc_wcs_styles_and_scripts() {
-			if ( ! wp_script_is( 'jquery' ) ) {
-				wp_enqueue_script( 'jquery' );
-			}
-			if ( ! wp_script_is( 'jquery-effects-core' ) ) {
-				wp_enqueue_script( 'jquery-effects-core' );
-			}
-			if ( ! wp_script_is( 'jquery-effects-highlight' ) ) {
-				wp_enqueue_script( 'jquery-effects-highlight' );
-			}
-			?>
-			<script type="text/javascript">
-				jQuery(function(){
-					jQuery( '#woocommerce_smart_coupon_apply_before_tax, #pay_from_smart_coupon_of_original_order' ).on( 'change', function(){
-						checkbox_id = ( 'woocommerce_smart_coupon_apply_before_tax' === this.id ) ? 'pay_from_smart_coupon_of_original_order' : 'woocommerce_smart_coupon_apply_before_tax';
-
-						if ( jQuery( '#' + checkbox_id ).is( ':checked' )  ) {
-							var current_color = jQuery( '#' + checkbox_id ).css('background-color');
-							jQuery( '#' + checkbox_id ).parent().effect('highlight', { color: '#ff8866' }, 1500);
-
-							jQuery( '#' + checkbox_id ).prop('checked', false);
-						}
-					});
-				});
-			</script>
-			<?php
-		}
-
-		/**
-		 * Function to handle sc specific settings
-		 */
-		public function sc_wcs_settings() {
-			$is_apply_before_tax      = get_option( 'woocommerce_smart_coupon_apply_before_tax' );
-			$is_pay_from_store_credit = get_option( 'pay_from_smart_coupon_of_original_order' );
-			if ( $is_apply_before_tax === $is_pay_from_store_credit ) {
-				if ( 'yes' === $is_apply_before_tax ) {
-					update_option( 'pay_from_smart_coupon_of_original_order', 'no', 'no' );
-				} else {
-					update_option( 'pay_from_smart_coupon_of_original_order', $is_pay_from_store_credit, 'no' );
-				}
-			}
 		}
 
 		/**

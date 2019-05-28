@@ -1,6 +1,15 @@
 *** WooCommerce Smart Coupons Changelog ***
 
+2019.05.22 - version 4.0.5
+* New: Setting to allow auto-generation of coupons on specified order statuses only
+* Fix: Warning: mysqli_free_result(): Couldn't fetch mysqli_result on activation of the plugin
+* Update: Enable 'Apply before tax' setting for renewal orders as well [WooCommerce Subscriptions]
+* Update: Ignore checking for tax enabled on store while processing 'Apply before tax' setting
+* Tweak: Any changes made to Smart Coupons settings will now set the setting to not 'autoload'
+* Update: POT file
+
 2019.05.15 - version 4.0.4
+* New: Tested upto WooCommerce 3.6.2
 * Fix: Expiry date not setting in auto generated coupons
 * Fix: Coupon Setting "Show on cart/checkout page" not displaying the coupon on cart/checkout page
 * Fix: Adding product via Coupon Action with discount results in deducted price only showing after reload (Thanks to: Elias)

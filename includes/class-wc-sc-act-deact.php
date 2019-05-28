@@ -27,6 +27,20 @@ if ( ! class_exists( 'WC_SC_Act_Deact' ) ) {
 		 * Disable 'apply_before_tax' for all Store Credit (discount_type: 'smart_coupon')
 		 */
 		public static function smart_coupon_activate() {
+
+			set_transient( '_smart_coupons_process_activation', 1, 30 );
+
+			if ( ! is_network_admin() && ! isset( $_GET['activate-multi'] ) ) { // WPCS: input var ok, CSRF ok.
+				set_transient( '_smart_coupons_activation_redirect', 1, 30 );
+			}
+
+		}
+
+		/**
+		 * Process activation
+		 */
+		public static function process_activation() {
+
 			global $wpdb, $blog_id;
 
 			if ( is_multisite() ) {
@@ -71,10 +85,6 @@ if ( ! class_exists( 'WC_SC_Act_Deact' ) ) {
 
 					$wpdb = clone $wpdb_obj; // WPCS: override ok.
 				}
-			}
-
-			if ( ! is_network_admin() && ! isset( $_GET['activate-multi'] ) ) { // WPCS: input var ok, CSRF ok.
-				set_transient( '_smart_coupons_activation_redirect', 1, 30 );
 			}
 
 		}

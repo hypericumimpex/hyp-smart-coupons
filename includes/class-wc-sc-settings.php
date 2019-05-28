@@ -131,7 +131,7 @@ if ( ! class_exists( 'WC_SC_Settings' ) ) {
 					margin: 0;
 					padding: 0;
 				}
-				span.select2-results ul li {
+				span.select2-results ul#select2-wc_sc_setting_coupon_design-results li {
 					list-style: none;
 					float: left;
 					text-align: center;
@@ -234,6 +234,15 @@ if ( ! class_exists( 'WC_SC_Settings' ) ) {
 		 * Function to add smart coupons admin settings
 		 */
 		public function add_smart_coupon_admin_settings() {
+
+			$valid_order_statuses = get_option( 'wc_sc_valid_order_statuses_for_coupon_auto_generation' );
+
+			if ( false === $valid_order_statuses ) {
+				add_option( 'wc_sc_valid_order_statuses_for_coupon_auto_generation', array( 'processing', 'completed' ), '', 'no' );
+			} elseif ( ! is_array( $valid_order_statuses ) ) {
+				update_option( 'wc_sc_valid_order_statuses_for_coupon_auto_generation', array( 'processing', 'completed' ), 'no' );
+			}
+
 			$this->sc_general_settings = array(
 				array(
 					'title' => __( 'Smart Coupons Settings', 'woocommerce-smart-coupons' ),
@@ -254,6 +263,7 @@ if ( ! class_exists( 'WC_SC_Settings' ) ) {
 					'custom_attributes' => array(
 						'data-placeholder' => __( 'Select a coupon design&hellip;', 'woocommerce-smart-coupons' ),
 					),
+					'autoload'          => false,
 				),
 				array(
 					'name'        => '&nbsp;',
@@ -264,6 +274,7 @@ if ( ! class_exists( 'WC_SC_Settings' ) ) {
 					'desc_tip'    => true,
 					'css'         => 'width:6em;',
 					'default'     => '#39cccc',
+					'autoload'    => false,
 				),
 				array(
 					'name'        => '&nbsp;',
@@ -274,6 +285,7 @@ if ( ! class_exists( 'WC_SC_Settings' ) ) {
 					'desc_tip'    => true,
 					'css'         => 'width:6em;',
 					'default'     => '#30050b',
+					'autoload'    => false,
 				),
 				array(
 					'name'     => __( 'Number of coupons to show', 'woocommerce-smart-coupons' ),
@@ -282,6 +294,7 @@ if ( ! class_exists( 'WC_SC_Settings' ) ) {
 					'type'     => 'number',
 					'desc_tip' => true,
 					'css'      => 'min-width:300px;',
+					'autoload' => false,
 				),
 				array(
 					'name'              => __( 'Number of characters in auto-generated coupon code', 'woocommerce-smart-coupons' ),
@@ -289,13 +302,32 @@ if ( ! class_exists( 'WC_SC_Settings' ) ) {
 					'id'                => 'wc_sc_coupon_code_length',
 					'type'              => 'number',
 					'desc_tip'          => true,
+					'placeholder'       => '13',
+					'css'               => 'min-width:300px;',
 					'custom_attributes' => array(
 						'min'  => 7,
 						'step' => 1,
 						'max'  => 20,
 					),
-					'placeholder'       => '13',
-					'css'               => 'min-width:300px;',
+					'autoload'          => false,
+				),
+				array(
+					'name'              => __( 'Valid order status for auto-generating coupon', 'woocommerce-smart-coupons' ),
+					'desc'              => __( 'Choose order status which will trigger the auto-generation of coupon, if the order contains product which will generate the coupon.', 'woocommerce-smart-coupons' ),
+					'id'                => 'wc_sc_valid_order_statuses_for_coupon_auto_generation',
+					'default'           => array( 'processing', 'completed' ),
+					'type'              => 'multiselect',
+					'class'             => 'wc-enhanced-select',
+					'css'               => 'min-width: 350px;',
+					'desc_tip'          => true,
+					'options'           => array(
+						'processing' => __( 'Processing', 'woocommerce-smart-coupons' ),
+						'completed'  => __( 'Completed', 'woocommerce-smart-coupons' ),
+					),
+					'custom_attributes' => array(
+						'data-placeholder' => __( 'Select order status&hellip;', 'woocommerce-smart-coupons' ),
+					),
+					'autoload'          => false,
 				),
 				array(
 					'name'        => __( 'Subject for Coupon emails', 'woocommerce-smart-coupons' ),
@@ -305,6 +337,7 @@ if ( ! class_exists( 'WC_SC_Settings' ) ) {
 					'type'        => 'textarea',
 					'desc_tip'    => true,
 					'css'         => 'min-width:300px;',
+					'autoload'    => false,
 				),
 				array(
 					'name'          => __( 'Displaying Coupons', 'woocommerce-smart-coupons' ),
@@ -314,6 +347,7 @@ if ( ! class_exists( 'WC_SC_Settings' ) ) {
 					'type'          => 'checkbox',
 					'default'       => 'no',
 					'checkboxgroup' => 'start',
+					'autoload'      => false,
 				),
 				array(
 					/* translators: %s: Preview link */
@@ -322,6 +356,7 @@ if ( ! class_exists( 'WC_SC_Settings' ) ) {
 					'type'          => 'checkbox',
 					'default'       => 'yes',
 					'checkboxgroup' => '',
+					'autoload'      => false,
 				),
 				array(
 					/* translators: %s: Preview link */
@@ -330,6 +365,7 @@ if ( ! class_exists( 'WC_SC_Settings' ) ) {
 					'type'          => 'checkbox',
 					'default'       => 'no',
 					'checkboxgroup' => '',
+					'autoload'      => false,
 				),
 				array(
 					/* translators: %s: Preview link */
@@ -338,6 +374,7 @@ if ( ! class_exists( 'WC_SC_Settings' ) ) {
 					'type'          => 'checkbox',
 					'default'       => 'no',
 					'checkboxgroup' => '',
+					'autoload'      => false,
 				),
 				array(
 					/* translators: %s: Preview link */
@@ -346,6 +383,7 @@ if ( ! class_exists( 'WC_SC_Settings' ) ) {
 					'type'          => 'checkbox',
 					'default'       => 'no',
 					'checkboxgroup' => 'end',
+					'autoload'      => false,
 				),
 				array(
 					'name'          => __( 'Automatic Deletion', 'woocommerce-smart-coupons' ),
@@ -355,6 +393,7 @@ if ( ! class_exists( 'WC_SC_Settings' ) ) {
 					'type'          => 'checkbox',
 					'default'       => 'no',
 					'checkboxgroup' => 'start',
+					'autoload'      => false,
 				),
 				array(
 					'name'          => __( 'Coupon Emails', 'woocommerce-smart-coupons' ),
@@ -363,6 +402,7 @@ if ( ! class_exists( 'WC_SC_Settings' ) ) {
 					'type'          => 'checkbox',
 					'default'       => 'yes',
 					'checkboxgroup' => 'start',
+					'autoload'      => false,
 				),
 				array(
 					'type' => 'sectionend',
@@ -382,6 +422,7 @@ if ( ! class_exists( 'WC_SC_Settings' ) ) {
 					'placeholder' => __( 'Singular name', 'woocommerce-smart-coupons' ),
 					'desc_tip'    => __( 'Give alternate singular name to Store Credit / Gift Certficate.', 'woocommerce-smart-coupons' ),
 					'css'         => 'min-width:300px;',
+					'autoload'    => false,
 				),
 				array(
 					'id'          => 'sc_store_credit_plural_text',
@@ -389,6 +430,7 @@ if ( ! class_exists( 'WC_SC_Settings' ) ) {
 					'desc_tip'    => __( 'Give plural name for the above singular name.', 'woocommerce-smart-coupons' ),
 					'placeholder' => __( 'Plural name', 'woocommerce-smart-coupons' ),
 					'css'         => 'min-width:300px;',
+					'autoload'    => false,
 				),
 				array(
 					'name'        => __( 'Store Credit Product CTA', 'woocommerce-smart-coupons' ),
@@ -398,6 +440,7 @@ if ( ! class_exists( 'WC_SC_Settings' ) ) {
 					'desc_tip'    => __( 'This is what will be shown instead of "Add to Cart" for products that sell store credits.', 'woocommerce-smart-coupons' ),
 					'placeholder' => __( 'Select options', 'woocommerce-smart-coupons' ),
 					'css'         => 'min-width:300px;',
+					'autoload'    => false,
 				),
 				array(
 					'name'        => __( 'While purchasing Store Credits', 'woocommerce-smart-coupons' ),
@@ -407,6 +450,7 @@ if ( ! class_exists( 'WC_SC_Settings' ) ) {
 					'desc_tip'    => __( 'When you opt to allow people to buy store credits of any amount, this label will be used.', 'woocommerce-smart-coupons' ),
 					'placeholder' => __( 'Purchase Credit worth', 'woocommerce-smart-coupons' ),
 					'css'         => 'min-width:300px;',
+					'autoload'    => false,
 				),
 				array(
 					'name'        => __( '"Coupons with Product" description', 'woocommerce-smart-coupons' ),
@@ -416,6 +460,7 @@ if ( ! class_exists( 'WC_SC_Settings' ) ) {
 					'desc_tip'    => __( 'This is the heading above coupon details displayed on products that issue coupons.', 'woocommerce-smart-coupons' ),
 					'placeholder' => __( 'You will get following coupon(s) when you buy this item', 'woocommerce-smart-coupons' ),
 					'css'         => 'min-width:300px;',
+					'autoload'    => false,
 				),
 				array(
 					'name'        => __( 'On Cart/Checkout pages', 'woocommerce-smart-coupons' ),
@@ -425,6 +470,7 @@ if ( ! class_exists( 'WC_SC_Settings' ) ) {
 					'desc_tip'    => __( 'This is the title for the list of available coupons, shown on Cart and Checkout pages.', 'woocommerce-smart-coupons' ),
 					'placeholder' => __( 'Available Coupons (click on a coupon to use it)', 'woocommerce-smart-coupons' ),
 					'css'         => 'min-width:300px;',
+					'autoload'    => false,
 				),
 				array(
 					'name'        => __( 'My Account page', 'woocommerce-smart-coupons' ),
@@ -434,6 +480,7 @@ if ( ! class_exists( 'WC_SC_Settings' ) ) {
 					'desc_tip'    => __( 'Title of available coupons list on My Account page.', 'woocommerce-smart-coupons' ),
 					'placeholder' => __( 'Available Coupons & Store Credits', 'woocommerce-smart-coupons' ),
 					'css'         => 'min-width:300px;',
+					'autoload'    => false,
 				),
 				array(
 					'type' => 'sectionend',
@@ -453,6 +500,7 @@ if ( ! class_exists( 'WC_SC_Settings' ) ) {
 					'desc_tip'    => __( 'The title for coupon receiver details block.', 'woocommerce-smart-coupons' ),
 					'placeholder' => __( 'Send Coupons to...', 'woocommerce-smart-coupons' ),
 					'css'         => 'min-width:300px;',
+					'autoload'    => false,
 				),
 				array(
 					'name'     => __( 'Description', 'woocommerce-smart-coupons' ),
@@ -461,6 +509,7 @@ if ( ! class_exists( 'WC_SC_Settings' ) ) {
 					'type'     => 'text',
 					'desc_tip' => __( 'Additional text below the title.', 'woocommerce-smart-coupons' ),
 					'css'      => 'min-width:300px;',
+					'autoload' => false,
 				),
 				array(
 					'type' => 'sectionend',
@@ -476,10 +525,10 @@ if ( ! class_exists( 'WC_SC_Settings' ) ) {
 					'type'          => 'checkbox',
 					'default'       => 'no',
 					'checkboxgroup' => 'start',
-
+					'autoload'      => false,
 				);
 
-				array_splice( $this->sc_general_settings, 12, 0, $before_tax_option );
+				array_splice( $this->sc_general_settings, 13, 0, $before_tax_option );
 			}
 
 			$this->sc_general_settings = apply_filters( 'wc_smart_coupons_settings', $this->sc_general_settings );

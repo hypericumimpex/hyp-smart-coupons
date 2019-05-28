@@ -85,21 +85,8 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 			$this->define_label_for_store_credit();
 			$this->includes();
 
-			$this->plugin_data = self::get_smart_coupons_plugin_data();
-
-			add_option( 'woocommerce_delete_smart_coupon_after_usage', 'no' );
-			add_option( 'woocommerce_smart_coupon_apply_before_tax', 'no' );
-			add_option( 'woocommerce_smart_coupon_show_my_account', 'yes' );
-
-			add_option( 'smart_coupons_is_show_associated_coupons', 'no' );
-			add_option( 'smart_coupons_show_coupon_description', 'no' );
-			add_option( 'smart_coupons_is_send_email', 'yes' );
-			add_option( 'show_coupon_received_on_my_account', 'no' );
-			add_option( 'pay_from_smart_coupon_of_original_order', 'yes' );
-			add_option( 'stop_recursive_coupon_generation', 'no' );
-			add_option( 'sc_gift_certificate_shop_loop_button_text', __( 'Select options', 'woocommerce-smart-coupons' ) );
-			add_option( 'wc_sc_setting_max_coupon_to_show', '5' );
-			add_option( 'smart_coupons_show_invalid_coupons_on_myaccount', 'no' );
+			add_action( 'init', array( $this, 'process_activation' ) );
+			add_action( 'init', array( $this, 'add_sc_options' ) );
 
 			add_filter( 'woocommerce_coupon_is_valid', array( $this, 'is_smart_coupon_valid' ), 10, 3 );
 			add_filter( 'woocommerce_coupon_is_valid', array( $this, 'is_user_usage_limit_valid' ), 10, 3 );
@@ -208,6 +195,45 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 			include_once 'class-wc-sc-coupon-message.php';
 
 			include_once 'blocks/class-wc-sc-gutenberg-coupon-block.php';
+
+		}
+
+		/**
+		 * Process activation of the plugin
+		 */
+		public function process_activation() {
+
+			if ( ! get_transient( '_smart_coupons_process_activation' ) ) {
+				return;
+			}
+
+			delete_transient( '_smart_coupons_process_activation' );
+
+			include_once 'class-wc-sc-act-deact.php';
+
+			WC_SC_Act_Deact::process_activation();
+
+		}
+
+		/**
+		 * Set options
+		 */
+		public function add_sc_options() {
+
+			$this->plugin_data = self::get_smart_coupons_plugin_data();
+
+			add_option( 'woocommerce_delete_smart_coupon_after_usage', 'no', '', 'no' );
+			add_option( 'woocommerce_smart_coupon_apply_before_tax', 'no', '', 'no' );
+			add_option( 'woocommerce_smart_coupon_show_my_account', 'yes', '', 'no' );
+			add_option( 'smart_coupons_is_show_associated_coupons', 'no', '', 'no' );
+			add_option( 'smart_coupons_show_coupon_description', 'no', '', 'no' );
+			add_option( 'smart_coupons_is_send_email', 'yes', '', 'no' );
+			add_option( 'show_coupon_received_on_my_account', 'no', '', 'no' );
+			add_option( 'pay_from_smart_coupon_of_original_order', 'yes', '', 'no' );
+			add_option( 'stop_recursive_coupon_generation', 'no', '', 'no' );
+			add_option( 'sc_gift_certificate_shop_loop_button_text', __( 'Select options', 'woocommerce-smart-coupons' ), '', 'no' );
+			add_option( 'wc_sc_setting_max_coupon_to_show', '5', '', 'no' );
+			add_option( 'smart_coupons_show_invalid_coupons_on_myaccount', 'no', '', 'no' );
 
 		}
 
@@ -875,7 +901,7 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 		public function sc_handle_store_credit_application() {
 			$apply_before_tax = get_option( 'woocommerce_smart_coupon_apply_before_tax', 'no' );
 
-			if ( $this->is_wc_gte_30() && wc_tax_enabled() && 'yes' === $apply_before_tax ) {
+			if ( $this->is_wc_gte_30() && 'yes' === $apply_before_tax ) {
 				include_once 'class-wc-sc-apply-before-tax.php';
 			} else {
 				add_action( 'wp_loaded', array( $this, 'smart_coupons_discount_total_filters' ), 20 );
