@@ -2226,31 +2226,33 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 							$data[ $id ][ $key ]  = trim( $data[ $id ][ $key ], '|' );
 						} elseif ( 'date_expires' === $key && $this->is_wc_gte_30() ) {
 							if ( ! empty( $coupon_meta_value[ $index ] ) ) {
-								$data[ $id ]['expiry_date'] = date( 'Y-m-d', $coupon_meta_value[ $index ] );
+								$data[ $id ]['expiry_date'] = date( 'Y-m-d', intval( $coupon_meta_value[ $index ] ) );
 							}
 						} elseif ( 'ID' !== $key ) {
-							if ( is_serialized( $coupon_meta_value[ $index ] ) ) {
-								$temp_data         = maybe_unserialize( stripslashes( $coupon_meta_value[ $index ] ) );
-								$current_temp_data = current( $temp_data );
-								if ( ! is_array( $current_temp_data ) ) {
-									$temp_data = implode( ',', $temp_data );
+							if ( ! empty( $coupon_meta_value[ $index ] ) ) {
+								if ( is_serialized( $coupon_meta_value[ $index ] ) ) {
+									$temp_data         = maybe_unserialize( stripslashes( $coupon_meta_value[ $index ] ) );
+									$current_temp_data = current( $temp_data );
+									if ( ! is_array( $current_temp_data ) ) {
+										$temp_data = implode( ',', $temp_data );
+									} else {
+										$temp_data = apply_filters(
+											'wc_sc_export_coupon_meta_data',
+											$temp_data,
+											array(
+												'coupon_id' => $id,
+												'index'    => $index,
+												'meta_key'    => $key, // phpcs:ignore
+												'meta_keys' => $coupon_meta_key,
+												'meta_values' => $coupon_meta_value,
+											)
+										);
+									}
 								} else {
-									$temp_data = apply_filters(
-										'wc_sc_export_coupon_meta_data',
-										$temp_data,
-										array(
-											'coupon_id'   => $id,
-											'index'       => $index,
-											'meta_key'    => $key, // phpcs:ignore
-											'meta_keys'   => $coupon_meta_key,
-											'meta_values' => $coupon_meta_value,
-										)
-									);
+									$temp_data = $coupon_meta_value[ $index ];
 								}
-							} else {
-								$temp_data = $coupon_meta_value[ $index ];
+								$data[ $id ][ $key ] = $temp_data;
 							}
-							$data[ $id ][ $key ] = $temp_data;
 						}
 					}
 				}

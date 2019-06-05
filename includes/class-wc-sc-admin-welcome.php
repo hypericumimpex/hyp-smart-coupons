@@ -91,8 +91,6 @@ if ( ! class_exists( 'WC_SC_Admin_Welcome' ) ) {
 					margin-top: 1em;
 					margin-right: 0em;
 					margin-bottom: 0.1em;
-					font-size: 1.25em;
-					line-height: 1.3em;
 				}
 				.about-wrap .button-primary {
 					margin-top: 18px;
@@ -113,11 +111,12 @@ if ( ! class_exists( 'WC_SC_Admin_Welcome' ) ) {
 				.about-wrap p {
 					margin-top: 0.6em;
 					margin-bottom: 0.8em;
-					line-height: 1.6em;
-					font-size: 14px;
 				}
 				.about-wrap .feature-section {
 					padding-bottom: 5px;
+				}
+				.about-wrap .aligncenter {
+					text-align: center;
 				}
 				/*]]>*/
 			</style>
@@ -141,15 +140,15 @@ if ( ! class_exists( 'WC_SC_Admin_Welcome' ) ) {
 			?>
 			<h1><?php echo esc_html__( 'Thank you for installing WooCommerce Smart Coupons', 'woocommerce-smart-coupons' ) . ' ' . esc_html( $version ) . '!'; ?></h1>
 
-			<h3><?php echo esc_html__( 'Glad to have you onboard. We hope WooCommerce Smart Coupons adds to your desired success 🏆', 'woocommerce-smart-coupons' ); ?></h3>
+			<p class="about-text"><?php echo esc_html__( 'Glad to have you onboard. We hope WooCommerce Smart Coupons adds to your desired success 🏆', 'woocommerce-smart-coupons' ); ?></p>
 
-			<div class="feature-section col two-col" style="margin-bottom: 30px!important;">
-				<div class="col">
+			<div class="has-2-columns is-fullwidth feature-section col two-col" style="margin-bottom: 30px !important;">
+				<div class="is-vertically-aligned-center column col">
 					<a href="<?php echo esc_url( admin_url( 'edit.php?post_type=shop_coupon' ) ); ?>" class="button button-hero"><?php echo esc_html__( 'Go To Coupons', 'woocommerce-smart-coupons' ); ?></a>
 				</div>
 
-				<div class="col last-feature">
-					<p align="right">
+				<div class="is-vertically-aligned-center column col last-feature">
+					<p class="alignright">
 						<?php
 							$settings_tab_url = add_query_arg(
 								array(
@@ -204,26 +203,26 @@ if ( ! class_exists( 'WC_SC_Admin_Welcome' ) ) {
 				});
 			</script>
 
-			<div class="wrap about-wrap" style="max-width: unset !important;">
+			<div class="wrap about-wrap full-width-layout">
 
 			<?php $this->intro(); ?>
 
 				<div>
-					<div class="feature-section col three-col" style="max-width: unset !important;">
-						<div class="col">
+					<div class="has-3-columns is-fullwidth feature-section col three-col">
+						<div class="column col">
 							<h4><?php echo esc_html__( 'What is Smart Coupons?', 'woocommerce-smart-coupons' ); ?></h4>
 							<p>
 								<?php echo esc_html__( 'Smart Coupons is a WooCommerce extension, which adds a new discount type for WooCommerce Coupons. It\'s called as "Store Credit / Gift Certificate".', 'woocommerce-smart-coupons' ); ?>
 								<?php echo esc_html__( 'In addition to this, it also adds more functionality in other discount types as well. Smart Coupons enables coupons to become an automatic/interactive system.', 'woocommerce-smart-coupons' ); ?>
 							</p>
 						</div>
-						<div class="col">
+						<div class="column col">
 							<h4><?php echo esc_html__( 'What is "Store Credit / Gift Certificate"?', 'woocommerce-smart-coupons' ); ?></h4>
 							<p>
 								<?php echo esc_html__( 'This is a new discount type added by this plugin in WooCommerce Coupons. A coupon having this discount type can be called as either Smart Coupon or Store Credit or Gift Certificate. This coupon\'s amount can be called as balance.', 'woocommerce-smart-coupons' ); ?>
 							</p>
 						</div>
-						<div class="col last-feature">
+						<div class="column col last-feature">
 							<h4><?php echo esc_html__( 'What\'s new?', 'woocommerce-smart-coupons' ); ?></h4>
 							<p>
 								<?php echo esc_html__( 'Store Credit is a unique discount type, in which coupon\'s amount keeps reducing per usage. It behaves in same way as credit, which can be used untill its amount becomes zero. Therefore this coupon\'s amount is also refered to as balance.', 'woocommerce-smart-coupons' ); ?>
@@ -234,40 +233,40 @@ if ( ! class_exists( 'WC_SC_Admin_Welcome' ) ) {
 						</div>
 					</div>
 					<center><h3><?php echo esc_html__( 'What you can achieve using Smart Coupons', 'woocommerce-smart-coupons' ); ?></h3></center>
-					<div class="feature-section col three-col" style="max-width: unset !important;">
-						<div class="col">
+					<div class="has-3-columns is-fullwidth feature-section col three-col">
+						<div class="column col">
 							<h4><?php echo esc_html__( 'Sell store credit / gift certificate', 'woocommerce-smart-coupons' ); ?></h4>
 							<p>
 								<?php echo esc_html__( 'Smart Coupons helps you configure products which can be used to sell store credit / gift certificate. You can sell store credit either as:', 'woocommerce-smart-coupons' ) . ' <a href="https://docs.woocommerce.com/document/smart-coupons/#section-15" target="_blank">' . esc_html__( 'any amount', 'woocommerce-smart-coupons' ) . '</a> and <a href="https://docs.woocommerce.com/document/smart-coupons/#section-16" target="_blank">' . esc_html__( 'variable but fixed amount', 'woocommerce-smart-coupons' ) . '</a>.'; ?>
 							</p>
 						</div>
-						<div class="col">
+						<div class="column col">
 							<h4><?php echo esc_html__( 'Automatically give discounts to your customer for next purchase', 'woocommerce-smart-coupons' ); ?></h4>
 							<p>
 								<?php echo esc_html__( 'You can give a coupon to your customer after every purchase, which can encourage them to purchase again from you.', 'woocommerce-smart-coupons' ); ?>
 							</p>
 						</div>
-						<div class="col last-feature">
+						<div class="column col last-feature">
 							<h4><?php echo esc_html__( 'Bulk create unique coupons & email them', 'woocommerce-smart-coupons' ); ?></h4>
 							<p>
 								<?php echo esc_html__( 'If you\'ve a list of email addresses of your customers who haven\'t purchase any product for a long time, you can send unique coupons to each of them in bulk.', 'woocommerce-smart-coupons' ) . ' <a href="https://docs.woocommerce.com/document/smart-coupons/#section-9" target="_blank">' . esc_html__( 'See how', 'woocommerce-smart-coupons' ) . '</a>.'; ?>
 							</p>
 						</div>
 					</div>
-					<div class="feature-section col three-col" style="max-width: unset !important;">
-						<div class="col">
+					<div class="has-3-columns is-fullwidth feature-section col three-col">
+						<div class="column col">
 							<h4><?php echo esc_html__( 'Import / export coupons', 'woocommerce-smart-coupons' ); ?></h4>
 							<p>
 								<?php echo esc_html__( 'You can import / export coupons. This can be helpful when you are moving your store or when you want to move coupons from other store to new one.', 'woocommerce-smart-coupons' ); ?>
 							</p>
 						</div>
-						<div class="col">
+						<div class="column col">
 							<h4><?php echo esc_html__( 'Automatic payment for subscription renewals', 'woocommerce-smart-coupons' ); ?></h4>
 							<p>
 								<?php echo esc_html__( 'If your store is using WooCommerce subscription and your customer has purchased a subscription using a Store Credit. If that store credit has balance left in it, store will automatically use it for renewing that subscription.', 'woocommerce-smart-coupons' ); ?>
 							</p>
 						</div>
-						<div class="col last-feature">
+						<div class="column col last-feature">
 							<h4><?php echo esc_html__( 'Make your customer\'s coupon usage, easy & simple', 'woocommerce-smart-coupons' ); ?></h4>
 							<p>
 								<?php echo esc_html__( 'Smart Coupons makes life of your customer really easy by showing only valid coupons to your customer (if logged in) on cart, checkout & My Account page. In addition to that those coupons can be applied with single click on it. So, no need to remember the coupon code or copy-pasting.', 'woocommerce-smart-coupons' ); ?>
@@ -292,11 +291,11 @@ if ( ! class_exists( 'WC_SC_Admin_Welcome' ) ) {
 				});
 			</script>
 
-			<div class="wrap about-wrap" style="max-width: unset !important;">
+			<div class="wrap about-wrap full-width-layout">
 
 				<?php $this->intro(); ?>
 
-				<h3><?php echo esc_html__( 'FAQ / Common Problems', 'woocommerce-smart-coupons' ); ?></h3>
+				<h3 class="aligncenter"><?php echo esc_html__( 'FAQ / Common Problems', 'woocommerce-smart-coupons' ); ?></h3>
 
 				<?php
 					$faqs = array(
@@ -400,30 +399,29 @@ if ( ! class_exists( 'WC_SC_Admin_Welcome' ) ) {
 					$right_faq_numbering = 1;
 					$left_faq_numbering  = 0;
 					echo '<div>';
-				foreach ( $faqs as $fqs ) {
-					echo '<div class="two-col">';
-					foreach ( $fqs as $index => $faq ) {
-						echo '<div' . ( ( 1 === absint( $index ) ) ? ' class="col last-feature"' : ' class="col"' ) . '>';
-						echo '<h4>' . ( ( 1 === absint( $index ) ) ? $right_faq_numbering : ( $left_faq_numbering + 1 ) ) . '. ' . $faq['que'] . '</h4>'; // phpcs:ignore
-						echo '<p>' . $faq['ans'] . '</p>'; // phpcs:ignore
+					foreach ( $faqs as $fqs ) {
+						echo '<div class="has-2-columns is-fullwidth two-col">';
+						foreach ( $fqs as $index => $faq ) {
+							echo '<div' . ( ( 1 === absint( $index ) ) ? ' class="column col last-feature"' : ' class="column col"' ) . '>';
+							echo '<h4>' . ( ( 1 === absint( $index ) ) ? $right_faq_numbering : ( $left_faq_numbering + 1 ) ) . '. ' . $faq['que'] . '</h4>'; // phpcs:ignore
+							echo '<p>' . $faq['ans'] . '</p>'; // phpcs:ignore
+							echo '</div>';
+							$right_faq_numbering++;
+							$left_faq_numbering++;
+						}
 						echo '</div>';
-						$right_faq_numbering++;
-						$left_faq_numbering++;
 					}
 					echo '</div>';
-				}
-					echo '</div>';
-				?>
-
-			</div>
-			<br>
-			<div align="center">
-				<h3>
-					<?php
-						/* translators: WooCommerce My Account support link */
-						echo sprintf( __( 'If you are facing any issues, please %s from your WooCommerce account.', 'woocommerce-smart-coupons' ), '<a target="_blank" href="https://woocommerce.com/my-account/create-a-ticket/">' . esc_html__( 'submit a ticket', 'woocommerce-smart-coupons' ) . '</a>' ); // WPCS: XSS ok.
 					?>
-				</h3>
+
+				<div class="aligncenter">
+					<h3>
+						<?php
+							/* translators: WooCommerce My Account support link */
+							echo sprintf( __( 'If you are facing any issues, please %s from your WooCommerce account.', 'woocommerce-smart-coupons' ), '<a target="_blank" href="https://woocommerce.com/my-account/create-a-ticket/">' . esc_html__( 'submit a ticket', 'woocommerce-smart-coupons' ) . '</a>' ); // WPCS: XSS ok.
+						?>
+					</h3>
+				</div>
 			</div>
 			<?php
 		}

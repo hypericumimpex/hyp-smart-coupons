@@ -265,7 +265,10 @@ if ( ! class_exists( 'WC_SC_Shortcode' ) ) {
 						$is_disable_email_restriction = get_post_meta( $coupon_id, 'sc_disable_email_restriction', true );
 
 						if ( ( empty( $is_disable_email_restriction ) || 'no' === $is_disable_email_restriction ) && ( empty( $is_auto_generate ) || 'no' === $is_auto_generate ) ) {
-							$existing_customer_emails   = get_post_meta( $coupon_id, 'customer_email', true );
+							$existing_customer_emails = get_post_meta( $coupon_id, 'customer_email', true );
+							if ( empty( $existing_customer_emails ) || ! is_array( $existing_customer_emails ) ) {
+								$existing_customer_emails = array();
+							}
 							$existing_customer_emails[] = $customer_email;
 							update_post_meta( $coupon_id, 'customer_email', $existing_customer_emails );
 						}
