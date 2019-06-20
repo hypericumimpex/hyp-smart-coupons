@@ -2279,15 +2279,38 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 
 			$fields = substr_replace( $getfield, '', -1 );
 
+			$csv_file_name = get_bloginfo( 'name' ) . gmdate( 'd-M-Y_H_i_s' ) . '.csv';
+
+			$fields .= $this->get_coupon_csv_data( $columns_header, $data );
+
+			$upload_dir = wp_upload_dir();
+
+			$file_data                  = array();
+			$file_data['wp_upload_dir'] = $upload_dir['path'] . '/';
+			$file_data['file_name']     = $csv_file_name;
+			$file_data['file_content']  = $fields;
+
+			return $file_data;
+		}
+
+		/**
+		 * Export coupon CSV data
+		 *
+		 * @param array $columns_header Column header.
+		 * @param array $data The data.
+		 * @return array $file_data
+		 */
+		public function get_coupon_csv_data( $columns_header, $data ) {
+
 			$each_field = array_keys( $columns_header );
 
-			$csv_file_name = get_bloginfo( 'name' ) . gmdate( 'd-M-Y_H_i_s' ) . '.csv';
+			$csv_data = '';
 
 			foreach ( (array) $data as $row ) {
 				$count_columns_header = count( $columns_header );
 				for ( $i = 0; $i < $count_columns_header; $i++ ) {
 					if ( 0 === $i ) {
-						$fields .= "\n";
+						$csv_data .= "\n";
 					}
 
 					if ( array_key_exists( $each_field[ $i ], $row ) ) {
@@ -2304,18 +2327,12 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 
 					$str = addslashes( $str );
 
-					$fields .= '"' . $str . '",';
+					$csv_data .= '"' . $str . '",';
 				}
-				$fields = substr_replace( $fields, '', -1 );
+				$csv_data = substr_replace( $csv_data, '', -1 );
 			}
-			$upload_dir = wp_upload_dir();
 
-			$file_data                  = array();
-			$file_data['wp_upload_dir'] = $upload_dir['path'] . '/';
-			$file_data['file_name']     = $csv_file_name;
-			$file_data['file_content']  = $fields;
-
-			return $file_data;
+			return $csv_data;
 		}
 
 		/**
@@ -2354,17 +2371,11 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 		}
 
 		/**
-		 * Write to file after exporting
+		 * Get coupon column headers
 		 *
-		 * @param array $post POST.
-		 * @param array $get GET.
-		 * @param array $post_ids Post ids.
+		 * @return array
 		 */
-		public function export_coupon( $post = array(), $get = array(), $post_ids = array() ) {
-			// Run a capability check before attempting to export coupons.
-			if ( ! is_admin() && ! current_user_can( 'manage_woocommerce' ) ) {
-				return;
-			}
+		public function get_coupon_column_headers() {
 
 			$coupon_posts_headers = array(
 				'post_title'   => __( 'Coupon Code', 'woocommerce-smart-coupons' ),
@@ -2399,6 +2410,29 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 					'sc_restrict_to_new_user'    => __( 'For new user only?', 'woocommerce-smart-coupons' ),
 				)
 			);
+
+			return array(
+				'posts_headers'    => $coupon_posts_headers,
+				'postmeta_headers' => $coupon_postmeta_headers,
+			);
+		}
+
+		/**
+		 * Write to file after exporting
+		 *
+		 * @param array $post POST.
+		 * @param array $get GET.
+		 * @param array $post_ids Post ids.
+		 */
+		public function export_coupon( $post = array(), $get = array(), $post_ids = array() ) {
+			// Run a capability check before attempting to export coupons.
+			if ( ! is_admin() && ! current_user_can( 'manage_woocommerce' ) ) {
+				return;
+			}
+
+			$coupon_column_headers   = $this->get_coupon_column_headers();
+			$coupon_posts_headers    = $coupon_column_headers['posts_headers'];
+			$coupon_postmeta_headers = $coupon_column_headers['postmeta_headers'];
 
 			$column_headers = array_merge( $coupon_posts_headers, $coupon_postmeta_headers );
 

@@ -202,21 +202,94 @@ if ( ! class_exists( 'WC_SC_Coupon_Import' ) ) {
 						} else {
 							$file = ( ! empty( $this->file_url ) ) ? ABSPATH . $this->file_url : '';
 						}
+
+						$upload_dir                     = wp_upload_dir();
+						$csv_file_data['file_name']     = basename( $file );
+						$csv_file_data['wp_upload_dir'] = $upload_dir['path'] . '/';
+
+						$_POST['export_file'] = $csv_file_data;
+
+						if ( ! isset( $_POST['no_of_coupons_to_generate'] ) ) {
+							$fp                                 = file( $file );
+							$_POST['no_of_coupons_to_generate'] = count( $fp ) - 1;
+						}
+
+						$total_coupons_to_generate          = sanitize_text_field( wp_unslash( $_POST['no_of_coupons_to_generate'] ) );
+						$_POST['total_coupons_to_generate'] = $total_coupons_to_generate;
+
+						$_POST['action_stage']                  = 0;
+						$_POST['smart_coupons_generate_action'] = 'import_from_csv';
+
+						update_site_option( 'woo_sc_generate_coupon_posted_data', $_POST );
+
+						update_site_option( 'start_time_woo_sc', time() );
+						update_site_option( 'current_time_woo_sc', time() );
+						update_site_option( 'all_tasks_count_woo_sc', sanitize_text_field( wp_unslash( $_POST['no_of_coupons_to_generate'] ) ) );
+						update_site_option( 'remaining_tasks_count_woo_sc', sanitize_text_field( wp_unslash( $_POST['no_of_coupons_to_generate'] ) ) );
+
+						as_unschedule_action( 'woo_sc_generate_coupon_csv' );
+						as_unschedule_action( 'woo_sc_import_coupons_from_csv' );
+
+						as_schedule_single_action( time() - MINUTE_IN_SECONDS, 'woo_sc_import_coupons_from_csv' );
+
 					} else {
 
-						$file = $woocommerce_smart_coupon->export_coupon( $_POST, '', '' );
+						// If we are exporting coupons then create export file and save its path in options table.
+						$coupon_column_headers   = $this->get_coupon_column_headers();
+						$coupon_posts_headers    = $coupon_column_headers['posts_headers'];
+						$coupon_postmeta_headers = $coupon_column_headers['postmeta_headers'];
+
+						$column_headers = array_merge( $coupon_posts_headers, $coupon_postmeta_headers );
+						$export_file = $woocommerce_smart_coupon->export_coupon_csv( $column_headers, array() ); // phpcs:ignore
+						if ( is_array( $export_file ) ) {
+
+							// Create CSV file.
+							$csv_folder  = $export_file['wp_upload_dir'];
+							$filename    = str_replace( array( '\'', '"', ',', ';', '<', '>', '/', ':' ), '', $export_file['file_name'] );
+							$csvfilename = $csv_folder . $filename;
+							$fp          = fopen( $csvfilename, 'w' ); // phpcs:ignore
+							file_put_contents( $csvfilename, $export_file['file_content'] ); // phpcs:ignore
+							fclose( $fp ); // phpcs:ignore
+							$_POST['export_file'] = $export_file;
+
+							$total_coupons_to_generate          = sanitize_text_field( wp_unslash( $_POST['no_of_coupons_to_generate'] ) );
+							$_POST['total_coupons_to_generate'] = $total_coupons_to_generate;
+
+							$_POST['action_stage'] = 0;
+
+							update_site_option( 'woo_sc_generate_coupon_posted_data', $_POST );
+							update_site_option( 'start_time_woo_sc', time() );
+							update_site_option( 'current_time_woo_sc', time() );
+							update_site_option( 'all_tasks_count_woo_sc', sanitize_text_field( wp_unslash( $_POST['no_of_coupons_to_generate'] ) ) );
+							update_site_option( 'remaining_tasks_count_woo_sc', sanitize_text_field( wp_unslash( $_POST['no_of_coupons_to_generate'] ) ) );
+
+							as_unschedule_action( 'woo_sc_generate_coupon_csv' );
+							as_unschedule_action( 'woo_sc_import_coupons_from_csv' );
+							delete_site_option( 'woo_sc_action_data' );
+
+							as_schedule_single_action( time() - MINUTE_IN_SECONDS, 'woo_sc_generate_coupon_csv' );
+
+						}
 					}
 
 					if ( ( ! empty( $post_smart_coupons_generate_action ) && 'woo_sc_is_email_imported_coupons' === $post_smart_coupons_generate_action ) || ( isset( $_POST['woo_sc_is_email_imported_coupons'] ) ) ) {
 						update_option( 'woo_sc_is_email_imported_coupons', 'yes', 'no' );
 					}
 
-					add_filter( 'http_request_timeout', array( &$this, 'bump_request_timeout' ) );
+					$generate_action = ( isset( $_POST['smart_coupons_generate_action'] ) ) ? wc_clean( wp_unslash( $_POST['smart_coupons_generate_action'] ) ) : ''; // WPCS: sanitization ok. CSRF ok, input var ok.
+					$is_import_email = get_option( 'woo_sc_is_email_imported_coupons' );
 
-					set_time_limit( 0 );
+					if ( 'yes' === $is_import_email && ( isset( $_POST['import_id'] ) || isset( $_POST['import_url'] ) ) ) { // WPCS: CSRF ok.
+						$bulk_action = 'import_email';
+					} elseif ( isset( $_POST['import_id'] ) || isset( $_POST['import_url'] ) ) { // WPCS: CSRF ok.
+						$bulk_action = 'import';
+					} elseif ( 'woo_sc_is_email_imported_coupons' === $generate_action ) {
+						$bulk_action = 'generate_email';
+					} else {
+						$bulk_action = 'generate';
+					}
 
-					$this->import_start( $file );
-					$this->import();
+					update_site_option( 'bulk_coupon_action_woo_sc', $bulk_action );
 
 					$url = admin_url( 'edit.php?post_type=shop_coupon' );
 
@@ -825,55 +898,57 @@ if ( ! class_exists( 'WC_SC_Coupon_Import' ) ) {
 					});
 				});
 			</script>
-			<p><?php echo esc_html__( 'Hi there! Upload a CSV file with coupons details to import them into your shop.', 'woocommerce-smart-coupons' ); ?></p>
-			<p><?php echo esc_html__( 'The CSV must adhere to a specific format and include a header row.', 'woocommerce-smart-coupons' ) . '&nbsp;' . '<a href="' . esc_url( plugins_url( dirname( dirname( plugin_basename( __FILE__ ) ) ) . '/sample.csv' ) ) . '">' . esc_html__( 'Click here to download a sample', 'woocommerce-smart-coupons' ) . '</a>, ' . esc_html__( 'and create your CSV based on that.', 'woocommerce-smart-coupons' );  // phpcs:ignore ?></p>
-			<p><?php echo esc_html__( 'Ready to import? Choose a .csv file, then click "Upload file".', 'woocommerce-smart-coupons' ); ?></p>
-			<div id="poststuff">
-				<div class="postbox sc-import-outer-box">
-					<div class="sc-import-inner-box">
-						<?php
-
-						$action = add_query_arg(
-							array(
-								'page' => 'wc-smart-coupons',
-								'tab'  => 'import-smart-coupons',
-								'step' => '1',
-							),
-							'admin.php'
-						);
-
-						$bytes      = apply_filters( 'import_upload_size_limit', wp_max_upload_size() );
-						$size       = size_format( $bytes );
-						$upload_dir = wp_upload_dir();
-
-						if ( ! empty( $upload_dir['error'] ) ) {
-							?>
-								<div class="error">
-									<p><?php echo esc_html__( 'Before you can upload your import file, you will need to fix the following error:', 'woocommerce-smart-coupons' ); ?></p>
-									<p><strong><?php echo esc_html( $upload_dir['error'] ); ?></strong></p>
-								</div>
+			<div class="woo-sc-form-wrapper">
+				<p><?php echo esc_html__( 'Hi there! Upload a CSV file with coupons details to import them into your shop.', 'woocommerce-smart-coupons' ); ?></p>
+				<p><?php echo esc_html__( 'The CSV must adhere to a specific format and include a header row.', 'woocommerce-smart-coupons' ) . '&nbsp;' . '<a href="' . esc_url( plugins_url( dirname( dirname( plugin_basename( __FILE__ ) ) ) . '/sample.csv' ) ) . '">' . esc_html__( 'Click here to download a sample', 'woocommerce-smart-coupons' ) . '</a>, ' . esc_html__( 'and create your CSV based on that.', 'woocommerce-smart-coupons' );  // phpcs:ignore ?></p>
+				<p><?php echo esc_html__( 'Ready to import? Choose a .csv file, then click "Upload file".', 'woocommerce-smart-coupons' ); ?></p>
+				<div id="poststuff">
+					<div class="postbox sc-import-outer-box">
+						<div class="sc-import-inner-box">
 							<?php
-						} else {
-							?>
-							<form enctype="multipart/form-data" id="import-upload-form" method="post" action="<?php echo esc_attr( wp_nonce_url( $action, 'import-upload' ) ); ?>">
-								<div class="sc-import-input-file-container">
-									<label for="upload" class="button button-hero sc-file-container">
-										<span class="sc-file-container-label"><?php echo esc_html__( 'Choose a CSV file', 'woocommerce-smart-coupons' ); ?> <span class="dashicons dashicons-upload"></span></span>
-										<input type="file" id="upload" name="import" accept=".csv" size="25" />
-									</label>
-									<input type="hidden" name="action" value="save" />
-									<input type="hidden" name="max_file_size" value="<?php echo esc_attr( $bytes ); ?>" />
-									<p><small><?php printf( esc_html__( 'Maximum file size', 'woocommerce-smart-coupons' ) . ': ' . esc_html( $size ) ); ?></small></p>
-									<p><?php echo esc_html__( 'OR', 'woocommerce-smart-coupons' ); ?></p>
-									<p class="sc-import-server-file"><small><?php echo esc_html__( 'Already uploaded CSV to the server?', 'woocommerce-smart-coupons' ) . ' <a href="javascript:void(0)">' . esc_html__( 'Enter location on the server', 'woocommerce-smart-coupons' ) . '</a>:'; ?></small></p>
-									<p class="sc-import-server-file-input" style="display: none;"><?php echo esc_html( ' ' . ABSPATH . ' ' ); ?><input type="text" id="file_url" name="file_url" size="25" /></p>
-									<input type="submit" class="button button-primary button-hero" value="<?php echo esc_attr__( 'Upload file', 'woocommerce-smart-coupons' ); ?>" disabled />&nbsp;
-								</div>
-							</form>
-							<?php
-						}
 
-						?>
+							$action = add_query_arg(
+								array(
+									'page' => 'wc-smart-coupons',
+									'tab'  => 'import-smart-coupons',
+									'step' => '1',
+								),
+								'admin.php'
+							);
+
+							$bytes      = apply_filters( 'import_upload_size_limit', wp_max_upload_size() );
+							$size       = size_format( $bytes );
+							$upload_dir = wp_upload_dir();
+
+							if ( ! empty( $upload_dir['error'] ) ) {
+								?>
+									<div class="error">
+										<p><?php echo esc_html__( 'Before you can upload your import file, you will need to fix the following error:', 'woocommerce-smart-coupons' ); ?></p>
+										<p><strong><?php echo esc_html( $upload_dir['error'] ); ?></strong></p>
+									</div>
+								<?php
+							} else {
+								?>
+								<form enctype="multipart/form-data" id="import-upload-form" method="post" action="<?php echo esc_attr( wp_nonce_url( $action, 'import-upload' ) ); ?>">
+									<div class="sc-import-input-file-container">
+										<label for="upload" class="button button-hero sc-file-container">
+											<span class="sc-file-container-label"><?php echo esc_html__( 'Choose a CSV file', 'woocommerce-smart-coupons' ); ?> <span class="dashicons dashicons-upload"></span></span>
+											<input type="file" id="upload" name="import" accept=".csv" size="25" />
+										</label>
+										<input type="hidden" name="action" value="save" />
+										<input type="hidden" name="max_file_size" value="<?php echo esc_attr( $bytes ); ?>" />
+										<p><small><?php printf( esc_html__( 'Maximum file size', 'woocommerce-smart-coupons' ) . ': ' . esc_html( $size ) ); ?></small></p>
+										<p><?php echo esc_html__( 'OR', 'woocommerce-smart-coupons' ); ?></p>
+										<p class="sc-import-server-file"><small><?php echo esc_html__( 'Already uploaded CSV to the server?', 'woocommerce-smart-coupons' ) . ' <a href="javascript:void(0)">' . esc_html__( 'Enter location on the server', 'woocommerce-smart-coupons' ) . '</a>:'; ?></small></p>
+										<p class="sc-import-server-file-input" style="display: none;"><?php echo esc_html( ' ' . ABSPATH . ' ' ); ?><input type="text" id="file_url" name="file_url" size="25" /></p>
+										<input type="submit" class="button button-primary button-hero" value="<?php echo esc_attr__( 'Upload file', 'woocommerce-smart-coupons' ); ?>" disabled />&nbsp;
+									</div>
+								</form>
+								<?php
+							}
+
+							?>
+						</div>
 					</div>
 				</div>
 			</div>

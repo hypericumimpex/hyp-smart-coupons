@@ -901,9 +901,6 @@ if ( ! class_exists( 'WC_SC_Admin_Pages' ) ) {
 			$is_post_generate_and_import        = ( isset( $_POST['generate_and_import'] ) ) ? true : false; // phpcs:ignore
 			$post_smart_coupons_generate_action = ( ! empty( $_POST['smart_coupons_generate_action'] ) ) ? wc_clean( wp_unslash( $_POST['smart_coupons_generate_action'] ) ) : ''; // phpcs:ignore
 
-			if ( $is_post_generate_and_import && 'sc_export_and_import' === $post_smart_coupons_generate_action ) {
-				$this->export_coupon( $_POST, '', '' ); // phpcs:ignore
-			}
 			?>
 
 			<script type="text/javascript">
@@ -943,123 +940,124 @@ if ( ! class_exists( 'WC_SC_Admin_Pages' ) ) {
 					});
 				});
 			</script>
+			<div class="woo-sc-form-wrapper">
+				<div id="message"><p></p></div>
+				<div class="tool-box">
 
-			<div id="message"><p></p></div>
-			<div class="tool-box">
+					<p class="description"><?php echo esc_html__( 'Need a lot of coupons? You can easily do that with Smart Coupons.', 'woocommerce-smart-coupons' ); ?></p>
 
-				<p class="description"><?php echo esc_html__( 'Need a lot of coupons? You can easily do that with Smart Coupons.', 'woocommerce-smart-coupons' ); ?></p>
+					<style type="text/css">
+						.coupon_actions {
+							margin-left: 14px;
+						}
+						#smart-coupon-action-panel p label {
+							width: 30%;
+						}
+						#smart-coupon-action-panel {
+							width: 100% !important;
+						}
+						.sc-required-mark {
+							color: red;
+						}
+					</style>
+					<?php
+						$import_step_2_url = add_query_arg(
+							array(
+								'page' => 'wc-smart-coupons',
+								'tab'  => 'import-smart-coupons',
+								'step' => '2',
+							),
+							admin_url( 'admin.php' )
+						);
+					?>
+					<form id="generate_coupons" action="<?php echo esc_url( $import_step_2_url ); ?>" method="post">
+						<?php wp_nonce_field( 'import-woocommerce-coupon' ); ?>
+						<div id="poststuff">
+							<div id="woocommerce-coupon-data" class="postbox " >
+								<h3><span class="coupon_actions"><?php echo esc_html__( 'Action', 'woocommerce-smart-coupons' ); ?></span></h3>
+								<div class="inside">
+									<div class="panel-wrap">
+										<div id="smart-coupon-action-panel" class="panel woocommerce_options_panel">
 
-				<style type="text/css">
-					.coupon_actions {
-						margin-left: 14px;
-					}
-					#smart-coupon-action-panel p label {
-						width: 30%;
-					}
-					#smart-coupon-action-panel {
-						width: 100% !important;
-					}
-					.sc-required-mark {
-						color: red;
-					}
-				</style>
-				<?php
-					$import_step_2_url = add_query_arg(
-						array(
-							'page' => 'wc-smart-coupons',
-							'tab'  => 'import-smart-coupons',
-							'step' => '2',
-						),
-						admin_url( 'admin.php' )
-					);
-				?>
-				<form id="generate_coupons" action="<?php echo esc_url( $import_step_2_url ); ?>" method="post">
-					<?php wp_nonce_field( 'import-woocommerce-coupon' ); ?>
-					<div id="poststuff">
-						<div id="woocommerce-coupon-data" class="postbox " >
-							<h3><span class="coupon_actions"><?php echo esc_html__( 'Action', 'woocommerce-smart-coupons' ); ?></span></h3>
-							<div class="inside">
-								<div class="panel-wrap">
-									<div id="smart-coupon-action-panel" class="panel woocommerce_options_panel">
+											<p class="form-field">
+												<label for="no_of_coupons_to_generate"><?php echo esc_html__( 'Number of coupons to generate', 'woocommerce-smart-coupons' ); ?>&nbsp;<span title="<?php echo esc_attr__( 'Required', 'woocommerce-smart-coupons' ); ?>" class="sc-required-mark">*</span></label>
+												<input type="number" name="no_of_coupons_to_generate" id="no_of_coupons_to_generate" placeholder="<?php echo esc_attr__( '10', 'woocommerce-smart-coupons' ); ?>" class="short" min="1" required />
+											</p>
 
-										<p class="form-field">
-											<label for="no_of_coupons_to_generate"><?php echo esc_html__( 'Number of coupons to generate', 'woocommerce-smart-coupons' ); ?>&nbsp;<span title="<?php echo esc_attr__( 'Required', 'woocommerce-smart-coupons' ); ?>" class="sc-required-mark">*</span></label>
-											<input type="number" name="no_of_coupons_to_generate" id="no_of_coupons_to_generate" placeholder="<?php echo esc_attr__( '10', 'woocommerce-smart-coupons' ); ?>" class="short" min="1" required />
-										</p>
+											<p class="form-field">
+												<label><?php echo esc_html__( 'Generate coupons and', 'woocommerce-smart-coupons' ); ?></label>
+												<input type="radio" name="smart_coupons_generate_action" value="add_to_store" id="add_to_store" checked="checked"/>&nbsp;
+												<strong><?php echo esc_html__( 'Add to store', 'woocommerce-smart-coupons' ); ?></strong>
+											</p>
 
-										<p class="form-field">
-											<label><?php echo esc_html__( 'Generate coupons and', 'woocommerce-smart-coupons' ); ?></label>
-											<input type="radio" name="smart_coupons_generate_action" value="add_to_store" id="add_to_store" checked="checked"/>&nbsp;
-											<strong><?php echo esc_html__( 'Add to store', 'woocommerce-smart-coupons' ); ?></strong>
-										</p>
-
-										<p class="form-field">
-											<label for="sc_export_and_import"><?php echo '&nbsp;'; ?></label>
-											<input type="radio" name="smart_coupons_generate_action" value="sc_export_and_import" id="sc_export_and_import" />&nbsp;
-											<strong><?php echo esc_html__( 'Export to CSV', 'woocommerce-smart-coupons' ); ?></strong>
-											<?php
-												$import_tab_url = add_query_arg(
-													array(
-														'page' => 'wc-smart-coupons',
-														'tab'  => 'import-smart-coupons',
-													),
-													admin_url( 'admin.php' )
-												);
-											?>
-											<span class="description">
-											<?php
-											echo esc_html__( '(Does not add to store, but creates a .csv file, that you can', 'woocommerce-smart-coupons' ) . ' <a href="' . esc_url( $import_tab_url ) . '">' . esc_html__( 'import', 'woocommerce-smart-coupons' ) . '</a> ' . esc_html__( 'later', 'woocommerce-smart-coupons' ) . ')';
-											?>
-											</span>
-										</p>
-
-										<p class="form-field">
-											<label><?php echo '&nbsp;'; ?></label>
-											<input type="radio" name="smart_coupons_generate_action" value="woo_sc_is_email_imported_coupons" id="woo_sc_is_email_imported_coupons" />&nbsp;
-											<strong><?php echo esc_html__( 'Email to recipients', 'woocommerce-smart-coupons' ); ?></strong>
-											<span class="description">
-												<?php echo esc_html__( '(Add to store and email generated coupons to recipients)', 'woocommerce-smart-coupons' ); ?>
-											</span><br>
-											<span class="description" id="sc_note_about_emailing_recipients" style="display: none; margin-left: 24.5rem;">
+											<p class="form-field">
+												<label for="sc_export_and_import"><?php echo '&nbsp;'; ?></label>
+												<input type="radio" name="smart_coupons_generate_action" value="sc_export_and_import" id="sc_export_and_import" />&nbsp;
+												<strong><?php echo esc_html__( 'Export to CSV', 'woocommerce-smart-coupons' ); ?></strong>
 												<?php
-												/* translators: 1: Path to setting 2: Setting to set email address 3: Setting for number of coupons to generate */
-												echo sprintf( esc_html__( 'Enter the email addresses of the recipients separated by comma under %1$1s. Make sure to match the count of email addresses in %2$2s to %3$3s', 'woocommerce-smart-coupons' ), '<strong>' . esc_html__( 'Coupon Data > Usage restriction > Allowed emails', 'woocommerce-smart-coupons' ) . '</strong>', '<strong>' . esc_html__( 'Allowed emails', 'woocommerce-smart-coupons' ) . '</strong>', '<strong>' . esc_html__( 'Number of coupons to generate', 'woocommerce-smart-coupons' ) . '</strong>' );
+													$import_tab_url = add_query_arg(
+														array(
+															'page' => 'wc-smart-coupons',
+															'tab'  => 'import-smart-coupons',
+														),
+														admin_url( 'admin.php' )
+													);
 												?>
-											</span>
-										</p>
+												<span class="description">
+												<?php
+												echo esc_html__( '(Does not add to store, but creates a .csv file, that you can', 'woocommerce-smart-coupons' ) . ' <a href="' . esc_url( $import_tab_url ) . '">' . esc_html__( 'import', 'woocommerce-smart-coupons' ) . '</a> ' . esc_html__( 'later', 'woocommerce-smart-coupons' ) . ')';
+												?>
+												</span>
+											</p>
+
+											<p class="form-field">
+												<label><?php echo '&nbsp;'; ?></label>
+												<input type="radio" name="smart_coupons_generate_action" value="woo_sc_is_email_imported_coupons" id="woo_sc_is_email_imported_coupons" />&nbsp;
+												<strong><?php echo esc_html__( 'Email to recipients', 'woocommerce-smart-coupons' ); ?></strong>
+												<span class="description">
+													<?php echo esc_html__( '(Add to store and email generated coupons to recipients)', 'woocommerce-smart-coupons' ); ?>
+												</span><br>
+												<span class="description" id="sc_note_about_emailing_recipients" style="display: none; margin-left: 24.5rem;">
+													<?php
+													/* translators: 1: Path to setting 2: Setting to set email address 3: Setting for number of coupons to generate */
+													echo sprintf( esc_html__( 'Enter the email addresses of the recipients separated by comma under %1$1s. Make sure to match the count of email addresses in %2$2s to %3$3s', 'woocommerce-smart-coupons' ), '<strong>' . esc_html__( 'Coupon Data > Usage restriction > Allowed emails', 'woocommerce-smart-coupons' ) . '</strong>', '<strong>' . esc_html__( 'Allowed emails', 'woocommerce-smart-coupons' ) . '</strong>', '<strong>' . esc_html__( 'Number of coupons to generate', 'woocommerce-smart-coupons' ) . '</strong>' );
+													?>
+												</span>
+											</p>
+										</div>
 									</div>
 								</div>
 							</div>
-						</div>
-						<div id="woocommerce-coupon-data" class="postbox " >
-							<h3>
-								<span class="coupon_actions">
-									<?php
-										echo esc_html__( 'Coupon Description ', 'woocommerce-smart-coupons' );
-										/* translators: 1: HTML small tag start 2: HTML small tag end */
-										echo sprintf( esc_html__( '%1$s(This will add the same coupon description in all the bulk generated coupons)%2$s', 'woocommerce-smart-coupons' ), '<small>', '</small>' );
-									?>
-								</span>
-							</h3>
-							<div class="sc_bulk_description">
-								<?php $admin_post_types->edit_form_after_title( $post ); ?>
+							<div id="woocommerce-coupon-data" class="postbox " >
+								<h3>
+									<span class="coupon_actions">
+										<?php
+											echo esc_html__( 'Coupon Description ', 'woocommerce-smart-coupons' );
+											/* translators: 1: HTML small tag start 2: HTML small tag end */
+											echo sprintf( esc_html__( '%1$s(This will add the same coupon description in all the bulk generated coupons)%2$s', 'woocommerce-smart-coupons' ), '<small>', '</small>' );
+										?>
+									</span>
+								</h3>
+								<div class="sc_bulk_description">
+									<?php $admin_post_types->edit_form_after_title( $post ); ?>
+								</div>
+							</div>
+							<div id="woocommerce-coupon-data" class="postbox">
+								<h3>
+									<span class="coupon_actions">
+										<?php echo esc_html__( 'Coupon Data', 'woocommerce-smart-coupons' ); ?>
+									</span>
+								</h3>
+								<div class="inside">
+									<?php WC_Meta_Box_Coupon_Data::output( $post ); ?>
+								</div>
 							</div>
 						</div>
-						<div id="woocommerce-coupon-data" class="postbox">
-							<h3>
-								<span class="coupon_actions">
-									<?php echo esc_html__( 'Coupon Data', 'woocommerce-smart-coupons' ); ?>
-								</span>
-							</h3>
-							<div class="inside">
-								<?php WC_Meta_Box_Coupon_Data::output( $post ); ?>
-							</div>
-						</div>
-					</div>
 
-					<p class="submit"><input id="generate_and_import" name="generate_and_import" type="submit" class="button button-primary button-hero" value="<?php echo esc_attr__( 'Apply', 'woocommerce-smart-coupons' ); ?>" /></p>
+						<p class="submit"><input id="generate_and_import" name="generate_and_import" type="submit" class="button button-primary button-hero" value="<?php echo esc_attr__( 'Apply', 'woocommerce-smart-coupons' ); ?>" /></p>
 
-				</form>
+					</form>
+				</div>
 			</div>
 			<?php
 

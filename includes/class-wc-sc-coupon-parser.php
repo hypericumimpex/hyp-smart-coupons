@@ -233,6 +233,72 @@ if ( ! class_exists( 'WC_SC_Coupon_Parser' ) ) {
 		}
 
 		/**
+		 * Parse data one row at a time
+		 *
+		 * @param string $file Imported file.
+		 * @param string $file_position file pointer posistion to read from.
+		 * @return array $result parsed data with current file pointer position
+		 */
+		public function parse_data_by_row( $file, $file_position = 0 ) {
+
+			// Set locale.
+			$enc = mb_detect_encoding( $file, 'UTF-8, ISO-8859-1', true );
+			if ( $enc ) {
+				setlocale( LC_ALL, 'en_US.' . $enc );
+			}
+			ini_set( 'auto_detect_line_endings', true ); // phpcs:ignore
+
+			$parsed_csv_data = array();
+
+			$handle = fopen( $file, 'r' ); // phpcs:ignore
+
+			$reading_completed = false;
+
+			// Put all CSV data into an associative array.
+			if ( false !== $handle ) {
+
+				$header = fgetcsv( $handle, 0 );
+
+				if ( $file_position > 0 ) {
+
+					fseek( $handle, (int) $file_position );
+
+				}
+
+				if ( false !== ( $postmeta = fgetcsv( $handle, 0 ) ) ) { // phpcs:ignore
+					$row = array();
+					foreach ( $header as $key => $heading ) {
+
+						$s_heading = strtolower( $heading );
+
+						$row[ $s_heading ] = ( isset( $postmeta[ $key ] ) ) ? $this->format_data_from_csv( stripslashes( $postmeta[ $key ] ), $enc ) : '';
+					}
+
+					$parsed_csv_data = $row;
+
+					unset( $postmeta, $row );
+
+				} else {
+
+					$reading_completed = true;
+
+				}
+
+				$file_position = ftell( $handle );
+
+				fclose( $handle ); // phpcs:ignore
+			}
+
+			$result = array(
+				'parsed_csv_data'   => $parsed_csv_data,
+				'file_position'     => $file_position,
+				'reading_completed' => $reading_completed,
+			);
+
+			return $result;
+		}
+
+		/**
 		 * Parse coupon
 		 *
 		 * @param array $item The imported item.

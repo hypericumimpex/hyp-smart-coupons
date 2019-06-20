@@ -104,7 +104,7 @@ $coupon_post = get_post( $coupon_id );
 $coupon_data = $this->get_coupon_meta_data( $coupon );
 
 	$coupon_target              = '';
-	$wc_url_coupons_active_urls = get_option( 'wc_url_coupons_active_urls' );
+	$wc_url_coupons_active_urls = get_option( 'wc_url_coupons_active_urls' ); // From plugin WooCommerce URL coupons.
 if ( ! empty( $wc_url_coupons_active_urls ) ) {
 	$coupon_target = ( ! empty( $wc_url_coupons_active_urls[ $coupon_id ]['url'] ) ) ? $wc_url_coupons_active_urls[ $coupon_id ]['url'] : '';
 }

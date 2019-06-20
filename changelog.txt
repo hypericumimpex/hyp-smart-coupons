@@ -1,5 +1,10 @@
 *** WooCommerce Smart Coupons Changelog ***
 
+2019.06.15 - version 4.0.7
+* Tweak: Improved bulk generation, export & import of coupons using Action Scheduler Library
+* Removed: Background Process Library
+* Update: POT file
+
 2019.06.03 - version 4.0.6
 * Fix: PHP Warning:  date() expects parameter 2 to be long, string given
 * Fix: Error message: Uncaught Error: [] operator not supported for strings [Shortcode]
