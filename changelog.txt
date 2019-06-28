@@ -1,5 +1,14 @@
 *** WooCommerce Smart Coupons Changelog ***
 
+2019.06.24 - version 4.0.8
+* Fix: Fatal Error: Could not find class 'ActionScheduler'
+* Fix: Incorrect Subscription renewal order total when using a coupon having option 'Add products to cart' is used
+* Fix: Store credit charged but discount is not applied to order when registering a user and placing the order both at the same time from the checkout page
+* Fix: Store credit becomes 0 on checkout when WooCommerce Services plugin's 'Automated Taxes' setting is enabled
+* Fix: Store credit not being reduced when customer places failed order and later order status is changed to on-hold/processing/completed
+* Update: Welcome page CSS
+* Update: POT file
+
 2019.06.15 - version 4.0.7
 * Tweak: Improved bulk generation, export & import of coupons using Action Scheduler Library
 * Removed: Background Process Library

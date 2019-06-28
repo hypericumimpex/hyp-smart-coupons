@@ -230,8 +230,10 @@ if ( ! class_exists( 'WC_SC_Coupon_Import' ) ) {
 						as_unschedule_action( 'woo_sc_generate_coupon_csv' );
 						as_unschedule_action( 'woo_sc_import_coupons_from_csv' );
 
-						as_schedule_single_action( time() - MINUTE_IN_SECONDS, 'woo_sc_import_coupons_from_csv' );
+						if ( function_exists( 'as_schedule_single_action' ) ) {
 
+							as_schedule_single_action( time() - MINUTE_IN_SECONDS, 'woo_sc_import_coupons_from_csv' );
+						}
 					} else {
 
 						// If we are exporting coupons then create export file and save its path in options table.
@@ -267,8 +269,10 @@ if ( ! class_exists( 'WC_SC_Coupon_Import' ) ) {
 							as_unschedule_action( 'woo_sc_import_coupons_from_csv' );
 							delete_site_option( 'woo_sc_action_data' );
 
-							as_schedule_single_action( time() - MINUTE_IN_SECONDS, 'woo_sc_generate_coupon_csv' );
+							if ( function_exists( 'as_schedule_single_action' ) ) {
 
+								as_schedule_single_action( time() - MINUTE_IN_SECONDS, 'woo_sc_generate_coupon_csv' );
+							}
 						}
 					}
 

@@ -124,6 +124,8 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 
 			add_action( 'woocommerce_checkout_update_order_review', array( $this, 'woocommerce_checkout_update_order_review' ) );
 
+			add_action( 'woocommerce_cart_reset', array( $this, 'woocommerce_cart_reset' ) );
+
 		}
 
 		/**
@@ -885,9 +887,9 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 		 */
 		public function smart_coupons_discount_total_filters() {
 			if ( WCS_SC_Compatibility::is_cart_contains_subscription() && WCS_SC_Compatibility::is_wcs_gte( '2.0.0' ) ) {
-				add_action( 'woocommerce_after_calculate_totals', array( $this, 'smart_coupons_after_calculate_totals' ) );
+				add_action( 'woocommerce_after_calculate_totals', array( $this, 'smart_coupons_after_calculate_totals' ), 999 );
 			} else {
-				add_action( 'woocommerce_after_calculate_totals', array( $this, 'smart_coupons_after_calculate_totals' ) );
+				add_action( 'woocommerce_after_calculate_totals', array( $this, 'smart_coupons_after_calculate_totals' ), 999 );
 				global $current_screen;
 				if ( ! empty( $current_screen ) && 'edit-shop_order' !== $current_screen ) {
 					add_filter( 'woocommerce_order_get_total', array( $this, 'smart_coupons_order_discounted_total' ), 10, 2 );
@@ -1082,7 +1084,7 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 				foreach ( $applied_coupons as $code ) {
 					$request_wc_ajax    = ( ! empty( $_REQUEST['wc-ajax'] ) ) ? wc_clean( wp_unslash( $_REQUEST['wc-ajax'] ) ) : ''; // WPCS: sanitization ok. CSRF ok, input var ok.
 					$ignore_ajax_action = array( 'update_order_review', 'checkout' );
-					if ( ! empty( $request_wc_ajax ) && in_array( $request_wc_ajax, $ignore_ajax_action, true ) && array_key_exists( $code, $smart_coupon_credit_used ) && true !== $cart_contains_subscription ) {
+					if ( ! empty( $request_wc_ajax ) && in_array( $request_wc_ajax, $ignore_ajax_action, true ) && array_key_exists( $code, $smart_coupon_credit_used ) && true !== $cart_contains_subscription && ! isset( WC()->session->reload_checkout ) ) {
 						continue;
 					}
 					$coupon   = new WC_Coupon( $code );
@@ -1146,6 +1148,23 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 
 				do_action( 'smart_coupons_after_calculate_totals' );
 
+			}
+
+		}
+
+
+		/**
+		 * Function to do action 'smart_coupons_after_calculate_totals' since WooCommerce Services plugin triggers 'woocommerce_cart_reset' in its function for 'woocommerce_after_calculate_totals' action causing miscalculation in did_action( 'smart_coupons_after_calculate_totals' ) hook.
+		 */
+		public function woocommerce_cart_reset() {
+
+			$cart_reset_action_count         = did_action( 'woocommerce_cart_reset' );
+			$sc_after_calculate_action_count = did_action( 'smart_coupons_after_calculate_totals' );
+
+			// This is to match counter for 'smart_coupons_after_calculate_totals' hook with 'woocommerce_cart_reset' counter since we are using these two counters to prevent store credit being appplied multiple times.
+			if ( $sc_after_calculate_action_count < $cart_reset_action_count ) {
+
+				do_action( 'smart_coupons_after_calculate_totals' );
 			}
 
 		}

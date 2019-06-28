@@ -58,6 +58,9 @@ if ( ! class_exists( 'WC_SC_Coupon_Process' ) ) {
 			add_action( 'woocommerce_order_status_pending_to_on-hold', array( $this, 'update_smart_coupon_balance' ) );
 			add_action( 'woocommerce_order_status_pending_to_processing', array( $this, 'update_smart_coupon_balance' ) );
 			add_action( 'woocommerce_order_status_pending_to_completed', array( $this, 'update_smart_coupon_balance' ) );
+			add_action( 'woocommerce_order_status_failed_to_on-hold', array( $this, 'update_smart_coupon_balance' ) );
+			add_action( 'woocommerce_order_status_failed_to_processing', array( $this, 'update_smart_coupon_balance' ) );
+			add_action( 'woocommerce_order_status_failed_to_completed', array( $this, 'update_smart_coupon_balance' ) );
 			add_action( 'sc_after_order_calculate_discount_amount', array( $this, 'update_smart_coupon_balance' ), 10 );
 
 			add_filter( 'woocommerce_paypal_args', array( $this, 'modify_paypal_args' ), 11, 2 );

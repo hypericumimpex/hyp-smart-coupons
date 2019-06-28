@@ -887,7 +887,11 @@ if ( ! class_exists( 'WCS_SC_Compatibility' ) ) {
 			$coupon_actions = $wc_sc_coupon_actions->get_coupon_actions( $coupon_code );
 
 			if ( false === $bypass && ! empty( $coupon_actions ) ) {
-				return true;
+				$coupon        = new WC_Coupon( $coupon_code );
+				$discount_type = $coupon->get_discount_type();
+				if ( 'smart_coupon' === $discount_type ) {
+					return true;
+				}
 			}
 
 			return $bypass;
@@ -917,7 +921,11 @@ if ( ! class_exists( 'WCS_SC_Compatibility' ) ) {
 						foreach ( $cart->applied_coupons as $index => $coupon_code ) {
 							$coupon_actions = $wc_sc_coupon_actions->get_coupon_actions( $coupon_code );
 							if ( ! empty( $coupon_actions ) ) {
-								unset( WC()->cart->recurring_carts[ $cart_item_key ]->applied_coupons[ $index ] );
+								$coupon        = new WC_Coupon( $coupon_code );
+								$discount_type = $coupon->get_discount_type();
+								if ( 'smart_coupon' === $discount_type ) {
+									unset( WC()->cart->recurring_carts[ $cart_item_key ]->applied_coupons[ $index ] );
+								}
 							}
 						}
 					}

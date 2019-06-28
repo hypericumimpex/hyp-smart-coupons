@@ -577,6 +577,11 @@ if ( ! class_exists( 'WC_SC_Background_Coupon_Importer' ) ) {
 		 */
 		public function is_process_running() {
 
+			if ( ! class_exists( 'ActionScheduler' ) || ! is_callable( array( 'ActionScheduler', 'store' ) ) ) {
+
+				return false;
+			}
+
 			$csv_scheduler_status = '';
 
 			$import_coupon_scheduler_status = '';
@@ -696,8 +701,10 @@ if ( ! class_exists( 'WC_SC_Background_Coupon_Importer' ) ) {
 								$posted_data['action_stage']              = 1;
 								update_site_option( 'woo_sc_generate_coupon_posted_data', $posted_data );
 
-								as_schedule_single_action( time() - MINUTE_IN_SECONDS, 'woo_sc_import_coupons_from_csv' );
+								if ( function_exists( 'as_schedule_single_action' ) ) {
 
+									as_schedule_single_action( time() - MINUTE_IN_SECONDS, 'woo_sc_import_coupons_from_csv' );
+								}
 							} else {
 
 								$bulk_coupon_action    = get_site_option( 'bulk_coupon_action_woo_sc' );
@@ -724,7 +731,10 @@ if ( ! class_exists( 'WC_SC_Background_Coupon_Importer' ) ) {
 						} elseif ( $this->time_exceeded() || $this->memory_exceeded() ) {
 							$posted_data['no_of_coupons_to_generate'] = $no_of_remaining_coupons;
 							update_site_option( 'woo_sc_generate_coupon_posted_data', $posted_data );
-							as_schedule_single_action( time() - MINUTE_IN_SECONDS, 'woo_sc_generate_coupon_csv' );
+							if ( function_exists( 'as_schedule_single_action' ) ) {
+
+								as_schedule_single_action( time() - MINUTE_IN_SECONDS, 'woo_sc_generate_coupon_csv' );
+							}
 							break;
 						}
 					}
@@ -812,7 +822,10 @@ if ( ! class_exists( 'WC_SC_Background_Coupon_Importer' ) ) {
 					if ( $this->time_exceeded() || $this->memory_exceeded() ) {
 						$posted_data['file_position'] = $file_position;
 						update_site_option( 'woo_sc_generate_coupon_posted_data', $posted_data );
-						as_schedule_single_action( time() - MINUTE_IN_SECONDS, 'woo_sc_import_coupons_from_csv' );
+						if ( function_exists( 'as_schedule_single_action' ) ) {
+
+							as_schedule_single_action( time() - MINUTE_IN_SECONDS, 'woo_sc_import_coupons_from_csv' );
+						}
 						break;
 					}
 				}
@@ -853,13 +866,19 @@ if ( ! class_exists( 'WC_SC_Background_Coupon_Importer' ) ) {
 		 * @param  array $action_id id of failed action.
 		 */
 		public function restart_failed_action( $action_id ) {
+
+			if ( ! class_exists( 'ActionScheduler' ) || ! is_callable( array( 'ActionScheduler', 'store' ) ) || ! function_exists( 'as_schedule_single_action' ) ) {
+
+				return;
+			}
+
 			$action      = ActionScheduler::store()->fetch_action( $action_id );
 			$action_hook = $action->get_hook();
 
 			if ( 'woo_sc_generate_coupon_csv' === $action_hook ) {
-				as_schedule_single_action( time() + MINUTE_IN_SECONDS, 'woo_sc_generate_coupon_csv' );
+					as_schedule_single_action( time() + MINUTE_IN_SECONDS, 'woo_sc_generate_coupon_csv' );
 			} elseif ( 'woo_sc_import_coupons_from_csv' === $action_hook ) {
-				as_schedule_single_action( time() + MINUTE_IN_SECONDS, 'woo_sc_import_coupons_from_csv' );
+					as_schedule_single_action( time() + MINUTE_IN_SECONDS, 'woo_sc_import_coupons_from_csv' );
 			}
 		}
 

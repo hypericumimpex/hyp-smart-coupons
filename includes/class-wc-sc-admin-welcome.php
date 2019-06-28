@@ -118,6 +118,11 @@ if ( ! class_exists( 'WC_SC_Admin_Welcome' ) ) {
 				.about-wrap .aligncenter {
 					text-align: center;
 				}
+				.about-wrap,
+				.about-wrap .has-2-columns,
+				.about-wrap .has-3-columns {
+					max-width: unset !important;
+				}
 				/*]]>*/
 			</style>
 				<?php
@@ -142,7 +147,7 @@ if ( ! class_exists( 'WC_SC_Admin_Welcome' ) ) {
 
 			<p class="about-text"><?php echo esc_html__( 'Glad to have you onboard. We hope WooCommerce Smart Coupons adds to your desired success 🏆', 'woocommerce-smart-coupons' ); ?></p>
 
-			<div class="has-2-columns is-fullwidth feature-section col two-col" style="margin-bottom: 30px !important;">
+			<div class="has-2-columns feature-section col two-col" style="margin-bottom: 30px !important;">
 				<div class="is-vertically-aligned-center column col">
 					<a href="<?php echo esc_url( admin_url( 'edit.php?post_type=shop_coupon' ) ); ?>" class="button button-hero"><?php echo esc_html__( 'Go To Coupons', 'woocommerce-smart-coupons' ); ?></a>
 				</div>
@@ -203,12 +208,12 @@ if ( ! class_exists( 'WC_SC_Admin_Welcome' ) ) {
 				});
 			</script>
 
-			<div class="wrap about-wrap full-width-layout">
+			<div class="wrap about-wrap">
 
 			<?php $this->intro(); ?>
 
 				<div>
-					<div class="has-3-columns is-fullwidth feature-section col three-col">
+					<div class="has-3-columns feature-section col three-col">
 						<div class="column col">
 							<h4><?php echo esc_html__( 'What is Smart Coupons?', 'woocommerce-smart-coupons' ); ?></h4>
 							<p>
@@ -233,7 +238,7 @@ if ( ! class_exists( 'WC_SC_Admin_Welcome' ) ) {
 						</div>
 					</div>
 					<center><h3><?php echo esc_html__( 'What you can achieve using Smart Coupons', 'woocommerce-smart-coupons' ); ?></h3></center>
-					<div class="has-3-columns is-fullwidth feature-section col three-col">
+					<div class="has-3-columns feature-section col three-col">
 						<div class="column col">
 							<h4><?php echo esc_html__( 'Sell store credit / gift certificate', 'woocommerce-smart-coupons' ); ?></h4>
 							<p>
@@ -253,7 +258,7 @@ if ( ! class_exists( 'WC_SC_Admin_Welcome' ) ) {
 							</p>
 						</div>
 					</div>
-					<div class="has-3-columns is-fullwidth feature-section col three-col">
+					<div class="has-3-columns feature-section col three-col">
 						<div class="column col">
 							<h4><?php echo esc_html__( 'Import / export coupons', 'woocommerce-smart-coupons' ); ?></h4>
 							<p>
@@ -291,7 +296,7 @@ if ( ! class_exists( 'WC_SC_Admin_Welcome' ) ) {
 				});
 			</script>
 
-			<div class="wrap about-wrap full-width-layout">
+			<div class="wrap about-wrap">
 
 				<?php $this->intro(); ?>
 
@@ -400,7 +405,7 @@ if ( ! class_exists( 'WC_SC_Admin_Welcome' ) ) {
 					$left_faq_numbering  = 0;
 					echo '<div>';
 					foreach ( $faqs as $fqs ) {
-						echo '<div class="has-2-columns is-fullwidth two-col">';
+						echo '<div class="has-2-columns two-col">';
 						foreach ( $fqs as $index => $faq ) {
 							echo '<div' . ( ( 1 === absint( $index ) ) ? ' class="column col last-feature"' : ' class="column col"' ) . '>';
 							echo '<h4>' . ( ( 1 === absint( $index ) ) ? $right_faq_numbering : ( $left_faq_numbering + 1 ) ) . '. ' . $faq['que'] . '</h4>'; // phpcs:ignore

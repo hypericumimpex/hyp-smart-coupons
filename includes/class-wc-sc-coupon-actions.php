@@ -371,7 +371,10 @@ if ( ! class_exists( 'WC_SC_Coupon_Actions' ) ) {
 			if ( ! empty( $coupon_code ) ) {
 				foreach ( WC()->cart->get_cart() as $cart_item_key => $cart_item ) {
 					if ( isset( $cart_item['wc_sc_product_source'] ) && $cart_item['wc_sc_product_source'] === $coupon_code ) {
-						WC()->cart->set_quantity( $cart_item_key, 0 );
+						// Action 'woocommerce_before_calculate_totals' is hooked by WooCommerce Subscription while removing coupons in local WooCommerce Cart variable in which we don't need to remove added cart item.
+						if ( ! doing_action( 'woocommerce_before_calculate_totals' ) ) {
+							WC()->cart->set_quantity( $cart_item_key, 0 );
+						}
 					}
 				}
 			}
