@@ -663,6 +663,7 @@ if ( ! class_exists( 'WC_SC_Privacy' ) ) {
 			delete_post_meta( $order['post_id'], 'sc_coupon_receiver_details' );
 			delete_post_meta( $order['post_id'], 'gift_receiver_email' );
 			delete_post_meta( $order['post_id'], 'gift_receiver_message' );
+			delete_post_meta( $order['post_id'], 'gift_sending_timestamp' );
 
 			return array( true, false, array( '<strong>' . __( 'Store Credit/Gift Certificate', 'woocommerce-smart-coupons' ) . '</strong> - ' . __( 'Removed Order Personal Data', 'woocommerce-smart-coupons' ) ) );
 		}

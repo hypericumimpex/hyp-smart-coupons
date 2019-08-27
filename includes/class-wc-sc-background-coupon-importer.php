@@ -168,9 +168,15 @@ if ( ! class_exists( 'WC_SC_Background_Coupon_Importer' ) ) {
 		 * Ensures the batch never exceeds a sensible time limit.
 		 * A timeout limit of 30s is common on shared hosting.
 		 *
+		 * @param string $start_time start timestamp.
 		 * @return bool
 		 */
-		protected function time_exceeded() {
+		protected function time_exceeded( $start_time = '' ) {
+
+			if ( ! empty( $start_time ) ) {
+				$this->start_time = $start_time;
+			}
+
 			$finish = $this->start_time + apply_filters( $this->identifier . '_default_time_limit', 20 ); // 20 seconds
 			$return = false;
 
@@ -347,7 +353,7 @@ if ( ! class_exists( 'WC_SC_Background_Coupon_Importer' ) ) {
 										if ( response.percent_completion !== undefined && response.percent_completion !== '' ) {
 											if( 100 == response.percent_completion) {
 												let should_reload = false;
-												if( 'add_to_store' === response.coupon_action && 1 === response.action_stage ) {
+												if( ( 'add_to_store' === response.coupon_action || 'woo_sc_is_email_imported_coupons' === response.coupon_action ) && 1 === response.action_stage ) {
 													should_reload = true;
 												} else if ( 'import_from_csv' === response.coupon_action ){
 													should_reload = true;
@@ -435,7 +441,7 @@ if ( ! class_exists( 'WC_SC_Background_Coupon_Importer' ) ) {
 						jQuery('#wc_sc_coupon_background_progress').css('border-right', '1px solid ' + border_color);
 						jQuery('#wc_sc_coupon_background_progress').css('border-bottom', '1px solid ' + border_color);
 						jQuery('#wc_sc_coupon_background_progress').show();
-						jQuery('.download-generated-csv').on('click',function(){
+						jQuery('.download-csv-wrapper a').on('click',function(){
 							jQuery('.download-csv-wrapper').hide('slow');
 						});
 					});
@@ -578,7 +584,6 @@ if ( ! class_exists( 'WC_SC_Background_Coupon_Importer' ) ) {
 		public function is_process_running() {
 
 			if ( ! class_exists( 'ActionScheduler' ) || ! is_callable( array( 'ActionScheduler', 'store' ) ) ) {
-
 				return false;
 			}
 
@@ -652,9 +657,10 @@ if ( ! class_exists( 'WC_SC_Background_Coupon_Importer' ) ) {
 
 			$column_headers = array_merge( $coupon_posts_headers, $coupon_postmeta_headers );
 
-			$start_time = get_site_option( 'start_time_woo_sc', false );
+			$batch_start_time = time();
+			$start_time       = get_site_option( 'start_time_woo_sc', false );
 			if ( false === $start_time ) {
-				update_site_option( 'start_time_woo_sc', time() );
+				update_site_option( 'start_time_woo_sc', $batch_start_time );
 			}
 
 			$all_tasks_count = get_site_option( 'all_tasks_count_woo_sc', false );
@@ -702,8 +708,7 @@ if ( ! class_exists( 'WC_SC_Background_Coupon_Importer' ) ) {
 								update_site_option( 'woo_sc_generate_coupon_posted_data', $posted_data );
 
 								if ( function_exists( 'as_schedule_single_action' ) ) {
-
-									as_schedule_single_action( time() - MINUTE_IN_SECONDS, 'woo_sc_import_coupons_from_csv' );
+									as_schedule_single_action( time(), 'woo_sc_import_coupons_from_csv' );
 								}
 							} else {
 
@@ -728,12 +733,11 @@ if ( ! class_exists( 'WC_SC_Background_Coupon_Importer' ) ) {
 								);
 								update_site_option( 'woo_sc_action_data', $action_data );
 							}
-						} elseif ( $this->time_exceeded() || $this->memory_exceeded() ) {
+						} elseif ( $this->time_exceeded( $batch_start_time ) || $this->memory_exceeded() ) {
 							$posted_data['no_of_coupons_to_generate'] = $no_of_remaining_coupons;
 							update_site_option( 'woo_sc_generate_coupon_posted_data', $posted_data );
 							if ( function_exists( 'as_schedule_single_action' ) ) {
-
-								as_schedule_single_action( time() - MINUTE_IN_SECONDS, 'woo_sc_generate_coupon_csv' );
+								as_schedule_single_action( time(), 'woo_sc_generate_coupon_csv' );
 							}
 							break;
 						}
@@ -768,9 +772,10 @@ if ( ! class_exists( 'WC_SC_Background_Coupon_Importer' ) ) {
 
 				$counter = 0;
 
-				$start_time = get_site_option( 'start_time_woo_sc', false );
+				$batch_start_time = time();
+				$start_time       = get_site_option( 'start_time_woo_sc', false );
 				if ( false === $start_time ) {
-					update_site_option( 'start_time_woo_sc', time() );
+					update_site_option( 'start_time_woo_sc', $batch_start_time );
 				}
 
 				$reading_completed       = false;
@@ -819,12 +824,11 @@ if ( ! class_exists( 'WC_SC_Background_Coupon_Importer' ) ) {
 						break;
 					}
 					$posted_data['no_of_coupons_to_generate'] = $no_of_remaining_coupons;
-					if ( $this->time_exceeded() || $this->memory_exceeded() ) {
+					if ( $this->time_exceeded( $batch_start_time ) || $this->memory_exceeded() ) {
 						$posted_data['file_position'] = $file_position;
 						update_site_option( 'woo_sc_generate_coupon_posted_data', $posted_data );
 						if ( function_exists( 'as_schedule_single_action' ) ) {
-
-							as_schedule_single_action( time() - MINUTE_IN_SECONDS, 'woo_sc_import_coupons_from_csv' );
+							as_schedule_single_action( time(), 'woo_sc_import_coupons_from_csv' );
 						}
 						break;
 					}
@@ -868,7 +872,6 @@ if ( ! class_exists( 'WC_SC_Background_Coupon_Importer' ) ) {
 		public function restart_failed_action( $action_id ) {
 
 			if ( ! class_exists( 'ActionScheduler' ) || ! is_callable( array( 'ActionScheduler', 'store' ) ) || ! function_exists( 'as_schedule_single_action' ) ) {
-
 				return;
 			}
 
@@ -876,9 +879,12 @@ if ( ! class_exists( 'WC_SC_Background_Coupon_Importer' ) ) {
 			$action_hook = $action->get_hook();
 
 			if ( 'woo_sc_generate_coupon_csv' === $action_hook ) {
-					as_schedule_single_action( time() + MINUTE_IN_SECONDS, 'woo_sc_generate_coupon_csv' );
+				as_schedule_single_action( time() + MINUTE_IN_SECONDS, 'woo_sc_generate_coupon_csv' );
 			} elseif ( 'woo_sc_import_coupons_from_csv' === $action_hook ) {
-					as_schedule_single_action( time() + MINUTE_IN_SECONDS, 'woo_sc_import_coupons_from_csv' );
+				as_schedule_single_action( time() + MINUTE_IN_SECONDS, 'woo_sc_import_coupons_from_csv' );
+			} elseif ( 'wc_sc_send_scheduled_coupon_email' === $action_hook ) {
+				$action_args = $action->get_args();
+				as_schedule_single_action( time() + MINUTE_IN_SECONDS, 'wc_sc_send_scheduled_coupon_email', $action_args );
 			}
 		}
 

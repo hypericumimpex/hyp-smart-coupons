@@ -265,6 +265,17 @@ if ( ! class_exists( 'WC_SC_Admin_Pages' ) ) {
 
 			if ( ! wp_script_is( 'wc-admin-coupon-meta-boxes' ) ) {
 				wp_enqueue_script( 'wc-admin-coupon-meta-boxes', WC()->plugin_url() . '/assets/js/admin/meta-boxes-coupon' . $suffix . '.js', array( 'woocommerce_admin', 'wc-enhanced-select', 'wc-admin-meta-boxes' ), WC()->version, false );
+				wp_localize_script(
+					'wc-admin-coupon-meta-boxes',
+					'woocommerce_admin_meta_boxes_coupon',
+					array(
+						'generate_button_text' => esc_html__( 'Generate coupon code', 'woocommerce-smart-coupons' ),
+						'characters'           => apply_filters( 'woocommerce_coupon_code_generator_characters', 'ABCDEFGHJKMNPQRSTUVWXYZ23456789' ),
+						'char_length'          => apply_filters( 'woocommerce_coupon_code_generator_character_length', 8 ),
+						'prefix'               => apply_filters( 'woocommerce_coupon_code_generator_prefix', '' ),
+						'suffix'               => apply_filters( 'woocommerce_coupon_code_generator_suffix', '' ),
+					)
+				);
 				wp_localize_script( 'wc-admin-meta-boxes', 'woocommerce_admin_meta_boxes', $woocommerce_admin_meta_boxes_params );
 				wp_enqueue_script( 'woocommerce_admin', WC()->plugin_url() . '/assets/js/admin/woocommerce_admin' . $suffix . '.js', array( 'jquery', 'jquery-blockui', 'jquery-ui-sortable', 'jquery-ui-widget', 'jquery-ui-core', 'jquery-tiptip' ), WC()->version, false );
 				wp_localize_script( 'woocommerce_admin', 'woocommerce_admin', $woocommerce_admin_params );
@@ -1017,11 +1028,13 @@ if ( ! class_exists( 'WC_SC_Admin_Pages' ) ) {
 												<span class="description">
 													<?php echo esc_html__( '(Add to store and email generated coupons to recipients)', 'woocommerce-smart-coupons' ); ?>
 												</span><br>
-												<span class="description" id="sc_note_about_emailing_recipients" style="display: none; margin-left: 24.5rem;">
+												<span class="description wc-sc-description-container" id="sc_note_about_emailing_recipients" style="display: none;">
+													<span class="wc-sc-description">
 													<?php
 													/* translators: 1: Path to setting 2: Setting to set email address 3: Setting for number of coupons to generate */
 													echo sprintf( esc_html__( 'Enter the email addresses of the recipients separated by comma under %1$1s. Make sure to match the count of email addresses in %2$2s to %3$3s', 'woocommerce-smart-coupons' ), '<strong>' . esc_html__( 'Coupon Data > Usage restriction > Allowed emails', 'woocommerce-smart-coupons' ) . '</strong>', '<strong>' . esc_html__( 'Allowed emails', 'woocommerce-smart-coupons' ) . '</strong>', '<strong>' . esc_html__( 'Number of coupons to generate', 'woocommerce-smart-coupons' ) . '</strong>' );
 													?>
+													</span>
 												</span>
 											</p>
 										</div>

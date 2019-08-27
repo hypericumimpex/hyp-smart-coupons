@@ -100,7 +100,7 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 			add_action( 'personal_options_update', array( $this, 'my_profile_update' ) );
 			add_action( 'edit_user_profile_update', array( $this, 'my_profile_update' ) );
 
-			add_filter( 'generate_smart_coupon_action', array( $this, 'generate_smart_coupon_action' ), 1, 9 );
+			add_filter( 'generate_smart_coupon_action', array( $this, 'generate_smart_coupon_action' ), 1, 10 );
 
 			add_action( 'wc_sc_new_coupon_generated', array( $this, 'smart_coupons_plugin_used' ) );
 
@@ -126,6 +126,12 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 
 			add_action( 'woocommerce_cart_reset', array( $this, 'woocommerce_cart_reset' ) );
 
+			// Actions used to schedule sending of coupons.
+			add_action( 'wc_sc_send_scheduled_coupon_email', array( $this, 'send_scheduled_coupon_email' ), 10, 7 );
+			add_action( 'publish_future_post', array( $this, 'process_published_scheduled_coupon' ) );
+			add_action( 'before_delete_post', array( $this, 'delete_scheduled_coupon_actions' ) );
+			add_action( 'admin_footer', array( $this, 'enqueue_admin_footer_scripts' ) );
+			add_action( 'wp_ajax_wc_sc_check_scheduled_coupon_actions', array( $this, 'check_scheduled_coupon_actions' ) );
 		}
 
 		/**
@@ -137,14 +143,14 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 		 */
 		public function __call( $function_name, $arguments = array() ) {
 
-			if ( ! is_callable( 'SA_WC_Compatibility_3_4', $function_name ) ) {
+			if ( ! is_callable( 'SA_WC_Compatibility_3_7', $function_name ) ) {
 				return;
 			}
 
 			if ( ! empty( $arguments ) ) {
-				return call_user_func_array( 'SA_WC_Compatibility_3_4::' . $function_name, $arguments );
+				return call_user_func_array( 'SA_WC_Compatibility_3_7::' . $function_name, $arguments );
 			} else {
-				return call_user_func( 'SA_WC_Compatibility_3_4::' . $function_name );
+				return call_user_func( 'SA_WC_Compatibility_3_7::' . $function_name );
 			}
 
 		}
@@ -170,6 +176,7 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 			include_once 'compat/class-sa-wc-compatibility-3-2.php';
 			include_once 'compat/class-sa-wc-compatibility-3-3.php';
 			include_once 'compat/class-sa-wc-compatibility-3-4.php';
+			include_once 'compat/class-sa-wc-compatibility-3-7.php';
 			include_once 'compat/class-wc-sc-wpml-compatibility.php';
 			include_once 'compat/class-wcs-sc-compatibility.php';
 
@@ -236,6 +243,7 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 			add_option( 'sc_gift_certificate_shop_loop_button_text', __( 'Select options', 'woocommerce-smart-coupons' ), '', 'no' );
 			add_option( 'wc_sc_setting_max_coupon_to_show', '5', '', 'no' );
 			add_option( 'smart_coupons_show_invalid_coupons_on_myaccount', 'no', '', 'no' );
+			add_option( 'smart_coupons_sell_store_credit_at_less_price', 'no', '', 'no' );
 
 		}
 
@@ -302,7 +310,7 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 
 
 		/**
-		 * Function to send e-mail containing coupon code to customer
+		 * Function to send e-mail containing coupon code to receiver
 		 *
 		 * @param array   $coupon_title Associative array containing receiver's details.
 		 * @param string  $discount_type Type of coupon.
@@ -488,6 +496,334 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 		}
 
 		/**
+		 * Function to schedule e-mail sending process containing coupon code to customer
+		 *
+		 * @param array  $action_args arguments for Action Scheduler.
+		 * @param string $sending_timestamp timestamp for scheduling email.
+		 * @return boolean email sending scheduled or not.
+		 */
+		public function schedule_coupon_email( $action_args = array(), $sending_timestamp = '' ) {
+
+			if ( empty( $action_args ) || empty( $sending_timestamp ) ) {
+				return false;
+			}
+
+			$coupon_id = 0;
+			if ( isset( $action_args['coupon_id'] ) && ! empty( $action_args['coupon_id'] ) ) {
+				$coupon_id = $action_args['coupon_id'];
+			}
+
+			$ref_key = '';
+			if ( isset( $action_args['ref_key'] ) && ! empty( $action_args['ref_key'] ) ) {
+				$ref_key = $action_args['ref_key'];
+			}
+
+			if ( 0 !== $coupon_id && '' !== $ref_key && function_exists( 'as_schedule_single_action' ) ) {
+				$actions_id = as_schedule_single_action( $sending_timestamp, 'wc_sc_send_scheduled_coupon_email', $action_args );
+				if ( $actions_id ) {
+					$scheduled_actions_ids = get_post_meta( $coupon_id, 'wc_sc_scheduled_actions_ids', true );
+					if ( empty( $scheduled_actions_ids ) || ! is_array( $scheduled_actions_ids ) ) {
+						$scheduled_actions_ids = array();
+					}
+					$scheduled_actions_ids[ $ref_key ] = $actions_id;
+					// Stored actions ids in coupons so that we can delete them when coupon gets deleted or email is sent successfully.
+					update_post_meta( $coupon_id, 'wc_sc_scheduled_actions_ids', $scheduled_actions_ids );
+					return true;
+				}
+			}
+			return false;
+		}
+
+		/**
+		 * Function to send scheduled coupon's e-mail containing coupon code to receiver. It is triggered through Action Scheduler
+		 *
+		 * @param string $auto_generate is auto generated coupon.
+		 * @param int    $coupon_id Associated coupon id.
+		 * @param int    $parent_id Associated parent coupon id.
+		 * @param int    $order_id Associated order id.
+		 * @param string $receiver_email receiver email.
+		 * @param string $sender_message_index_key key containing index of sender's message from gift_receiver_message meta in order.
+		 * @param string $ref_key timestamp based reference key.
+		 */
+		public function send_scheduled_coupon_email( $auto_generate = '', $coupon_id = '', $parent_id = '', $order_id = '', $receiver_email = '', $sender_message_index_key = '', $ref_key = '' ) {
+
+			if ( ! empty( $coupon_id ) && ! empty( $order_id ) && ! empty( $receiver_email ) ) {
+
+				$coupon_status = get_post_status( $coupon_id );
+				if ( 'publish' !== $coupon_status ) {
+					return;
+				}
+
+				$coupon = new WC_Coupon( $coupon_id );
+				$order  = wc_get_order( $order_id );
+				if ( is_a( $coupon, 'WC_Coupon' ) && is_a( $order, 'WC_Order' ) ) {
+					$sc_disable_email_restriction = get_post_meta( $coupon_id, 'sc_disable_email_restriction', true );
+					if ( $this->is_wc_gte_30() ) {
+						$coupon_amount = $coupon->get_amount();
+						$discount_type = $coupon->get_discount_type();
+						$coupon_code   = $coupon->get_code();
+					} else {
+						$coupon_amount = ( ! empty( $coupon->amount ) ) ? $coupon->amount : 0;
+						$discount_type = ( ! empty( $coupon->discount_type ) ) ? $coupon->discount_type : '';
+						$coupon_code   = ( ! empty( $coupon->code ) ) ? $coupon->code : '';
+					}
+
+					$coupon_details = array(
+						$receiver_email => array(
+							'parent' => $parent_id,
+							'code'   => $coupon_code,
+							'amount' => $coupon_amount,
+						),
+					);
+
+					$receiver_name                 = '';
+					$message_from_sender           = '';
+					$gift_certificate_sender_name  = '';
+					$gift_certificate_sender_email = '';
+
+					$is_gift = get_post_meta( $order_id, 'is_gift', true );
+
+					// In case of auto generated coupons receiver's details are saved in generated coupon.
+					if ( 'yes' === $auto_generate ) {
+						$coupon_receiver_details = get_post_meta( $coupon_id, 'wc_sc_coupon_receiver_details', true );
+						if ( ! empty( $coupon_receiver_details ) && is_array( $coupon_receiver_details ) ) {
+							$message_from_sender           = $coupon_receiver_details['message_from_sender'];
+							$gift_certificate_sender_name  = $coupon_receiver_details['gift_certificate_sender_name'];
+							$gift_certificate_sender_email = $coupon_receiver_details['gift_certificate_sender_email'];
+						}
+						// Delete receiver detail post meta as it is no longer necessary.
+						delete_post_meta( $coupon_id, 'wc_sc_coupon_receiver_details' );
+					} else {
+						$receivers_messages = get_post_meta( $order_id, 'gift_receiver_message', true );
+						if ( strpos( $sender_message_index_key, ':' ) > 0 ) {
+							$index_keys    = explode( ':', $sender_message_index_key );
+							$coupon_index  = $index_keys[0];
+							$message_index = $index_keys[1];
+							if ( isset( $receivers_messages[ $coupon_index ][ $message_index ] ) ) {
+								$message_from_sender = $receivers_messages[ $coupon_index ][ $message_index ];
+							}
+						}
+					}
+
+					$this->sa_email_coupon( $coupon_details, $discount_type, $order_id, $receiver_name, $message_from_sender, $gift_certificate_sender_name, $gift_certificate_sender_email, $is_gift );
+
+					if ( ( 'no' === $sc_disable_email_restriction || empty( $sc_disable_email_restriction ) ) ) {
+						$old_customers_email_ids   = (array) maybe_unserialize( get_post_meta( $coupon_id, 'customer_email', true ) );
+						$old_customers_email_ids[] = $receiver_email;
+						update_post_meta( $coupon_id, 'customer_email', $old_customers_email_ids );
+					}
+
+					if ( ! empty( $ref_key ) ) {
+						$scheduled_actions_ids = get_post_meta( $coupon_id, 'wc_sc_scheduled_actions_ids', true );
+						if ( isset( $scheduled_actions_ids[ $ref_key ] ) ) {
+							unset( $scheduled_actions_ids[ $ref_key ] );
+						}
+						if ( ! empty( $scheduled_actions_ids ) ) {
+							update_post_meta( $coupon_id, 'wc_sc_scheduled_actions_ids', $scheduled_actions_ids );
+						} else {
+							// Delete scheduled action ids meta since it is empty now.
+							delete_post_meta( $coupon_id, 'wc_sc_scheduled_actions_ids' );
+						}
+					}
+				}
+			}
+		}
+
+		/**
+		 * Function to process scheduled coupons.
+		 *
+		 * @param int $coupon_id published coupon's id.
+		 */
+		public function process_published_scheduled_coupon( $coupon_id = 0 ) {
+
+			$post_type = get_post_type( $coupon_id );
+			if ( 'shop_coupon' !== $post_type ) {
+				return false;
+			}
+
+			$coupon = new WC_Coupon( $coupon_id );
+			if ( is_a( $coupon, 'WC_Coupon' ) ) {
+				$order_id = get_post_meta( $coupon_id, 'generated_from_order_id', true );
+				$order    = wc_get_order( $order_id );
+				if ( is_a( $order, 'WC_Order' ) ) {
+					$coupon_receiver_details = get_post_meta( $coupon_id, 'wc_sc_coupon_receiver_details', true );
+					if ( ! empty( $coupon_receiver_details ) && is_array( $coupon_receiver_details ) ) {
+						$parent_id                     = $coupon_receiver_details['coupon_details']['parent'];
+						$receiver_email                = $coupon_receiver_details['gift_certificate_receiver_email'];
+						$gift_certificate_sender_name  = $coupon_receiver_details['gift_certificate_sender_name'];
+						$gift_certificate_sender_email = $coupon_receiver_details['gift_certificate_sender_email'];
+						$sending_timestamp             = get_post_time( 'U', true, $coupon_id ); // Get coupon publish timestamp.
+						$action_args                   = array(
+							'auto_generate'     => 'yes',
+							'coupon_id'         => $coupon_id,
+							'parent_id'         => $parent_id, // Parent coupon id.
+							'order_id'          => $order_id,
+							'receiver_email'    => $receiver_email,
+							'message_index_key' => '',
+							'ref_key'           => uniqid(), // A unique timestamp key to relate action schedulers with their coupons.
+						);
+						$is_scheduled                  = $this->schedule_coupon_email( $action_args, $sending_timestamp );
+						if ( ! $is_scheduled ) {
+							if ( $this->is_wc_gte_30() ) {
+								$coupon_code = $coupon->get_code();
+							} else {
+								$coupon_code = ( ! empty( $coupon->code ) ) ? $coupon->code : '';
+							}
+							/* translators: 1. Receiver email 2. Coupon code 3. Order id */
+							$this->log( 'error', sprintf( __( 'Failed to schedule email to "%1$s" for coupon "%2$s" received from order #%3$s.', 'woocommerce-smart-coupons' ), $receiver_email, $coupon_code, $order_id ) );
+						}
+					}
+				}
+			}
+
+		}
+
+		/**
+		 * Function to delete action schedulers when associated coupon is deleted.
+		 *
+		 * @param int $coupon_id coupon id.
+		 */
+		public function delete_scheduled_coupon_actions( $coupon_id = 0 ) {
+
+			global $post_type;
+
+			if ( 'shop_coupon' !== $post_type ) {
+				return false;
+			}
+
+			$coupon = new WC_Coupon( $coupon_id );
+
+			if ( is_a( $coupon, 'WC_Coupon' ) ) {
+
+				$scheduled_actions_ids = get_post_meta( $coupon_id, 'wc_sc_scheduled_actions_ids', true );
+
+				if ( ! empty( $scheduled_actions_ids ) && is_array( $scheduled_actions_ids ) ) {
+
+					if ( ! class_exists( 'ActionScheduler' ) || ! is_callable( array( 'ActionScheduler', 'store' ) ) ) {
+						return false;
+					}
+
+					foreach ( $scheduled_actions_ids as $ref_key => $action_id ) {
+						$action_scheduler = ActionScheduler::store()->fetch_action( $action_id );
+						if ( is_a( $action_scheduler, 'ActionScheduler_Action' ) && is_callable( array( $action_scheduler, 'is_finished' ) ) ) {
+							$is_action_complete = $action_scheduler->is_finished();
+
+							// Delete only unfinished actions related to coupon.
+							if ( ! $is_action_complete ) {
+								ActionScheduler::store()->delete_action( $action_id );
+							}
+						}
+					}
+				}
+			}
+
+		}
+
+		/**
+		 * Function to check if passed timestamp is valid.
+		 *
+		 * @param string $timestamp timestamp.
+		 * @return boolean is valid timestamp.
+		 */
+		public function is_valid_timestamp( $timestamp = '' ) {
+
+			if ( empty( $timestamp ) || ! is_numeric( $timestamp ) ) {
+				return false;
+			}
+
+			$current_timestamp = current_time( 'timestamp', 1 ); // Get GMT timestamp.
+
+			// Check if time is already passed.
+			if ( $current_timestamp > $timestamp ) {
+				return false;
+			}
+			return true;
+		}
+
+
+		/**
+		 * Function to enqueue scripts in footer.
+		 */
+		public function enqueue_admin_footer_scripts() {
+
+			global $pagenow, $typenow;
+
+			if ( empty( $pagenow ) || 'edit.php' !== $pagenow ) {
+				return;
+			}
+
+			$coupon_status = ( ! empty( $_GET['post_status'] ) ) ? wc_clean( wp_unslash( $_GET['post_status'] ) ) : ''; // WPCS: sanitization ok. CSRF ok, input var ok.
+			if ( 'edit.php' === $pagenow && 'shop_coupon' === $typenow && 'trash' === $coupon_status ) {
+				if ( ! wp_script_is( 'jquery' ) ) {
+					wp_enqueue_script( 'jquery' );
+				}
+				?>
+				<script type="text/javascript">
+					jQuery(function(){
+						jQuery(document).ready(function() {
+							jQuery('body.post-type-shop_coupon .wp-list-table .delete a.submitdelete').click(function(e) {
+								e.preventDefault();
+								let coupon_delete_elem = jQuery(this);
+								let coupon_delete_url = jQuery(coupon_delete_elem).attr('href');
+								let coupon_id = jQuery(coupon_delete_elem).closest('.type-shop_coupon').find('[name="post[]"]').val();
+								jQuery.ajax({
+									url: '<?php echo esc_url( admin_url( 'admin-ajax.php' ) ); ?>',
+									type: 'post',
+									dataType: 'json',
+									data: {
+										action: 'wc_sc_check_scheduled_coupon_actions',
+										security: '<?php echo esc_html( wp_create_nonce( 'wc-sc-check-coupon-scheduled-actions' ) ); ?>',
+										coupon_id: coupon_id
+									},
+									success: function( response ){
+										if ( undefined !== response.has_scheduled_actions && '' !== response.has_scheduled_actions  && 'yes' === response.has_scheduled_actions ) {
+											let confirm_delete = window.confirm( '<?php echo esc_js( __( 'This coupon has pending emails to be sent. Deleting it will delete those emails also. Are you sure to delete this coupon?', 'woocommerce-smart-coupons' ) ); ?>' );
+											if( confirm_delete ) {
+												window.location.href = coupon_delete_url;
+											}
+										} else {
+											window.location.href = coupon_delete_url;
+										}
+									},
+									error: function( jq_xhr, exception ) {
+										alert( '<?php echo esc_js( __( 'An error has occurred. Please try again later.', 'woocommerce-smart-coupons' ) ); ?>' );
+									}
+								});
+							});
+						});
+					});
+				</script>
+				<?php
+			}
+		}
+
+		/**
+		 * Function to check if coupon has any pending scheduled actions.
+		 */
+		public function check_scheduled_coupon_actions() {
+
+			check_ajax_referer( 'wc-sc-check-coupon-scheduled-actions', 'security' );
+
+			$coupon_id = ( ! empty( $_POST['coupon_id'] ) ) ? wc_clean( wp_unslash( $_POST['coupon_id'] ) ) : ''; // phpcs:ignore
+
+			$response = array(
+				'has_scheduled_actions' => 'no',
+			);
+
+			if ( ! empty( $coupon_id ) ) {
+				$coupon = new WC_Coupon( $coupon_id );
+				if ( is_a( $coupon, 'WC_Coupon' ) ) {
+					$scheduled_actions_ids = get_post_meta( $coupon_id, 'wc_sc_scheduled_actions_ids', true );
+					if ( is_array( $scheduled_actions_ids ) && ! empty( $scheduled_actions_ids ) ) {
+						$response['has_scheduled_actions'] = 'yes';
+					}
+				}
+			}
+
+			wp_send_json( $response );
+		}
+
+		/**
 		 * Register new endpoint to use inside My Account page.
 		 */
 		public function sc_add_endpoints() {
@@ -613,7 +949,7 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 					break;
 
 				case 'percent':
-					$coupon_data['coupon_type']   = ( $this->is_wc_gte_30() ) ? __( 'Percentage Discount', 'woocommerce-smart-coupons' ) : __( 'Cart Discount', 'woocommerce-smart-coupons' );
+					$coupon_data['coupon_type']   = ( $this->is_wc_gte_30() ) ? __( 'Discount', 'woocommerce-smart-coupons' ) : __( 'Cart Discount', 'woocommerce-smart-coupons' );
 					$coupon_data['coupon_amount'] = $coupon_amount . '%';
 					break;
 
@@ -1163,7 +1499,6 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 
 			// This is to match counter for 'smart_coupons_after_calculate_totals' hook with 'woocommerce_cart_reset' counter since we are using these two counters to prevent store credit being appplied multiple times.
 			if ( $sc_after_calculate_action_count < $cart_reset_action_count ) {
-
 				do_action( 'smart_coupons_after_calculate_totals' );
 			}
 
@@ -1770,10 +2105,11 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 		 * @param string    $message_from_sender Message from sender.
 		 * @param string    $gift_certificate_sender_name Sender name.
 		 * @param string    $gift_certificate_sender_email Sender email.
+		 * @param string    $sending_timestamp timestamp for scheduled sending.
 		 * @return array of generated coupon details
 		 */
-		public function generate_smart_coupon( $email, $amount, $order_id = '', $coupon = '', $discount_type = 'smart_coupon', $gift_certificate_receiver_name = '', $message_from_sender = '', $gift_certificate_sender_name = '', $gift_certificate_sender_email = '' ) {
-			return apply_filters( 'generate_smart_coupon_action', $email, $amount, $order_id, $coupon, $discount_type, $gift_certificate_receiver_name, $message_from_sender, $gift_certificate_sender_name, $gift_certificate_sender_email );
+		public function generate_smart_coupon( $email, $amount, $order_id = '', $coupon = '', $discount_type = 'smart_coupon', $gift_certificate_receiver_name = '', $message_from_sender = '', $gift_certificate_sender_name = '', $gift_certificate_sender_email = '', $sending_timestamp = '' ) {
+			return apply_filters( 'generate_smart_coupon_action', $email, $amount, $order_id, $coupon, $discount_type, $gift_certificate_receiver_name, $message_from_sender, $gift_certificate_sender_name, $gift_certificate_sender_email, $sending_timestamp );
 		}
 
 		/**
@@ -1788,9 +2124,10 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 		 * @param string    $message_from_sender Message from sender.
 		 * @param string    $gift_certificate_sender_name Sender name.
 		 * @param string    $gift_certificate_sender_email Sender email.
+		 * @param string    $sending_timestamp timestamp for scheduled sending.
 		 * @return array $smart_coupon_codes associative array containing generated coupon details
 		 */
-		public function generate_smart_coupon_action( $email, $amount, $order_id = '', $coupon = '', $discount_type = 'smart_coupon', $gift_certificate_receiver_name = '', $message_from_sender = '', $gift_certificate_sender_name = '', $gift_certificate_sender_email = '' ) {
+		public function generate_smart_coupon_action( $email, $amount, $order_id = '', $coupon = '', $discount_type = 'smart_coupon', $gift_certificate_receiver_name = '', $message_from_sender = '', $gift_certificate_sender_name = '', $gift_certificate_sender_email = '', $sending_timestamp = '' ) {
 
 			if ( '' === $email ) {
 				return false;
@@ -1843,7 +2180,9 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 			}
 
 			if ( ! empty( $order_id ) ) {
-				$receivers_messages = get_post_meta( $order_id, 'gift_receiver_message', true );
+				$receivers_messages    = get_post_meta( $order_id, 'gift_receiver_message', true );
+				$schedule_gift_sending = get_post_meta( $order_id, 'wc_sc_schedule_gift_sending', true );
+				$sending_timestamps    = get_post_meta( $order_id, 'gift_sending_timestamp', true );
 			}
 
 			foreach ( $emails as $email_id => $qty ) {
@@ -1864,6 +2203,12 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 					'post_author'  => 1,
 					'post_type'    => 'shop_coupon',
 				);
+
+				$should_schedule = isset( $schedule_gift_sending ) && 'yes' === $schedule_gift_sending && $this->is_valid_timestamp( $sending_timestamp ) ? true : false;
+
+				if ( $should_schedule ) {
+					$smart_coupon_args['post_date_gmt'] = date( 'Y-m-d H:i:s', $sending_timestamp );
+				}
 
 				$smart_coupon_id = wp_insert_post( $smart_coupon_args );
 
@@ -1888,7 +2233,12 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 					$is_parent_coupon_expired = ( ! empty( $expiry_date ) && ( $expiry_date < time() ) ) ? true : false;
 					if ( ! $is_parent_coupon_expired ) {
 						$validity_suffix = get_post_meta( $coupon_id, 'validity_suffix', true );
-						$expiry_date     = strtotime( "+$sc_coupon_validity $validity_suffix" );
+						// In case of scheduled coupon, expiry date is calculated from scheduled publish date.
+						if ( isset( $smart_coupon_args['post_date_gmt'] ) ) {
+							$expiry_date = strtotime( $smart_coupon_args['post_date_gmt'] . "+$sc_coupon_validity $validity_suffix" );
+						} else {
+							$expiry_date = strtotime( "+$sc_coupon_validity $validity_suffix" );
+						}
 					}
 				}
 
@@ -1919,7 +2269,10 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 
 				$is_disable_email_restriction = ( ! empty( $coupon_id ) ) ? get_post_meta( $coupon_id, 'sc_disable_email_restriction', true ) : '';
 				if ( empty( $is_disable_email_restriction ) || 'no' === $is_disable_email_restriction ) {
-					update_post_meta( $smart_coupon_id, 'customer_email', array( $email_id ) );
+					// Update customer_email now if coupon is not scheduled otherwise it would be updated by action scheduler later on.
+					if ( ! $should_schedule ) {
+						update_post_meta( $smart_coupon_id, 'customer_email', array( $email_id ) );
+					}
 				}
 
 				if ( ! $this->is_wc_gte_30() ) {
@@ -1972,8 +2325,21 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 						update_post_meta( $order_id, 'temp_gift_card_receivers_emails', $email );
 					}
 				}
-				$this->sa_email_coupon( array( $email_id => $generated_coupon_details ), $type, $order_id, $gift_certificate_receiver_name, $message_from_sender, $gift_certificate_sender_name, $gift_certificate_sender_email, $is_gift );
 
+				if ( ( isset( $schedule_gift_sending ) && 'yes' === $schedule_gift_sending && $this->is_valid_timestamp( $sending_timestamp ) ) ) {
+					$wc_sc_coupon_receiver_details = array(
+						'coupon_details'                  => $generated_coupon_details,
+						'gift_certificate_receiver_email' => $email_id,
+						'gift_certificate_receiver_name'  => $gift_certificate_receiver_name,
+						'message_from_sender'             => $message_from_sender,
+						'gift_certificate_sender_name'    => $gift_certificate_sender_name,
+						'gift_certificate_sender_email'   => $gift_certificate_sender_email,
+					);
+					update_post_meta( $smart_coupon_id, 'wc_sc_coupon_receiver_details', $wc_sc_coupon_receiver_details );
+				} else {
+
+					$this->sa_email_coupon( array( $email_id => $generated_coupon_details ), $type, $order_id, $gift_certificate_receiver_name, $message_from_sender, $gift_certificate_sender_name, $gift_certificate_sender_email, $is_gift );
+				}
 			}
 
 			return $smart_coupon_codes;
@@ -2593,6 +2959,7 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 				'generated_from_order_id',
 				'gift_receiver_email',
 				'gift_receiver_message',
+				'gift_sending_timestamp',
 				'is_gift',
 				'is_pick_price_of_product',
 				'sc_called_credit_details',
@@ -2605,6 +2972,7 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 				'temp_gift_card_receivers_emails',
 				'validity_suffix',
 				'sc_restrict_to_new_user',
+				'wc_sc_schedule_gift_sending',
 			);
 			if ( in_array( $meta_key, $sc_meta, true ) ) {
 				return true;
@@ -2796,6 +3164,31 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 		public function get_coupon_code_length() {
 			$coupon_code_length = get_option( 'wc_sc_coupon_code_length' );
 			return ! empty( $coupon_code_length ) ? $coupon_code_length : 13; // Default coupon code length is 13.
+		}
+
+		/**
+		 * Function to get coupon codes used in an order
+
+		 * @param mixed $order Order object or order ID.
+		 * @return array $coupon_codes coupon codes used in order.
+		 */
+		public function get_coupon_codes( $order = '' ) {
+			$coupon_codes = array();
+			if ( ! empty( $order ) ) {
+				// Try to load order using ID.
+				if ( is_int( $order ) ) {
+					$order = wc_get_order( $order );
+				}
+
+				if ( is_a( $order, 'WC_Order' ) ) {
+					if ( $this->is_wc_gte_37() ) {
+						$coupon_codes = is_callable( array( $order, 'get_coupon_codes' ) ) ? $order->get_coupon_codes() : array();
+					} else {
+						$coupon_codes = is_callable( array( $order, 'get_used_coupons' ) ) ? $order->get_used_coupons() : array();
+					}
+				}
+			}
+			return $coupon_codes;
 		}
 
 	}//end class

@@ -1,5 +1,29 @@
 *** WooCommerce Smart Coupons Changelog ***
 
+2019.08.23 - version 4.1.0
+* New: Feature to allow buyers to schedule delivery of coupons
+* New: WooCommerce 3.7 Compatibility
+* Fix: Import Coupon CSV not working [WC3.7]
+* Fix: Smart Coupons' setting not saving [WC3.7]
+* Fix: PHP Notice:  get_used_coupons is deprecated [WC3.7]
+* Fix: Coupon bulk export/import performance
+* Fix: Incorrect price showing in Receiver detail form when selling of credit at less price is enabled
+* Update: A few changes in CSS
+* Update: Responsiveness of "Email to customer" description under WooCommerce > Coupons > Bulk Generate tab
+* Update: Alignment of amount field in template 'call-for-credit-form.php'
+* Update: POT file
+
+2019.08.13 - version 4.0.9
+* New: Allow creating store credit/gift certificate with product's regular price/customer entered price instead of sale price/discounted price
+* New: Show message for coupons applied via URL
+* Fix: PHP 7+ warnings
+* Fix: Coupon's details are not visible on product's page when the product is a variable product
+* Fix: Sometimes showing any entry to purchase credit field as invalid amount
+* Fix: Sometimes purchase credit form is getting included more then once, causing failure of the feature
+* Update: Change text 'Percentage discount' to 'discount' everywhere as '%' sign is already shown with coupon amount
+* Update: Smart Coupons setting labels
+* Update: POT file
+
 2019.06.24 - version 4.0.8
 * Fix: Fatal Error: Could not find class 'ActionScheduler'
 * Fix: Incorrect Subscription renewal order total when using a coupon having option 'Add products to cart' is used

@@ -291,7 +291,7 @@ if ( ! class_exists( 'WC_SC_Coupon_Message' ) ) {
 		 * @param  boolean  $plain_text Not used in this function.
 		 */
 		public function wc_add_coupons_message_in_email( $order, $bool, $plain_text ) {
-			$used_coupons = $order->get_used_coupons();
+			$used_coupons = $this->get_coupon_codes( $order );
 			if ( count( $used_coupons ) <= 0 ) {
 				return;
 			}

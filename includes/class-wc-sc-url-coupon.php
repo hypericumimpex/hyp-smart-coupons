@@ -28,6 +28,13 @@ if ( ! class_exists( 'WC_SC_URL_Coupon' ) ) {
 		private static $instance = null;
 
 		/**
+		 * Variable to hold coupon notices
+		 *
+		 * @var $coupon_notices
+		 */
+		private $coupon_notices = array();
+
+		/**
 		 * Constructor
 		 */
 		public function __construct() {
@@ -35,6 +42,8 @@ if ( ! class_exists( 'WC_SC_URL_Coupon' ) ) {
 			add_action( 'wp_loaded', array( $this, 'apply_coupon_from_url' ), 20 );
 			add_action( 'wp_loaded', array( $this, 'apply_coupon_from_session' ), 20 );
 			add_action( 'wp_loaded', array( $this, 'move_applied_coupon_from_cookies_to_account' ) );
+			add_action( 'wp_head', array( $this, 'convert_sc_coupon_notices_to_wc_notices' ) );
+			add_filter( 'the_content', array( $this, 'show_coupon_notices' ) );
 
 		}
 
@@ -177,12 +186,23 @@ if ( ! class_exists( 'WC_SC_URL_Coupon' ) ) {
 		 */
 		public function hold_applied_coupon( $coupon_args ) {
 
-			$user_id = get_current_user_id();
+			$user_id      = get_current_user_id();
+			$saved_status = '';
 
 			if ( 0 === $user_id ) {
-				$applied_coupons = $this->save_applied_coupon_in_cookie( $coupon_args );
+				$saved_status = $this->save_applied_coupon_in_cookie( $coupon_args );
 			} else {
-				$applied_coupons = $this->save_applied_coupon_in_account( $coupon_args, $user_id );
+				$saved_status = $this->save_applied_coupon_in_account( $coupon_args, $user_id );
+			}
+
+			if ( ! empty( $saved_status ) ) {
+				if ( 'saved' === $saved_status ) {
+					$notice = __( 'Coupon code applied successfully. Please add some products to the cart to see the discount.', 'woocommerce-smart-coupons' );
+					$this->set_coupon_notices( $notice, 'success' );
+				} elseif ( 'already_saved' === $saved_status ) {
+					$notice = __( 'Coupon code already applied! Please add some products to the cart to see the discount.', 'woocommerce-smart-coupons' );
+					$this->set_coupon_notices( $notice, 'error' );
+				}
 			}
 
 		}
@@ -191,8 +211,11 @@ if ( ! class_exists( 'WC_SC_URL_Coupon' ) ) {
 		 * Apply coupon code from session, if any
 		 *
 		 * @param array $coupon_args The coupon arguments.
+		 * @return string $saved_status
 		 */
 		public function save_applied_coupon_in_cookie( $coupon_args ) {
+
+			$saved_status = ''; // Variable to store whether coupon saved/already saved in cookie.
 
 			if ( ! empty( $coupon_args['coupon-code'] ) ) {
 
@@ -206,13 +229,15 @@ if ( ! class_exists( 'WC_SC_URL_Coupon' ) ) {
 
 				if ( ! in_array( $coupon_args['coupon-code'], $applied_coupons, true ) ) {
 					$applied_coupons[] = $coupon_args['coupon-code'];
+					$saved_status      = 'saved';
+					update_option( 'sc_applied_coupon_profile_' . $unique_id, $applied_coupons, 'no' );
+					wc_setcookie( 'sc_applied_coupon_profile_id', $unique_id, $this->get_cookie_life() );
+				} else {
+					$saved_status = 'already_saved';
 				}
-
-				update_option( 'sc_applied_coupon_profile_' . $unique_id, $applied_coupons, 'no' );
-
-				wc_setcookie( 'sc_applied_coupon_profile_id', $unique_id, $this->get_cookie_life() );
-
 			}
+
+			return $saved_status;
 
 		}
 
@@ -221,8 +246,11 @@ if ( ! class_exists( 'WC_SC_URL_Coupon' ) ) {
 		 *
 		 * @param array $coupon_args The coupon arguments.
 		 * @param int   $user_id The user id.
+		 * @return string $saved_status
 		 */
 		public function save_applied_coupon_in_account( $coupon_args, $user_id ) {
+
+			$saved_status = ''; // Variable to store whether coupon saved/already saved in user meta.
 
 			if ( ! empty( $coupon_args['coupon-code'] ) ) {
 
@@ -234,11 +262,14 @@ if ( ! class_exists( 'WC_SC_URL_Coupon' ) ) {
 
 				if ( ! in_array( $coupon_args['coupon-code'], $applied_coupons, true ) ) {
 					$applied_coupons[] = $coupon_args['coupon-code'];
+					$saved_status      = 'saved';
+					update_user_meta( $user_id, 'sc_applied_coupon_from_url', $applied_coupons );
+				} else {
+					$saved_status = 'already_saved';
 				}
-
-				update_user_meta( $user_id, 'sc_applied_coupon_from_url', $applied_coupons );
-
 			}
+
+			return $saved_status;
 
 		}
 
@@ -291,6 +322,88 @@ if ( ! class_exists( 'WC_SC_URL_Coupon' ) ) {
 			$url_params = array_diff_key( $url_args, array_flip( $sc_params ) );
 
 			return add_query_arg( $url_params, $url );
+		}
+
+		/**
+		 * Function to convert sc coupon notices to wc notices
+		 */
+		public function convert_sc_coupon_notices_to_wc_notices() {
+			$coupon_notices = $this->get_coupon_notices();
+			// If we have coupon notices to be shown and we are on a woocommerce page then convert them to wc notices.
+			if ( count( $coupon_notices ) > 0 && ( is_woocommerce() || is_cart() || is_checkout() || is_account_page() ) ) {
+				foreach ( $coupon_notices as $notice_type => $notices ) {
+					if ( count( $notices ) > 0 ) {
+						foreach ( $notices as $notice ) {
+							wc_add_notice( $notice, $notice_type );
+						}
+					}
+				}
+				$this->remove_coupon_notices();
+			}
+		}
+
+		/**
+		 * Function to get sc coupon notices
+		 */
+		public function get_coupon_notices() {
+			return apply_filters( 'wc_sc_coupon_notices', $this->coupon_notices );
+		}
+
+		/**
+		 * Function to set sc coupon notices
+		 *
+		 * @param string $notice notice.
+		 * @param string $type notice type.
+		 */
+		public function set_coupon_notices( $notice = '', $type = '' ) {
+			if ( empty( $notice ) || empty( $type ) ) {
+				return;
+			}
+			if ( empty( $this->coupon_notices[ $type ] ) || ! is_array( $this->coupon_notices[ $type ] ) ) {
+				$this->coupon_notices[ $type ] = array();
+			}
+			$this->coupon_notices[ $type ][] = $notice;
+		}
+
+		/**
+		 * Function to remove sc coupon notices
+		 */
+		public function remove_coupon_notices() {
+			$this->coupon_notices = array();
+		}
+
+		/**
+		 * Function to add coupon notices to wp content
+		 *
+		 * @param string $content page content.
+		 * @return string $content page content
+		 */
+		public function show_coupon_notices( $content = '' ) {
+
+			$coupon_notices = $this->get_coupon_notices();
+
+			if ( count( $coupon_notices ) > 0 ) {
+
+				// Buffer output.
+				ob_start();
+
+				foreach ( $coupon_notices as $notice_type => $notices ) {
+					if ( count( $coupon_notices[ $notice_type ] ) > 0 ) {
+						wc_get_template(
+							"notices/{$notice_type}.php", array(
+								'messages' => $coupon_notices[ $notice_type ],
+							)
+						);
+					}
+				}
+
+				$notices = wc_kses_notice( ob_get_clean() );
+				$content = $notices . $content;
+				$this->remove_coupon_notices(); // Empty out notice data.
+			}
+
+			return $content;
+
 		}
 
 	}

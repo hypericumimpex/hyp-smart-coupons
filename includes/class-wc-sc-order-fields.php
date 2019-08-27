@@ -361,7 +361,7 @@ if ( ! class_exists( 'WC_SC_Order_Fields' ) ) {
 
 			if ( wc_tax_enabled() && 'incl' === $tax_display ) {
 
-				$applied_coupons = $order->get_used_coupons();
+				$applied_coupons = $this->get_coupon_codes( $order );
 
 				if ( empty( $applied_coupons ) ) {
 					return $html;
@@ -410,9 +410,10 @@ if ( ! class_exists( 'WC_SC_Order_Fields' ) ) {
 				return;
 			}
 
-			if ( count( $order->get_used_coupons() ) > 0 ) {
+			$used_coupons = $this->get_coupon_codes( $order );
+			if ( count( $used_coupons ) > 0 ) {
 				$store_credit_balance = '';
-				foreach ( $order->get_used_coupons() as $code ) {
+				foreach ( $used_coupons as $code ) {
 					if ( ! $code ) {
 						continue;
 					}

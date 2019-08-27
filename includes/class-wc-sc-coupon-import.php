@@ -231,8 +231,7 @@ if ( ! class_exists( 'WC_SC_Coupon_Import' ) ) {
 						as_unschedule_action( 'woo_sc_import_coupons_from_csv' );
 
 						if ( function_exists( 'as_schedule_single_action' ) ) {
-
-							as_schedule_single_action( time() - MINUTE_IN_SECONDS, 'woo_sc_import_coupons_from_csv' );
+							as_schedule_single_action( time(), 'woo_sc_import_coupons_from_csv' );
 						}
 					} else {
 
@@ -270,8 +269,7 @@ if ( ! class_exists( 'WC_SC_Coupon_Import' ) ) {
 							delete_site_option( 'woo_sc_action_data' );
 
 							if ( function_exists( 'as_schedule_single_action' ) ) {
-
-								as_schedule_single_action( time() - MINUTE_IN_SECONDS, 'woo_sc_generate_coupon_csv' );
+								as_schedule_single_action( time(), 'woo_sc_generate_coupon_csv' );
 							}
 						}
 					}
@@ -301,66 +299,6 @@ if ( ! class_exists( 'WC_SC_Coupon_Import' ) ) {
 					wp_safe_redirect( $url );
 					exit;
 			}
-		}
-
-		/**
-		 * Display pre-import options
-		 */
-		public function import() {
-			global $wpdb;
-
-			$global_coupons_new = array(); // array for storing newly created global coupons.
-
-			wp_suspend_cache_invalidation( true );
-			echo '<div class="progress">';
-
-			if ( ! class_exists( 'WC_SC_Background_Coupon_Importer' ) ) {
-				include_once 'class-wc-sc-background-coupon-importer.php';
-			}
-
-			$background_coupon_importer = WC_SC_Background_Coupon_Importer::get_instance();
-
-			$importer_identifier = $background_coupon_importer->get_identifier();
-
-			foreach ( $this->parsed_data as $key => &$item ) {
-
-				$coupon = $this->parser->parse_coupon( $item );
-
-				if ( $coupon ) {
-					$background_coupon_importer->push_to_queue(
-						array(
-							'filter' => array(
-								'class'    => __CLASS__,
-								'function' => 'process_coupon',
-							),
-							'args'   => array( $coupon ),
-						)
-					);
-				} else {
-					$this->skipped++;
-				}
-
-				unset( $item, $coupon );
-			}
-
-			$background_coupon_importer->dispatch_queue();
-
-			$generate_action = ( isset( $_POST['smart_coupons_generate_action'] ) ) ? wc_clean( wp_unslash( $_POST['smart_coupons_generate_action'] ) ) : ''; // WPCS: sanitization ok. CSRF ok, input var ok.
-			$is_import_email = get_option( 'woo_sc_is_email_imported_coupons' );
-
-			if ( 'yes' === $is_import_email && ( isset( $_POST['import_id'] ) || isset( $_POST['import_url'] ) ) ) { // WPCS: CSRF ok.
-				$bulk_action = 'import_email';
-			} elseif ( isset( $_POST['import_id'] ) || isset( $_POST['import_url'] ) ) { // WPCS: CSRF ok.
-				$bulk_action = 'import';
-			} elseif ( 'woo_sc_is_email_imported_coupons' === $generate_action ) {
-				$bulk_action = 'generate_email';
-			} else {
-				$bulk_action = 'generate';
-			}
-
-			update_site_option( 'bulk_coupon_action_' . $importer_identifier, $bulk_action );
-
-			$this->import_end();
 		}
 
 		/**

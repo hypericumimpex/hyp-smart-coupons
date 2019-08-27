@@ -368,7 +368,11 @@ if ( ! class_exists( 'WC_SC_Display_Coupons' ) ) {
 				$product_type = ( ! empty( $_product->product_type ) ) ? $_product->product_type : '';
 			}
 
-			$price = $_product->get_price();
+			if ( is_a( $_product, 'WC_Product_Variable' ) ) {
+				$price = $_product->get_variation_price( 'max' );
+			} else {
+				$price = $_product->get_price();
+			}
 
 			if ( $coupon_titles && count( $coupon_titles ) > 0 && ! empty( $price ) ) {
 

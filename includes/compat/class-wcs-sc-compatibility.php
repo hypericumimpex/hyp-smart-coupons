@@ -135,7 +135,7 @@ if ( ! class_exists( 'WCS_SC_Compatibility' ) ) {
 
 				$renewal_total                 = $subscription->get_total();
 				$original_order                = wc_get_order( $original_order_id );
-				$coupon_used_in_original_order = ( is_object( $original_order ) && is_callable( array( $original_order, 'get_used_coupons' ) ) ) ? $original_order->get_used_coupons() : array();
+				$coupon_used_in_original_order = $this->get_coupon_codes( $original_order );
 
 				if ( $this->is_wc_gte_30() ) {
 					$order_payment_method = $original_order->get_payment_method();
@@ -608,8 +608,8 @@ if ( ! class_exists( 'WCS_SC_Compatibility' ) ) {
 			reset( $subscriptions );
 			$subscription = current( $subscriptions );
 
-			$coupon_used_in_original_order = ( is_object( $original_order ) && is_callable( array( $original_order, 'get_used_coupons' ) ) ) ? $original_order->get_used_coupons() : array();
-			$coupon_used_in_renewal_order  = ( is_object( $renewal_order ) && is_callable( array( $renewal_order, 'get_used_coupons' ) ) ) ? $renewal_order->get_used_coupons() : array();
+			$coupon_used_in_original_order = $this->get_coupon_codes( $original_order );
+			$coupon_used_in_renewal_order  = $this->get_coupon_codes( $renewal_order );
 
 			if ( $this->is_wc_gte_30() ) {
 				$renewal_order_billing_email = ( is_callable( array( $renewal_order, 'get_billing_email' ) ) ) ? $renewal_order->get_billing_email() : '';
@@ -855,7 +855,7 @@ if ( ! class_exists( 'WCS_SC_Compatibility' ) ) {
 				),
 			);
 
-			array_splice( $settings, ( count( $settings ) - 14 ), 0, $wc_subscriptions_options );
+			array_splice( $settings, ( count( $settings ) - 15 ), 0, $wc_subscriptions_options );
 
 			return $settings;
 

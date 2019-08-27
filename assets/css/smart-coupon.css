@@ -122,7 +122,7 @@ div#coupon-selector {
 }
 
 /* Gift Cerificate form */
-input.gift_receiver_email {
+input.gift_receiver_email, input.gift_sending_date_time {
 	min-width: 100%;
 	margin: 1% 0;
 }
@@ -131,6 +131,14 @@ div#gift-certificate-receiver-form thead th {
 }
 input#deliver_on_date {
 	text-align: center;
+}
+.email_sending_date_time_wrapper:not(.show),
+.wc_sc_schedule_gift_sending_wrapper:not(.show) {
+	display: none;
+}
+
+.wc_sc_schedule_gift_sending_wrapper.show {
+	margin-left: 2em;
 }
 
 /* Coupon generation form */
@@ -173,6 +181,13 @@ a#single_multi {
 		margin-left: unset !important;
 		padding: .5em 1em 0 !important;
 	}
+
+	/* Fix for positioning  'Sell store credit at less price?' settings' tooltip */
+	label[for="smart_coupons_sell_store_credit_at_less_price"] span.woocommerce-help-tip,
+	label[for="smart_coupons_schedule_store_credit"] span.woocommerce-help-tip {
+		float: left;
+		margin: 1px 4px 1px -1.7em !important;
+	}
 }
 
 textarea.gift_receiver_message {
@@ -207,6 +222,7 @@ textarea.gift_receiver_message {
 }
 .show_hide_list {
 	padding-left: 0;
+	margin-left: 25px;
 }
 .single_multi_list {
 	display: none;
@@ -247,4 +263,69 @@ div#invalid_coupons_list div#all_coupon_container .coupon-container .coupon-cont
 .sc_bulk_description textarea#woocommerce-coupon-description {
 	width: 90%;
 	margin-left: 0.5em;
+}
+
+#call_for_credit {
+	position: relative;
+}
+
+input#credit_called {
+	position: absolute;
+	top: 50%;
+	transform: translateY(-50%);
+}
+
+.wc-sc-description {
+	display: inline-block;
+}
+
+@media screen and (min-width: 320px) and (max-width: 479px) {
+	.wc-sc-description {
+		margin-left: 0;
+	}
+}
+@media screen and (min-width: 480px) and (max-width: 639px) {
+	.wc-sc-description {
+		margin-left: 0;
+	}
+}
+@media screen and (min-width: 640px) and (max-width: 767px) {
+	.wc-sc-description {
+		margin-left: 0;
+	}
+}
+@media screen and (min-width: 768px) and (max-width: 799px) {
+	.wc-sc-description {
+		margin-left: 5%;
+	}
+}
+@media screen and (min-width: 800px) and (max-width: 1023px) {
+	.wc-sc-description {
+		margin-left: 7%;
+	}
+}
+@media screen and (min-width: 1024px) and (max-width: 1199px) {
+	.wc-sc-description {
+		margin-left: 11%;
+	}
+}
+@media screen and (min-width: 1200px) and (max-width: 1279px) {
+	.wc-sc-description {
+		margin-left: 14%;
+	}
+}
+@media screen and (min-width: 1280px) and (max-width: 1365px) {
+	.wc-sc-description {
+		margin-left: 15%;
+	}
+}
+@media screen and (min-width: 1366px) and (max-width: 1599px) {
+	.wc-sc-description {
+		margin-left: 16%;
+	}
+}
+@media screen and (min-width: 1600px) {
+	.wc-sc-description {
+		margin-left: 20%;
+	}
 }

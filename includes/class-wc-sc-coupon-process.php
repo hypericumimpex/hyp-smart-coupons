@@ -112,11 +112,12 @@ if ( ! class_exists( 'WC_SC_Coupon_Process' ) ) {
 		 */
 		public function add_gift_certificate_receiver_details_in_order( $order_id ) {
 
-			$request_gift_receiver_email   = ( isset( $_REQUEST['gift_receiver_email'] ) ) ? wc_clean( wp_unslash( $_REQUEST['gift_receiver_email'] ) ) : array(); // phpcs:ignore
-			$request_gift_receiver_message = ( isset( $_REQUEST['gift_receiver_message'] ) ) ? wc_clean( wp_unslash( $_REQUEST['gift_receiver_message'] ) ) : array(); // phpcs:ignore
-			$request_billing_email         = ( isset( $_REQUEST['billing_email'] ) ) ? wc_clean( wp_unslash( $_REQUEST['billing_email'] ) ) : ''; // phpcs:ignore
-			$request_is_gift               = ( isset( $_REQUEST['is_gift'] ) ) ? wc_clean( wp_unslash( $_REQUEST['is_gift'] ) ) : ''; // phpcs:ignore
-			$request_sc_send_to            = ( isset( $_REQUEST['sc_send_to'] ) ) ? wc_clean( wp_unslash( $_REQUEST['sc_send_to'] ) ) : ''; // phpcs:ignore
+			$request_gift_receiver_email    = ( isset( $_REQUEST['gift_receiver_email'] ) ) ? wc_clean( wp_unslash( $_REQUEST['gift_receiver_email'] ) ) : array(); // phpcs:ignore
+			$request_gift_receiver_message  = ( isset( $_REQUEST['gift_receiver_message'] ) ) ? wc_clean( wp_unslash( $_REQUEST['gift_receiver_message'] ) ) : array(); // phpcs:ignore
+			$request_gift_sending_timestamp = ( isset( $_REQUEST['gift_sending_timestamp'] ) ) ? wc_clean( wp_unslash( $_REQUEST['gift_sending_timestamp'] ) ) : array(); // phpcs:ignore
+			$request_billing_email          = ( isset( $_REQUEST['billing_email'] ) ) ? wc_clean( wp_unslash( $_REQUEST['billing_email'] ) ) : ''; // phpcs:ignore
+			$request_is_gift                = ( isset( $_REQUEST['is_gift'] ) ) ? wc_clean( wp_unslash( $_REQUEST['is_gift'] ) ) : ''; // phpcs:ignore
+			$request_sc_send_to             = ( isset( $_REQUEST['sc_send_to'] ) ) ? wc_clean( wp_unslash( $_REQUEST['sc_send_to'] ) ) : ''; // phpcs:ignore
 
 			if ( empty( $request_gift_receiver_email ) || count( $request_gift_receiver_email ) <= 0 ) {
 				return;
@@ -124,22 +125,31 @@ if ( ! class_exists( 'WC_SC_Coupon_Process' ) ) {
 
 			if ( ! empty( $request_gift_receiver_email ) || ( ! empty( $request_billing_email ) && $request_billing_email !== $request_gift_receiver_email ) ) {
 
+				$schedule_store_credit = get_option( 'smart_coupons_schedule_store_credit' );
+				$schedule_gift_sending = ( 'yes' === $schedule_store_credit && 'yes' === $request_is_gift && ( isset( $_REQUEST['wc_sc_schedule_gift_sending'] ) ) ) ? wc_clean( wp_unslash( $_REQUEST['wc_sc_schedule_gift_sending'] ) ) : ''; // phpcs:ignore
+
 				if ( 'yes' === $request_is_gift ) {
 					if ( ! empty( $request_sc_send_to ) ) {
 						switch ( $request_sc_send_to ) {
 							case 'one':
-								$email_for_one   = ( isset( $request_gift_receiver_email[0][0] ) && ! empty( $request_gift_receiver_email[0][0] ) && is_email( $request_gift_receiver_email[0][0] ) ) ? $request_gift_receiver_email[0][0] : $request_billing_email;
-								$message_for_one = ( isset( $request_gift_receiver_message[0][0] ) && ! empty( $request_gift_receiver_message[0][0] ) ) ? $request_gift_receiver_message[0][0] : '';
+								$email_for_one    = ( isset( $request_gift_receiver_email[0][0] ) && ! empty( $request_gift_receiver_email[0][0] ) && is_email( $request_gift_receiver_email[0][0] ) ) ? $request_gift_receiver_email[0][0] : $request_billing_email;
+								$message_for_one  = ( isset( $request_gift_receiver_message[0][0] ) && ! empty( $request_gift_receiver_message[0][0] ) ) ? $request_gift_receiver_message[0][0] : '';
+								$schedule_for_one = ( isset( $request_gift_sending_timestamp[0][0] ) && ! empty( $request_gift_sending_timestamp[0][0] ) ) ? $request_gift_sending_timestamp[0][0] : '';
 								unset( $request_gift_receiver_email[0][0] );
 								unset( $request_gift_receiver_message[0][0] );
+								unset( $request_gift_sending_timestamp[0][0] );
 								foreach ( $request_gift_receiver_email as $coupon_id => $emails ) {
 									foreach ( $emails as $key => $email ) {
-										$request_gift_receiver_email[ $coupon_id ][ $key ]   = $email_for_one;
-										$request_gift_receiver_message[ $coupon_id ][ $key ] = $message_for_one;
+										$request_gift_receiver_email[ $coupon_id ][ $key ]    = $email_for_one;
+										$request_gift_receiver_message[ $coupon_id ][ $key ]  = $message_for_one;
+										$request_gift_sending_timestamp[ $coupon_id ][ $key ] = $schedule_for_one;
 									}
 								}
 								if ( ! empty( $request_gift_receiver_message ) && '' !== $request_gift_receiver_message ) {
 									update_post_meta( $order_id, 'gift_receiver_message', $request_gift_receiver_message );
+								}
+								if ( ! empty( $request_gift_sending_timestamp ) && '' !== $request_gift_sending_timestamp ) {
+									update_post_meta( $order_id, 'gift_sending_timestamp', $request_gift_sending_timestamp );
 								}
 								break;
 
@@ -150,13 +160,22 @@ if ( ! class_exists( 'WC_SC_Coupon_Process' ) ) {
 								if ( isset( $request_gift_receiver_message[0][0] ) && ! empty( $request_gift_receiver_message[0][0] ) ) {
 									unset( $request_gift_receiver_message[0][0] );
 								}
+								if ( isset( $request_gift_sending_timestamp[0][0] ) && ! empty( $request_gift_sending_timestamp[0][0] ) ) {
+									unset( $request_gift_sending_timestamp[0][0] );
+								}
 								if ( ! empty( $request_gift_receiver_message ) && '' !== $request_gift_receiver_message ) {
 									update_post_meta( $order_id, 'gift_receiver_message', $request_gift_receiver_message );
+								}
+								if ( ! empty( $request_gift_sending_timestamp ) && '' !== $request_gift_sending_timestamp ) {
+									update_post_meta( $order_id, 'gift_sending_timestamp', $request_gift_sending_timestamp );
 								}
 								break;
 						}
 					}
 					update_post_meta( $order_id, 'is_gift', 'yes' );
+					if ( ! empty( $schedule_gift_sending ) ) {
+						update_post_meta( $order_id, 'wc_sc_schedule_gift_sending', $schedule_gift_sending );
+					}
 				} else {
 					if ( ! empty( $request_gift_receiver_email[0][0] ) && is_array( $request_gift_receiver_email[0][0] ) ) {
 						unset( $request_gift_receiver_email[0][0] );
@@ -292,7 +311,7 @@ if ( ! class_exists( 'WC_SC_Coupon_Process' ) ) {
 
 			$order = wc_get_order( $order_id );
 
-			$order_used_coupons = $order->get_used_coupons();
+			$order_used_coupons = $this->get_coupon_codes( $order );
 
 			if ( $order_used_coupons ) {
 
@@ -490,8 +509,9 @@ if ( ! class_exists( 'WC_SC_Coupon_Process' ) ) {
 
 			$email = get_post_meta( $order_id, 'gift_receiver_email', true );
 
-			if ( $order->get_used_coupons() ) {
-				$this->update_coupons( $order->get_used_coupons(), $email, '', 'remove' );
+			$used_coupons = $this->get_coupon_codes( $order );
+			if ( ! empty( $used_coupons ) ) {
+				$this->update_coupons( $used_coupons, $email, '', 'remove' );
 			}
 		}
 
@@ -518,6 +538,8 @@ if ( ! class_exists( 'WC_SC_Coupon_Process' ) ) {
 			if ( ! empty( $order_id ) ) {
 				$receivers_messages              = get_post_meta( $order_id, 'gift_receiver_message', true );
 				$temp_gift_card_receivers_emails = get_post_meta( $order_id, 'temp_gift_card_receivers_emails', true );
+				$schedule_gift_sending           = get_post_meta( $order_id, 'wc_sc_schedule_gift_sending', true );
+				$sending_timestamps              = get_post_meta( $order_id, 'gift_sending_timestamp', true );
 			}
 
 			$prices_include_tax = ( get_option( 'woocommerce_prices_include_tax' ) === 'yes' ) ? true : false;
@@ -611,6 +633,11 @@ if ( ! class_exists( 'WC_SC_Coupon_Process' ) ) {
 							} else {
 								$message_from_sender = '';
 							}
+							if ( false !== $message_index && isset( $sending_timestamp[ $coupon_id ][ $message_index ] ) && ! empty( $sending_timestamp[ $coupon_id ][ $message_index ] ) ) {
+								$sending_timestamp = $sending_timestamps[ $coupon_id ][ $message_index ];
+							} else {
+								$sending_timestamp = '';
+							}
 							for ( $i = 0; $i < $qty; $i++ ) {
 								if ( 'yes' === $auto_generation_of_code || 'smart_coupon' === $discount_type ) {
 									$email_id = ! empty( $temp_gift_card_receivers_emails[ $coupon_id ][ $i ] ) ? $temp_gift_card_receivers_emails[ $coupon_id ][ $i ] : $gift_certificate_sender_email;
@@ -621,8 +648,12 @@ if ( ! class_exists( 'WC_SC_Coupon_Process' ) ) {
 									} else {
 										$message_from_sender = '';
 									}
-
-									$this->generate_smart_coupon( $email_id, $amount, $order_id, $coupon, $discount_type, $gift_certificate_receiver_name, $message_from_sender, $gift_certificate_sender_name, $gift_certificate_sender_email );
+									if ( isset( $sending_timestamps[ $coupon_id ][ $i ] ) && ! empty( $sending_timestamps[ $coupon_id ][ $i ] ) ) {
+										$sending_timestamp = $sending_timestamps[ $coupon_id ][ $i ];
+									} else {
+										$sending_timestamp = '';
+									}
+									$this->generate_smart_coupon( $email_id, $amount, $order_id, $coupon, $discount_type, $gift_certificate_receiver_name, $message_from_sender, $gift_certificate_sender_name, $gift_certificate_sender_email, $sending_timestamp );
 									$smart_coupon_codes = array();
 								}
 							}
@@ -648,10 +679,17 @@ if ( ! class_exists( 'WC_SC_Coupon_Process' ) ) {
 								$message_from_sender = '';
 							}
 
+							if ( false !== $message_index && isset( $sending_timestamps[ $coupon_id ][ $message_index ] ) && ! empty( $sending_timestamps[ $coupon_id ][ $message_index ] ) ) {
+								$sending_timestamp = $sending_timestamps[ $coupon_id ][ $message_index ];
+							} else {
+								$sending_timestamp = '';
+							}
+
 							for ( $i = 0; $i < $qty; $i++ ) {
 
 								$coupon_receiver_email = ( ! empty( $temp_gift_card_receivers_emails[ $coupon_id ][ $i ] ) ) ? $temp_gift_card_receivers_emails[ $coupon_id ][ $i ] : $coupon_receiver_email;
 								$message_from_sender   = ( ! empty( $receivers_messages[ $coupon_id ][ $i ] ) ) ? $receivers_messages[ $coupon_id ][ $i ] : '';
+								$sending_timestamp     = ( ! empty( $sending_timestamps[ $coupon_id ][ $i ] ) ) ? $sending_timestamps[ $coupon_id ][ $i ] : '';
 
 								$coupon_details = array(
 									$coupon_receiver_email => array(
@@ -663,13 +701,34 @@ if ( ! class_exists( 'WC_SC_Coupon_Process' ) ) {
 
 								$receiver_name = '';
 
-								$this->sa_email_coupon( $coupon_details, $discount_type, $order_id, $receiver_name, $message_from_sender );
-
+								if ( 'yes' === $schedule_gift_sending && $this->is_valid_timestamp( $sending_timestamp ) ) {
+									$sender_message_index_key = ( ! empty( $receivers_messages[ $coupon_id ][ $i ] ) ) ? $coupon_id . ':' . $i : '';
+									$action_args              = array(
+										'auto_generate'  => 'no',
+										'coupon_id'      => $coupon_id,
+										'parent_id'      => $coupon_id, // Parent coupon id.
+										'order_id'       => $order_id,
+										'receiver_email' => $coupon_receiver_email,
+										'message_index_key' => $sender_message_index_key,
+										'ref_key'        => uniqid(), // A unique timestamp key to relate action schedulers with their coupons.
+									);
+									$is_scheduled             = $this->schedule_coupon_email( $action_args, $sending_timestamp );
+									if ( ! $is_scheduled ) {
+										/* translators: 1. Receiver email 2. Coupon code 3. Order id */
+										$this->log( 'error', sprintf( __( 'Failed to schedule email to "%1$s" for coupon "%2$s" received from order #%3$s.', 'woocommerce-smart-coupons' ), $coupon_receiver_email, $coupon_title, $order_id ) );
+									}
+								} else {
+									$this->sa_email_coupon( $coupon_details, $discount_type, $order_id, $receiver_name, $message_from_sender );
+								}
 							}
 
 							if ( $qty > 0 && ( 'no' === $sc_disable_email_restriction || empty( $sc_disable_email_restriction ) ) ) {
 								for ( $i = 0; $i < $qty; $i++ ) {
-									$old_customers_email_ids[] = $coupon_receiver_email;
+									$sending_timestamp = ( ! empty( $sending_timestamps[ $coupon_id ][ $i ] ) ) ? $sending_timestamps[ $coupon_id ][ $i ] : '';
+									// Add receiver email to coupon only if it is not scheduled otherwise it would be added by action scheduler later on.
+									if ( ! ( 'yes' === $schedule_gift_sending && $this->is_valid_timestamp( $sending_timestamp ) ) ) {
+										$old_customers_email_ids[] = $coupon_receiver_email;
+									}
 								}
 							}
 						} elseif ( 'remove' === $operation && 'smart_coupon' !== $discount_type && ( 'no' === $sc_disable_email_restriction || empty( $sc_disable_email_restriction ) ) ) {
@@ -728,9 +787,11 @@ if ( ! class_exists( 'WC_SC_Coupon_Process' ) ) {
 
 			$smart_coupon_codes  = array();
 			$message_from_sender = '';
+			$sending_timestamp   = '';
 
 			$receivers_emails   = get_post_meta( $order_id, 'gift_receiver_email', true );
 			$receivers_messages = get_post_meta( $order_id, 'gift_receiver_message', true );
+			$sending_timestamps = get_post_meta( $order_id, 'gift_sending_timestamp', true );
 			$is_coupon_sent     = get_post_meta( $order_id, 'coupon_sent', true );
 
 			if ( 'yes' === $is_coupon_sent ) {
@@ -879,11 +940,17 @@ if ( ! class_exists( 'WC_SC_Coupon_Process' ) ) {
 						} else {
 							$message_from_sender = '';
 						}
+						if ( false !== $message_index && isset( $sending_timestamps[ $coupon_id ][ $message_index ] ) && ! empty( $sending_timestamps[ $coupon_id ][ $message_index ] ) ) {
+							$sending_timestamp = $sending_timestamps[ $coupon_id ][ $message_index ];
+						} else {
+							$sending_timestamp = '';
+						}
 						for ( $i = 0; $i < $qty; $i++ ) {
 							if ( 'smart_coupon' !== $discount_type ) {
 								continue; // only process smart_coupon here, rest coupon will be processed by function update_coupon.
 							}
-							$this->generate_smart_coupon( $email_id, $credit_amount, $order_id, $coupon, 'smart_coupon', $gift_certificate_receiver_name, $message_from_sender, $gift_certificate_sender_name, $gift_certificate_sender_email );
+
+							$this->generate_smart_coupon( $email_id, $credit_amount, $order_id, $coupon, 'smart_coupon', $gift_certificate_receiver_name, $message_from_sender, $gift_certificate_sender_name, $gift_certificate_sender_email, $sending_timestamp );
 							$smart_coupon_codes = array();
 						}
 					}

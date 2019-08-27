@@ -57,6 +57,10 @@ if ( ! class_exists( 'WC_SC_Purchase_Credit' ) ) {
 			add_filter( 'woocommerce_add_cart_item_data', array( $this, 'call_for_credit_cart_item_data' ), 10, 3 );
 			add_action( 'woocommerce_add_to_cart', array( $this, 'save_called_credit_in_session' ), 10, 6 );
 
+			add_filter( 'woocommerce_product_get_price', array( $this, 'override_voucher_product_empty_price' ), 9, 2 );
+
+			add_action( 'wp_footer', array( $this, 'enqueue_styles_scripts' ) );
+
 		}
 
 		/**
@@ -130,6 +134,7 @@ if ( ! class_exists( 'WC_SC_Purchase_Credit' ) ) {
 				$js = "
 							var validateCreditCalled = function(){
 								var enteredCreditAmount = jQuery('input#credit_called').val();
+								enteredCreditAmount = parseFloat( enteredCreditAmount );
 								if ( enteredCreditAmount < 0.01 ) {
 									jQuery('p#error_message').text('" . __( 'Invalid amount', 'woocommerce-smart-coupons' ) . "');
 									jQuery('input#credit_called').css('border-color', 'red');
@@ -165,9 +170,24 @@ if ( ! class_exists( 'WC_SC_Purchase_Credit' ) ) {
 								}
 							});
 
+							// To handle, if the call for credit form is included twice.
+							jQuery(document).ready(function(){
+								jQuery.each( jQuery('body').find('div#call_for_credit'), function(){
+									let current_element = jQuery(this);
+									let is_visible = current_element.is(':visible');
+									if ( false === is_visible ) {
+										current_element.remove();
+									}
+								});
+							});
+
 						";
 
-				wc_enqueue_js( $js );
+				// To handle, if the call for credit form is included twice.
+				if ( did_action( 'wc_sc_call_for_credit_script_enqueued' ) <= 0 ) {
+					wc_enqueue_js( $js );
+					do_action( 'wc_sc_call_for_credit_script_enqueued', array( 'source' => $this ) );
+				}
 
 				$smart_coupon_store_gift_page_text = get_option( 'smart_coupon_store_gift_page_text' );
 
@@ -288,6 +308,36 @@ if ( ! class_exists( 'WC_SC_Purchase_Credit' ) ) {
 		}
 
 		/**
+		 * Override empty price of voucher product by 0 to avoid 'non numeric value' warning for product price being triggered on coupon validation.
+		 *
+		 * @param string     $price product price.
+		 * @param WC_Product $product WooCommerce product.
+		 * @return integer $price new product price
+		 */
+		public function override_voucher_product_empty_price( $price, $product ) {
+
+			if ( ! doing_action( 'woocommerce_single_product_summary' ) ) {
+
+				if ( $this->is_wc_gte_30() ) {
+					$product_type = ( is_object( $product ) && is_callable( array( $product, 'get_type' ) ) ) ? $product->get_type() : '';
+					$product_id   = ( in_array( $product_type, array( 'variable', 'variable-subscription', 'variation', 'subscription_variation' ), true ) ) ? ( ( is_object( $product ) && is_callable( array( $product, 'get_parent_id' ) ) ) ? $product->get_parent_id() : 0 ) : ( ( is_object( $product ) && is_callable( array( $product, 'get_id' ) ) ) ? $product->get_id() : 0 );
+				} else {
+					$product_id = ( ! empty( $product->id ) ) ? $product->id : 0;
+				}
+
+				$coupons = get_post_meta( $product_id, '_coupon_title', true );
+
+				// Override product price only if product contains coupon and price is already an empty string.
+				if ( ! empty( $coupons ) && '' === $price ) {
+					$price = 0;
+				}
+			}
+
+			return $price;
+
+		}
+
+		/**
 		 * Display store credit's value as cart item's price
 		 *
 		 * @param string $product_price The product price HTML.
@@ -324,6 +374,8 @@ if ( ! class_exists( 'WC_SC_Purchase_Credit' ) ) {
 			$form_started = false;
 
 			$all_discount_types = wc_get_coupon_types();
+
+			$schedule_store_credit = get_option( 'smart_coupons_schedule_store_credit' );
 
 			foreach ( WC()->cart->cart_contents as $product ) {
 
@@ -389,22 +441,112 @@ if ( ! class_exists( 'WC_SC_Purchase_Credit' ) ) {
 													jQuery('ul.single_multi_list').slideDown();
 												}
 												jQuery('div.gift-certificate-receiver-detail-form').slideDown();
+												jQuery('.wc_sc_schedule_gift_sending_wrapper').addClass('show');
 											});
 											jQuery('input#hide_form').on('click', function(){
 												if ( is_multi_form() ) {
 													jQuery('ul.single_multi_list').slideUp();
 												}
 												jQuery('div.gift-certificate-receiver-detail-form').slideUp();
+												jQuery('.wc_sc_schedule_gift_sending_wrapper').removeClass('show');
 											});
 											jQuery('input[name=sc_send_to]').on('change', function(){
 												jQuery('div#gift-certificate-receiver-form-single').slideToggle(1);
 												jQuery('div#gift-certificate-receiver-form-multi').slideToggle(1);
+											});
+											jQuery('input#wc_sc_schedule_gift_sending').on('change',function(){
+												if( jQuery(this).is(':checked') ) {
+													jQuery('.email_sending_date_time_wrapper').addClass('show');
+												} else {
+													jQuery('.email_sending_date_time_wrapper').removeClass('show');
+												}
+											});
+											jQuery('input.gift_sending_date_time')
+											.datetimepicker({ 
+																dateFormat: 'dd-mm-yy', 
+																minDate: 0,
+																inline: true,
+																changeMonth: true, 
+																changeYear: true,
+																timeInput: true,
+															});
+											jQuery('input.gift_sending_date_time').on('change', function(e){
+												let date_time_wrapper = jQuery(this).closest('.email_sending_date_time_wrapper');
+												let gift_sending_date_time = jQuery(date_time_wrapper).find('.gift_sending_date_time').val();
+												if( '' === gift_sending_date_time ) {
+													return;
+												}
+												gift_sending_date_time = gift_sending_date_time.split(' ');
+												let gift_sending_date = gift_sending_date_time[0];
+												let gift_sending_time = gift_sending_date_time[1];
+												gift_sending_date = gift_sending_date.split('-');
+												gift_sending_date = gift_sending_date[2] + '-' + gift_sending_date[1] + '-' + gift_sending_date[0]; // Convert date from dd-mm-yy format to yy-mm-dd format
+												let gift_sending_date_time_time = gift_sending_date + ' ' + gift_sending_time;
+												let gift_sending_utc_date_time = new Date(gift_sending_date_time_time).toUTCString();
+												let utc_date_time = new Date(gift_sending_utc_date_time);
+												let gift_sending_timestamp = Math.floor(utc_date_time.getTime()/1000); // Remove milliseconds from timestamp.
+												jQuery(date_time_wrapper).find('.gift_sending_timestamp').val(gift_sending_timestamp);
 											});
 										";
 
 								wc_enqueue_js( $js );
 
 								?>
+
+								<style type="text/css" media="screen">
+
+									.wc-sc-toggle-check-input {
+										width: 0;
+										height: 0;
+										visibility: hidden;
+									}
+
+									.wc-sc-toggle-check-text {
+										display: inline-block;
+										position: relative;
+										text-transform: uppercase;
+										font-size: small;
+										background: #71b02f;
+										padding: 0 .8rem 0 1.5rem;
+										border-radius: 1rem;
+										color: #fff;
+										cursor: pointer;
+										transition: background-color 0.15s;
+									}
+
+									.wc-sc-toggle-check-text:after {
+										content: ' ';
+										display: block;
+										background: #fff;
+										width: 0.8rem;
+										height: 0.8rem;
+										border-radius: 0.8rem;
+										position: absolute;
+										left: 0.3rem;
+										top: 0.25rem;
+										transition: left 0.15s, margin-left 0.15s;
+									}
+
+									.wc-sc-toggle-check-text:before {
+										content: '<?php echo esc_attr( 'Now', 'woocommerce-smart-coupons' ); ?>';
+									}
+
+									.wc-sc-toggle-check-input:checked ~ .wc-sc-toggle-check-text {
+										background: #96588a;
+										padding-left: .5rem;
+										padding-right: 1.4rem;
+									}
+
+									.wc-sc-toggle-check-input:checked ~ .wc-sc-toggle-check-text:before {
+										content: '<?php echo esc_attr( 'Later', 'woocommerce-smart-coupons' ); ?>';
+									}
+
+									.wc-sc-toggle-check-input:checked ~ .wc-sc-toggle-check-text:after {
+										left: 100%;
+										margin-left: -1.1rem;
+									}
+
+								</style>
 
 								<div class="gift-certificate sc_info_box">
 									<h3><?php echo esc_html( stripslashes( $smart_coupon_gift_certificate_form_page_text ) ); ?></h3>
@@ -414,13 +556,22 @@ if ( ! class_exists( 'WC_SC_Purchase_Credit' ) ) {
 										<div class="gift-certificate-show-form">
 											<p><?php echo esc_html__( 'Your order contains coupons. What would you like to do?', 'woocommerce-smart-coupons' ); ?></p>
 											<ul class="show_hide_list" style="list-style-type: none;">
-												<li><input type="radio" id="hide_form" name="is_gift" value="no" checked="checked" /> <label for="hide_form"><?php echo esc_html__( 'Send coupons to me', 'woocommerce-smart-coupons' ); ?></label></li>
+												<li><input type="radio" id="hide_form" name="is_gift" value="no" checked="checked" /> <label for="hide_form"><?php echo esc_html__( 'Send to me', 'woocommerce-smart-coupons' ); ?></label></li>
 												<li>
-												<input type="radio" id="show_form" name="is_gift" value="yes" /> <label for="show_form"><?php echo esc_html__( 'Gift coupons to someone else', 'woocommerce-smart-coupons' ); ?></label>
+												<input type="radio" id="show_form" name="is_gift" value="yes" /> <label for="show_form"><?php echo esc_html__( 'Gift to someone else', 'woocommerce-smart-coupons' ); ?></label>
 												<ul class="single_multi_list" style="list-style-type: none;">
-												<li><input type="radio" id="send_to_one" name="sc_send_to" value="one" checked="checked" /> <label for="send_to_one"><?php echo esc_html__( 'Send to one person', 'woocommerce-smart-coupons' ); ?></label>
-												<input type="radio" id="send_to_many" name="sc_send_to" value="many" /> <label for="send_to_many"><?php echo esc_html__( 'Send to different people', 'woocommerce-smart-coupons' ); ?></label></li>
+												<li><input type="radio" id="send_to_one" name="sc_send_to" value="one" checked="checked" /> <label for="send_to_one"><?php echo esc_html__( 'Send to one person', 'woocommerce-smart-coupons' ); ?></label></li>
+												<li><input type="radio" id="send_to_many" name="sc_send_to" value="many" /> <label for="send_to_many"><?php echo esc_html__( 'Send to different people', 'woocommerce-smart-coupons' ); ?></label></li>
 												</ul>
+												<?php if ( 'yes' === $schedule_store_credit ) { ?>
+													<li class="wc_sc_schedule_gift_sending_wrapper">
+														<?php echo esc_html__( 'Deliver coupon', 'woocommerce-smart-coupons' ); ?>
+														<label class="wc-sc-toggle-check">
+															<input type="checkbox" class="wc-sc-toggle-check-input" id="wc_sc_schedule_gift_sending" name="wc_sc_schedule_gift_sending" value="yes" />
+															<span class="wc-sc-toggle-check-text"></span>
+														</label>
+													</li>
+												<?php } ?>
 												</li>
 											</ul>
 										</div>
@@ -447,15 +598,20 @@ if ( ! class_exists( 'WC_SC_Purchase_Credit' ) ) {
 					<div class="form_table">
 						<div class="email_amount">
 							<div class="amount"></div>
-							<div class="email"><input class="gift_receiver_email" type="text" placeholder="<?php echo esc_attr__( 'Email address', 'woocommerce-smart-coupons' ); ?>..." name="gift_receiver_email[0][0]" value="" /></div>
+							<div class="email"><input class="gift_receiver_email" type="text" placeholder="<?php echo esc_attr__( 'Enter recipient e-mail address', 'woocommerce-smart-coupons' ); ?>..." name="gift_receiver_email[0][0]" value="" /></div>
+						</div>
+						<div class="email_sending_date_time_wrapper">
+								<input class="gift_sending_date_time" type="text" placeholder="<?php echo esc_attr__( 'Pick a delivery date & time', 'woocommerce-smart-coupons' ); ?>..." name="gift_sending_date_time[0][0]" value="" autocomplete="off"/>
+								<input class="gift_sending_timestamp" type="hidden" name="gift_sending_timestamp[0][0]" value=""/>
 						</div>
 						<div class="message_row">
-							<div class="message"><textarea placeholder="<?php echo esc_attr__( 'Message', 'woocommerce-smart-coupons' ); ?>..." class="gift_receiver_message" name="gift_receiver_message[0][0]" cols="50" rows="5"></textarea></div>
+							<div class="message"><textarea placeholder="<?php echo esc_attr__( 'Write a message', 'woocommerce-smart-coupons' ); ?>..." class="gift_receiver_message" name="gift_receiver_message[0][0]" cols="50" rows="5"></textarea></div>
 						</div>
 					</div>
 				</div>
 				</div></div>
 				<?php
+				do_action( 'wc_sc_gift_certificate_form_shown' );
 			}
 
 		}
@@ -486,6 +642,8 @@ if ( ! class_exists( 'WC_SC_Purchase_Credit' ) ) {
 				return;
 			}
 
+			$sell_sc_at_less_price = get_option( 'smart_coupons_sell_store_credit_at_less_price', 'no' );
+
 			$coupon_data = $this->get_coupon_meta_data( $coupon );
 
 			if ( $this->is_wc_gte_30() ) {
@@ -506,7 +664,18 @@ if ( ! class_exists( 'WC_SC_Purchase_Credit' ) ) {
 
 			for ( $i = 1; $i <= $product['quantity']; $i++ ) {
 
-				$_coupon_amount = ( $this->is_coupon_amount_pick_from_product_price( array( $coupon_code ) ) ) ? $product_price : $coupon_amount;
+				if ( $this->is_coupon_amount_pick_from_product_price( array( $coupon_code ) ) ) {
+					if ( 'yes' === $sell_sc_at_less_price ) {
+						$_coupon_amount = ( is_object( $product['data'] ) && is_callable( array( $product['data'], 'get_regular_price' ) ) ) ? $product['data']->get_regular_price() : 0;
+						if ( empty( $_coupon_amount ) && ! empty( $product_price ) ) {
+							$_coupon_amount = $product_price;
+						}
+					} else {
+						$_coupon_amount = $product_price;
+					}
+				} else {
+					$_coupon_amount = $coupon_amount;
+				}
 
 				// NEWLY ADDED CONDITION TO NOT TO SHOW TEXTFIELD IF COUPON AMOUNT IS "0".
 				// TODO: Free Gift Coupon: Due to coupon amount as zero, following condition is not showing multiple form to send coupon to different people.
@@ -533,11 +702,19 @@ if ( ! class_exists( 'WC_SC_Purchase_Credit' ) ) {
 					<div class="form_table">
 						<div class="email_amount">
 							<?php /* translators: 1. Coupon type 2. Coupon amount */ ?>
-							<div class="amount"><?php echo esc_html__( 'Send', 'woocommerce-smart-coupons' ) . ' ' . esc_html( $formatted_coupon_text ) . ' ' . esc_html__( 'of', 'woocommerce-smart-coupons' ) . ' ' . $formatted_coupon_amount . ' ' . esc_html__( 'to', 'woocommerce-smart-coupons' ); // phpcs:ignore ?></div>
-							<div class="email"><input class="gift_receiver_email" type="text" placeholder="<?php echo esc_attr__( 'Email address', 'woocommerce-smart-coupons' ); ?>..." name="gift_receiver_email[<?php echo esc_attr( $coupon_id ); ?>][]" value="" /></div>
+							<div class="amount"><?php echo esc_html__( 'Send', 'woocommerce-smart-coupons' ) . ' ' . esc_html( $formatted_coupon_text ) . ' ' . esc_html__( 'of', 'woocommerce-smart-coupons' ) . ' ' . $formatted_coupon_amount; // phpcs:ignore ?></div>
+							<div class="email"><input class="gift_receiver_email" type="text" placeholder="<?php echo esc_attr__( 'Enter recipient e-mail address', 'woocommerce-smart-coupons' ); ?>..." name="gift_receiver_email[<?php echo esc_attr( $coupon_id ); ?>][]" value="" /></div>
 						</div>
+						<div class="email_sending_date_time_wrapper">
+							<div class="sending_date_time"></div>
+							<div class="email">
+								<input class="gift_sending_date_time" type="text" placeholder="<?php echo esc_attr__( 'Pick a delivery date & time', 'woocommerce-smart-coupons' ); ?>..." name="gift_sending_date_time[<?php echo esc_attr( $coupon_id ); ?>][]" value="" autocomplete="off"/>
+								<input class="gift_sending_timestamp" type="hidden" name="gift_sending_timestamp[<?php echo esc_attr( $coupon_id ); ?>][]" value=""/>
+							</div>
+						</div>
+
 						<div class="message_row">
-							<div class="sc_message"><textarea placeholder="<?php echo esc_attr__( 'Message', 'woocommerce-smart-coupons' ); ?>..." class="gift_receiver_message" name="gift_receiver_message[<?php echo esc_attr( $coupon_id ); ?>][]" cols="50" rows="5"></textarea></div>
+							<div class="sc_message"><textarea placeholder="<?php echo esc_attr__( 'Write a message', 'woocommerce-smart-coupons' ); ?>..." class="gift_receiver_message" name="gift_receiver_message[<?php echo esc_attr( $coupon_id ); ?>][]" cols="50" rows="5"></textarea></div>
 						</div>
 					</div>
 					<?php
@@ -582,14 +759,14 @@ if ( ! class_exists( 'WC_SC_Purchase_Credit' ) ) {
 						$product_type = ( is_object( $product ) && is_callable( array( $product, 'get_type' ) ) ) ? $product->get_type() : '';
 						$product_id   = ( in_array( $product_type, array( 'variable', 'variable-subscription', 'variation', 'subscription_variation' ), true ) ) ? ( ( is_object( $product ) && is_callable( array( $product, 'get_parent_id' ) ) ) ? $product->get_parent_id() : 0 ) : ( ( is_object( $product ) && is_callable( array( $product, 'get_id' ) ) ) ? $product->get_id() : 0 );
 						$item_qty     = ( is_object( $order_item ) && is_callable( array( $order_item, 'get_quantity' ) ) ) ? $order_item->get_quantity() : 1;
-						$item_total   = ( is_object( $order_item ) && is_callable( array( $order_item, 'get_subtotal' ) ) ) ? $order_item->get_subtotal() : 0;
 						$item_tax     = ( is_object( $order_item ) && is_callable( array( $order_item, 'get_subtotal_tax' ) ) ) ? $order_item->get_subtotal_tax() : 0;
 					} else {
 						$product_id = ( ! empty( $product->id ) ) ? $product->id : 0;
 						$item_qty   = ( ! empty( $order_item['qty'] ) ) ? $order_item['qty'] : 1;
-						$item_total = ( ! empty( $order_item['line_total'] ) ) ? $order_item['line_total'] : 0;
 						$item_tax   = ( ! empty( $order_item['line_tax'] ) ) ? $order_item['line_tax'] : 0;
 					}
+
+					$item_total = $item_sc_called_credit; // Since total is stored in 'sc_called_credit' meta.
 
 					if ( ! empty( $item_qty ) ) {
 						$qty = $item_qty;
@@ -656,7 +833,7 @@ if ( ! class_exists( 'WC_SC_Purchase_Credit' ) ) {
 			if ( empty( $item_id ) || empty( $values ) ) {
 				return;
 			}
-
+			$sell_sc_at_less_price = get_option( 'smart_coupons_sell_store_credit_at_less_price', 'no' );
 			if ( $this->is_wc_gte_30() ) {
 				if ( ! $values instanceof WC_Order_Item_Product ) {
 					return;
@@ -665,12 +842,24 @@ if ( ! class_exists( 'WC_SC_Purchase_Credit' ) ) {
 				if ( ! is_object( $product ) || ! is_a( $product, 'WC_Product' ) ) {
 					return;
 				}
-				$product_type  = ( is_object( $product ) && is_callable( array( $product, 'get_type' ) ) ) ? $product->get_type() : '';
-				$product_id    = ( in_array( $product_type, array( 'variable', 'variable-subscription', 'variation', 'subscription_variation' ), true ) ) ? ( ( is_object( $product ) && is_callable( array( $product, 'get_parent_id' ) ) ) ? $product->get_parent_id() : 0 ) : ( ( is_object( $product ) && is_callable( array( $product, 'get_id' ) ) ) ? $product->get_id() : 0 );
-				$qty           = ( is_callable( array( $values, 'get_quantity' ) ) ) ? $values->get_quantity() : 1;
-				$qty           = ( ! empty( $qty ) ) ? $qty : 1;
-				$subtotal      = ( is_callable( array( $values, 'get_subtotal' ) ) ) ? $values->get_subtotal() : 0;
-				$product_price = $subtotal / $qty;
+				$product_type = ( is_object( $product ) && is_callable( array( $product, 'get_type' ) ) ) ? $product->get_type() : '';
+				$product_id   = ( in_array( $product_type, array( 'variable', 'variable-subscription', 'variation', 'subscription_variation' ), true ) ) ? ( ( is_object( $product ) && is_callable( array( $product, 'get_parent_id' ) ) ) ? $product->get_parent_id() : 0 ) : ( ( is_object( $product ) && is_callable( array( $product, 'get_id' ) ) ) ? $product->get_id() : 0 );
+				$qty          = ( is_callable( array( $values, 'get_quantity' ) ) ) ? $values->get_quantity() : 1;
+				$qty          = ( ! empty( $qty ) ) ? $qty : 1;
+
+				// Check if selling store credit at less price is enabled.
+				if ( 'yes' === $sell_sc_at_less_price ) {
+					// For gift certificate of any amount.
+					if ( isset( $values->legacy_values['credit_amount'] ) && ! empty( $values->legacy_values['credit_amount'] ) ) {
+						$product_price = $values->legacy_values['credit_amount'] * $qty;
+					} else {
+						// For gift certificate of fixed price.
+						$product_price = ( is_callable( array( $product, 'get_regular_price' ) ) ) ? $product->get_regular_price() * $qty : 0;
+					}
+				} else {
+					$subtotal      = ( is_callable( array( $values, 'get_subtotal' ) ) ) ? $values->get_subtotal() : 0;
+					$product_price = $subtotal;
+				}
 			} else {
 				if ( empty( $values['data'] ) ) {
 					return;
@@ -813,6 +1002,46 @@ if ( ! class_exists( 'WC_SC_Purchase_Credit' ) ) {
 				WC()->session->set( 'credit_called', $credit_called );
 			}
 
+		}
+
+		/**
+		 * Enqueue required styles/scripts for store credit frontend form
+		 */
+		public function enqueue_styles_scripts() {
+
+			// Return if gift certificate form is not shown.
+			if ( ! did_action( 'wc_sc_gift_certificate_form_shown' ) ) {
+				return;
+			}
+
+			if ( is_callable( 'WC_Smart_Coupons::get_smart_coupons_plugin_data' ) ) {
+				$plugin_data = WC_Smart_Coupons::get_smart_coupons_plugin_data();
+				$version     = $plugin_data['Version'];
+			} else {
+				$version = '';
+			}
+
+			$suffix = defined( 'SCRIPT_DEBUG' ) && SCRIPT_DEBUG ? '' : '.min';
+
+			if ( ! wp_style_is( 'jquery-ui-style', 'registered' ) ) {
+				wp_register_style( 'jquery-ui-style', WC()->plugin_url() . '/assets/css/jquery-ui/jquery-ui' . $suffix . '.css', array(), WC()->version );
+			}
+
+			if ( ! wp_style_is( 'jquery-ui-timepicker', 'registered' ) ) {
+				wp_register_style( 'jquery-ui-timepicker', untrailingslashit( plugins_url( '/', WC_SC_PLUGIN_FILE ) ) . '/assets/css/jquery-ui-timepicker-addon' . $suffix . '.css', array( 'jquery-ui-style' ), $version );
+			}
+
+			if ( ! wp_style_is( 'jquery-ui-timepicker' ) ) {
+				wp_enqueue_style( 'jquery-ui-timepicker' );
+			}
+
+			if ( ! wp_script_is( 'jquery-ui-timepicker', 'registered' ) ) {
+				wp_register_script( 'jquery-ui-timepicker', untrailingslashit( plugins_url( '/', WC_SC_PLUGIN_FILE ) ) . '/assets/js/jquery-ui-timepicker-addon' . $suffix . '.js', array( 'jquery', 'jquery-ui-datepicker', 'jquery-ui-slider' ), $version, true );
+			}
+
+			if ( ! wp_script_is( 'jquery-ui-timepicker' ) ) {
+				wp_enqueue_script( 'jquery-ui-timepicker' );
+			}
 		}
 
 	}

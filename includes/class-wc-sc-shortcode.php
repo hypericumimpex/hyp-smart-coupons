@@ -427,7 +427,7 @@ if ( ! class_exists( 'WC_SC_Shortcode' ) ) {
 					break;
 
 				case 'percent':
-					$coupon_type    = ( $this->is_wc_gte_30() ) ? __( 'Percentage Discount', 'woocommerce-smart-coupons' ) : __( 'Cart Discount', 'woocommerce-smart-coupons' );
+					$coupon_type    = ( $this->is_wc_gte_30() ) ? __( 'Discount', 'woocommerce-smart-coupons' ) : __( 'Cart Discount', 'woocommerce-smart-coupons' );
 					$_coupon_amount = $coupon_amount . '%';
 					break;
 
