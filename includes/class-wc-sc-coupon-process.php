@@ -1155,7 +1155,7 @@ if ( ! class_exists( 'WC_SC_Coupon_Process' ) ) {
 						continue;
 					}
 
-					if ( ! empty( $_POST['action'] ) && 'woocommerce_remove_order_coupon' === wc_clean( wp_unslash( $_POST['action'] ) ) && ! empty( $_POST['smart_coupon_removed'] ) && sanitize_text_field( wp_unslash( $_POST['smart_coupon_removed'] ) ) !== $item['name'] ) { // WPCS: sanitization ok, CSRF ok.
+					if ( ! empty( $_POST['action'] ) && 'woocommerce_remove_order_coupon' === wc_clean( wp_unslash( $_POST['action'] ) ) && ! empty( $_POST['smart_coupon_removed'] ) && sanitize_text_field( wp_unslash( $_POST['smart_coupon_removed'] ) ) !== $item['name'] ) { // phpcs:ignore
 						continue;
 					}
 

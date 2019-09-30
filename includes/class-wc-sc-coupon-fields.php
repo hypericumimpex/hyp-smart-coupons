@@ -46,7 +46,7 @@ if ( ! class_exists( 'WC_SC_Coupon_Fields' ) ) {
 			add_action( 'wp_ajax_wc_sc_json_search_products_and_variations', array( $this, 'wc_sc_json_search_products_and_variations' ) );
 			add_filter( 'woocommerce_json_search_found_products', array( $this, 'exclude_variation_parent' ) );
 
-			add_action( 'admin_footer', array( $this, 'coupon_expiry_date' ) );
+			add_action( 'admin_footer', array( $this, 'enqueue_styles_scripts' ) );
 
 		}
 
@@ -118,12 +118,14 @@ if ( ! class_exists( 'WC_SC_Coupon_Fields' ) ) {
 				jQuery(function(){
 					var customerEmails;
 					var showHideSmartCouponsOptions = function() {
-						if ( jQuery('select#discount_type').val() == 'smart_coupon' ) {
+						let discount_type = jQuery('select#discount_type').val();
+						if ( 'smart_coupon' === discount_type ) {
 							jQuery('input#is_pick_price_of_product').parent('p').show();
 							jQuery('input#auto_generate_coupon').attr('checked', 'checked');
 							jQuery('div#for_prefix_suffix').show();
 							jQuery('div#sc_is_visible_storewide').hide();
 							jQuery("p.auto_generate_coupon_field").hide();
+							jQuery( '.wc_sc_max_discount_field' ).hide();
 							jQuery('p.sc_coupon_validity').show();
 						} else {
 							jQuery('input#is_pick_price_of_product').parent('p').hide();
@@ -142,6 +144,11 @@ if ( ! class_exists( 'WC_SC_Coupon_Fields' ) ) {
 								jQuery('p.sc_coupon_validity').show();
 							} else {
 								jQuery('p.sc_coupon_validity').hide();
+							}
+							if( 'percent' === discount_type ) {
+								jQuery( '.wc_sc_max_discount_field' ).show();
+							} else {
+								jQuery( '.wc_sc_max_discount_field' ).hide();
 							}
 						}
 					};
@@ -180,10 +187,80 @@ if ( ! class_exists( 'WC_SC_Coupon_Fields' ) ) {
 						showHideSmartCouponsOptions();
 					});
 
+					<?php if ( $this->is_wc_gte_32() ) { ?>
+						jQuery(document).ready(function(){
+								let wc_sc_expiry_time = parseInt( jQuery('#wc_sc_expiry_time').val() );
+								let expiry_time_string = '';
+								if( Number.isInteger( wc_sc_expiry_time ) ) {
+									let expiry_minutes = wc_sc_expiry_time / 60; // Expiry time is stored in seconds.
+									let expiry_hours = Math.floor( expiry_minutes / 60 ); // Get total hours from total seconds.
+									expiry_minutes = expiry_minutes % 60; // Get remaining minutes after removing hours from total seconds.
+									expiry_hours = expiry_hours < 10 ? '0' + expiry_hours : expiry_hours; // Add leading zero to hours to avoid timepicker time not preselected issue when hours < 10.
+									expiry_minutes = expiry_minutes < 10 ? '0' + expiry_minutes : expiry_minutes; // Add leading zero to minutes to avoid timepicker time not preselected issue when minutes < 10.
+									expiry_time_string = expiry_hours + ':' + expiry_minutes;
+								}
+
+								jQuery('#wc_sc_expiry_time_picker').timepicker({
+									timeInput: true,
+								}).val(expiry_time_string);
+
+								jQuery('#wc_sc_expiry_time_picker').on('change', function(){
+									let expiry_time = jQuery(this).val();
+									if( expiry_time !== '' && expiry_time.indexOf(':') > 0 ) {
+										expiry_time = expiry_time.split(':');
+										let expiry_hours = parseInt( expiry_time[0] );
+										let expiry_minutes = parseInt( expiry_time[1] );
+										if( Number.isInteger( expiry_hours ) && Number.isInteger( expiry_minutes ) ) {
+											let expiry_time = expiry_hours * 60 * 60 + expiry_minutes * 60;
+											jQuery('#wc_sc_expiry_time').val( expiry_time );
+										}
+									}
+								});
+						});
+					<?php } ?>
 				});
 			</script>
 			<div class="options_group smart-coupons-field" style="border-top: 1px solid #eee;">
 				<?php
+				// Coupon expiry time feature is compatible with WooCommerce 3.2.0 and above.
+				if ( $this->is_wc_gte_32() ) {
+					woocommerce_wp_hidden_input(
+						array(
+							'id' => 'wc_sc_expiry_time',
+						)
+					);
+
+					woocommerce_wp_text_input(
+						array(
+							'id'                => 'wc_sc_expiry_time_picker',
+							'label'             => __( 'Coupon expiry time', 'woocommerce-smart-coupons' ),
+							'placeholder'       => esc_attr__( 'HH:MM', 'woocommerce-smart-coupons' ),
+							'description'       => __( 'Time after which coupon will be expired. This will work in conjunction with Coupon expiry date.', 'woocommerce-smart-coupons' ),
+							'type'              => 'text',
+							'desc_tip'          => true,
+							'custom_attributes' => array(
+								'autocomplete' => 'off',
+							),
+						)
+					);
+				}
+
+				// Max discount field for percentage type coupon.
+				woocommerce_wp_text_input(
+					array(
+						'id'                => 'wc_sc_max_discount',
+						'label'             => __( 'Max discount', 'woocommerce-smart-coupons' ),
+						'placeholder'       => esc_attr__( 'Unlimited discount', 'woocommerce-smart-coupons' ),
+						'description'       => __( 'The maximum discount this coupon can give.', 'woocommerce-smart-coupons' ),
+						'type'              => 'number',
+						'desc_tip'          => true,
+						'custom_attributes' => array(
+							'step' => 'any',
+							'min'  => 0,
+						),
+					)
+				);
+
 					woocommerce_wp_checkbox(
 						array(
 							'id'          => 'sc_restrict_to_new_user',
@@ -414,6 +491,16 @@ if ( ! class_exists( 'WC_SC_Coupon_Fields' ) ) {
 				update_post_meta( $post_id, 'wc_sc_add_product_details', $add_product_details );
 			} else {
 				update_post_meta( $post_id, 'wc_sc_add_product_details', array() );
+			}
+
+			if( isset( $_POST['wc_sc_max_discount'] ) ) { // phpcs:ignore
+				$max_discount = wc_clean( wp_unslash( $_POST['wc_sc_max_discount'] ) ); // phpcs:ignore
+				update_post_meta( $post_id, 'wc_sc_max_discount', $max_discount );
+			}
+
+			if( isset( $_POST['wc_sc_expiry_time'] ) ) { // phpcs:ignore
+				$expiry_time = wc_clean( wp_unslash( $_POST['wc_sc_expiry_time'] ) ); // phpcs:ignore
+				update_post_meta( $post_id, 'wc_sc_expiry_time', $expiry_time );
 			}
 
 		}
@@ -852,23 +939,56 @@ if ( ! class_exists( 'WC_SC_Coupon_Fields' ) ) {
 		}
 
 		/**
-		 * Compatibility between expiry_date & date_expires meta field
+		 * Function to enqueue required styles and scripts for Smart Coupons' custom fields
 		 */
-		public function coupon_expiry_date() {
+		public function enqueue_styles_scripts() {
 			global $post;
 
-			if ( $this->is_wc_gte_30() && ! empty( $post->post_type ) && 'shop_coupon' === $post->post_type && ! empty( $post->ID ) ) {
-				$date_expires = intval( get_post_meta( $post->ID, 'date_expires', true ) );
-				$expiry_date  = get_post_meta( $post->ID, 'expiry_date', true );
+			if ( ! empty( $post->post_type ) && 'shop_coupon' === $post->post_type && ! empty( $post->ID ) ) {
 
-				if ( ! empty( $expiry_date ) && empty( $date_expires ) ) {
-					$date_expires = strtotime( $expiry_date );
-					if ( false !== $date_expires ) {
-						update_post_meta( $post->ID, 'date_expires', $date_expires );
-						delete_post_meta( $post->ID, 'expiry_date' );
+				// Compatibility between expiry_date & date_expires meta field.
+				if ( $this->is_wc_gte_30() ) {
+					$date_expires = intval( get_post_meta( $post->ID, 'date_expires', true ) );
+					$expiry_date  = get_post_meta( $post->ID, 'expiry_date', true );
+
+					if ( ! empty( $expiry_date ) && empty( $date_expires ) ) {
+						$date_expires = strtotime( $expiry_date );
+						if ( false !== $date_expires ) {
+							update_post_meta( $post->ID, 'date_expires', $date_expires );
+							delete_post_meta( $post->ID, 'expiry_date' );
+						}
+						$js = "jQuery('input#expiry_date').val('" . $expiry_date . "');";
+						wc_enqueue_js( $js );
 					}
-					$js = "jQuery('input#expiry_date').val('" . $expiry_date . "');";
-					wc_enqueue_js( $js );
+				}
+
+				if ( is_callable( 'WC_Smart_Coupons::get_smart_coupons_plugin_data' ) ) {
+					$plugin_data = WC_Smart_Coupons::get_smart_coupons_plugin_data();
+					$version     = $plugin_data['Version'];
+				} else {
+					$version = '';
+				}
+
+				$suffix = defined( 'SCRIPT_DEBUG' ) && SCRIPT_DEBUG ? '' : '.min';
+
+				if ( ! wp_style_is( 'jquery-ui-style', 'registered' ) ) {
+					wp_register_style( 'jquery-ui-style', WC()->plugin_url() . '/assets/css/jquery-ui/jquery-ui' . $suffix . '.css', array(), WC()->version );
+				}
+
+				if ( ! wp_style_is( 'jquery-ui-timepicker', 'registered' ) ) {
+					wp_register_style( 'jquery-ui-timepicker', untrailingslashit( plugins_url( '/', WC_SC_PLUGIN_FILE ) ) . '/assets/css/jquery-ui-timepicker-addon' . $suffix . '.css', array( 'jquery-ui-style' ), $version );
+				}
+
+				if ( ! wp_style_is( 'jquery-ui-timepicker' ) ) {
+					wp_enqueue_style( 'jquery-ui-timepicker' );
+				}
+
+				if ( ! wp_script_is( 'jquery-ui-timepicker', 'registered' ) ) {
+					wp_register_script( 'jquery-ui-timepicker', untrailingslashit( plugins_url( '/', WC_SC_PLUGIN_FILE ) ) . '/assets/js/jquery-ui-timepicker-addon' . $suffix . '.js', array( 'jquery', 'jquery-ui-datepicker', 'jquery-ui-slider' ), $version, true );
+				}
+
+				if ( ! wp_script_is( 'jquery-ui-timepicker' ) ) {
+					wp_enqueue_script( 'jquery-ui-timepicker' );
 				}
 			}
 

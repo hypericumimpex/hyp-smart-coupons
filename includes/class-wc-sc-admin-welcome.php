@@ -423,7 +423,7 @@ if ( ! class_exists( 'WC_SC_Admin_Welcome' ) ) {
 					<h3>
 						<?php
 							/* translators: WooCommerce My Account support link */
-							echo sprintf( __( 'If you are facing any issues, please %s from your WooCommerce account.', 'woocommerce-smart-coupons' ), '<a target="_blank" href="https://woocommerce.com/my-account/create-a-ticket/">' . esc_html__( 'submit a ticket', 'woocommerce-smart-coupons' ) . '</a>' ); // WPCS: XSS ok.
+							echo sprintf( __( 'If you are facing any issues, please %s from your WooCommerce account.', 'woocommerce-smart-coupons' ), '<a target="_blank" href="https://woocommerce.com/my-account/create-a-ticket/">' . esc_html__( 'submit a ticket', 'woocommerce-smart-coupons' ) . '</a>' ); // phpcs:ignore
 						?>
 					</h3>
 				</div>

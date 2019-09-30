@@ -45,7 +45,7 @@ if ( ! class_exists( 'WC_SC_Coupons_By_Location' ) ) {
 		 *
 		 * @var $global_additional_locations
 		 */
-		public $global_additional_locations;
+		public $global_additional_locations = array();
 
 		/**
 		 * Custom Locations
@@ -73,7 +73,7 @@ if ( ! class_exists( 'WC_SC_Coupons_By_Location' ) ) {
 		 */
 		public function __construct() {
 
-			$this->global_additional_locations = get_option( 'sa_cbl_additional_locations' );
+			add_action( 'init', array( $this, 'initialize_cbl_additional_locations' ) );
 
 			add_filter( 'woocommerce_coupon_is_valid', array( $this, 'validate' ), 11, 2 );
 
@@ -132,6 +132,15 @@ if ( ! class_exists( 'WC_SC_Coupons_By_Location' ) ) {
 		}
 
 		/**
+		 * Initialize additional locations
+		 */
+		public function initialize_cbl_additional_locations() {
+			if ( empty( $this->global_additional_locations ) ) {
+				$this->global_additional_locations = get_option( 'sa_cbl_additional_locations', array() );
+			}
+		}
+
+		/**
 		 * Styles & scripts
 		 */
 		public function enqueue_admin_javascript_css() {
@@ -139,7 +148,7 @@ if ( ! class_exists( 'WC_SC_Coupons_By_Location' ) ) {
 			global $woocommerce_smart_coupon;
 
 			$post_type = get_post_type();
-			$get_page  = ( ! empty( $_GET['page'] ) ) ? wc_clean( wp_unslash( $_GET['page'] ) ) : ''; // WPCS: sanitization ok. CSRF ok, input var ok.
+			$get_page  = ( ! empty( $_GET['page'] ) ) ? wc_clean( wp_unslash( $_GET['page'] ) ) : ''; // phpcs:ignore
 
 			if ( 'shop_coupon' !== $post_type && 'wc-smart-coupons' !== $get_page ) {
 				return;
@@ -260,7 +269,7 @@ if ( ! class_exists( 'WC_SC_Coupons_By_Location' ) ) {
 			if ( empty( $post_id ) || empty( $post ) || empty( $_POST ) ) {
 				return;
 			}
-			if ( empty( $_POST['woocommerce_meta_nonce'] ) || ! wp_verify_nonce( wc_clean( wp_unslash( $_POST['woocommerce_meta_nonce'] ) ), 'woocommerce_save_data' ) ) { // WPCS: sanitization ok. CSRF ok, input var ok.
+			if ( empty( $_POST['woocommerce_meta_nonce'] ) || ! wp_verify_nonce( wc_clean( wp_unslash( $_POST['woocommerce_meta_nonce'] ) ), 'woocommerce_save_data' ) ) { // phpcs:ignore
 				return;
 			}
 			if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) {
@@ -279,8 +288,8 @@ if ( ! class_exists( 'WC_SC_Coupons_By_Location' ) ) {
 				return;
 			}
 
-			$locations                            = ( ! empty( $_POST['locations'] ) ) ? wc_clean( wp_unslash( $_POST['locations'] ) ) : array(); // WPCS: sanitization ok. CSRF ok, input var ok.
-			$this->locations_lookup_in['address'] = ( ! empty( $_POST['sa_cbl_search_in']['address'] ) ) ? wc_clean( wp_unslash( $_POST['sa_cbl_search_in']['address'] ) ) : ''; // WPCS: sanitization ok. CSRF ok, input var ok.
+			$locations                            = ( ! empty( $_POST['locations'] ) ) ? wc_clean( wp_unslash( $_POST['locations'] ) ) : array(); // phpcs:ignore
+			$this->locations_lookup_in['address'] = ( ! empty( $_POST['sa_cbl_search_in']['address'] ) ) ? wc_clean( wp_unslash( $_POST['sa_cbl_search_in']['address'] ) ) : ''; // phpcs:ignore
 
 			update_post_meta( $post_id, 'sa_cbl_' . $this->locations_lookup_in['address'] . '_locations', $locations );
 
@@ -603,7 +612,7 @@ if ( ! class_exists( 'WC_SC_Coupons_By_Location' ) ) {
 					}
 				}
 
-				$global_additional_locations = get_option( 'sa_cbl_additional_locations' );
+				$global_additional_locations = ( ! empty( $this->global_additional_locations ) ) ? $this->global_additional_locations : get_option( 'sa_cbl_additional_locations', array() );
 
 				// Add new location with already saved locations.
 				if ( false !== $global_additional_locations && ! empty( $global_additional_locations ) ) {

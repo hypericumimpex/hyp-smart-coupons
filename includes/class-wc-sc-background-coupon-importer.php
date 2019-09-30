@@ -197,8 +197,8 @@ if ( ! class_exists( 'WC_SC_Background_Coupon_Importer' ) ) {
 				return;
 			}
 
-			$page = ( ! empty( $_GET['page'] ) ) ? wc_clean( wp_unslash( $_GET['page'] ) ) : ''; // WPCS: sanitization ok. CSRF ok, input var ok.
-			$tab  = ( ! empty( $_GET['tab'] ) ? ( 'send-smart-coupons' === $_GET['tab'] ? 'send-smart-coupons' : 'import-smart-coupons' ) : 'generate_bulk_coupons' ); // WPCS: sanitization ok. CSRF ok, input var ok.
+			$page = ( ! empty( $_GET['page'] ) ) ? wc_clean( wp_unslash( $_GET['page'] ) ) : ''; // phpcs:ignore
+			$tab  = ( ! empty( $_GET['tab'] ) ? ( 'send-smart-coupons' === $_GET['tab'] ? 'send-smart-coupons' : 'import-smart-coupons' ) : 'generate_bulk_coupons' ); // phpcs:ignore
 
 			if ( ( ! empty( $post->post_type ) && 'shop_coupon' !== $post->post_type ) || ! in_array( $tab, array( 'generate_bulk_coupons', 'import-smart-coupons', 'send-smart-coupons' ), true ) ) {
 				return;
@@ -211,225 +211,263 @@ if ( ! class_exists( 'WC_SC_Background_Coupon_Importer' ) ) {
 				wp_enqueue_script( 'heartbeat' );
 			}
 
-			if ( $this->is_process_running() ) {
+			$upload_dir  = wp_upload_dir();
+			$upload_path = $upload_dir['path'];
+
+			if ( 'wc-smart-coupons' === $page && 'generate_bulk_coupons' === $tab && ! empty( $upload_dir['error'] ) ) {
+				if ( ! wp_script_is( 'jquery-tiptip', 'registered' ) ) {
+					$suffix = defined( 'SCRIPT_DEBUG' ) && SCRIPT_DEBUG ? '' : '.min';
+					wp_register_script( 'jquery-tiptip', WC()->plugin_url() . '/assets/js/jquery-tiptip/jquery.tipTip' . $suffix . '.js', array( 'jquery' ), WC()->version, true );
+				}
+
+				if ( ! wp_script_is( 'jquery-tiptip' ) ) {
+					wp_enqueue_script( 'jquery-tiptip' );
+				}
 				?>
-				<div id="wc_sc_coupon_background_progress" class="error" style="display: none;">
+				<div id="wc_sc_folder_permission_warning" class="error">
 					<p>
-						<?php
-							$bulk_action = get_site_option( 'bulk_coupon_action_woo_sc' );
-
-						switch ( $bulk_action ) {
-
-							case 'import_email':
-							case 'import':
-								$bulk_text = __( 'imported', 'woocommerce-smart-coupons' );
-								break;
-
-							case 'generate_email':
-							case 'generate':
-							default:
-								$bulk_text = __( 'generated', 'woocommerce-smart-coupons' );
-								break;
-
-						}
-
-							echo '<strong>' . esc_html__( 'Important', 'woocommerce-smart-coupons' ) . '</strong>: ' . esc_html__( 'Coupons are being', 'woocommerce-smart-coupons' );
-							echo '&nbsp;' . esc_html( $bulk_text ) . '&nbsp;';
-							echo esc_html__( 'in the background. You will be notified when it is completed.', 'woocommerce-smart-coupons' ) . '&nbsp;';
-						?>
-						<span id="wc_sc_remaining_time_label" style="display: none;">
-							<?php echo esc_html__( 'Progress', 'woocommerce-smart-coupons' ); ?>:&nbsp;
-							<strong><span id="wc_sc_remaining_time"><?php echo esc_html( '--:--:--', 'woocommerce-smart-coupons' ); ?></span></strong>
-						</span>
-					</p>
-					<p>
-						<?php echo esc_html__( 'You can continue with other work. But before bulk generating or importing new coupons, you need to wait for this process to complete.', 'woocommerce-smart-coupons' ); ?>
+						<span class="dashicons dashicons-warning"></span>&nbsp;
+						<?php /* translators: 1. Important 2. Upload path */ ?>
+						<?php echo sprintf( esc_html__( '%1$s: To allow bulk generation of coupons, please make sure %2$s directory is writable.', 'woocommerce-smart-coupons' ), '<strong>' . esc_html__( 'Important', 'woocommerce-smart-coupons' ) . '</strong>', '<strong><code>' . esc_html( $upload_path ) . '</code></strong>' ); ?>
 					</p>
 				</div>
 				<script type="text/javascript">
 					jQuery(function(){
-						let admin_ajax_url = '<?php echo esc_url( admin_url( 'admin-ajax.php' ) ); ?>';
-						let current_interval = false;
-						function wc_sc_start_coupon_background_progress_timer( total_seconds, target_dom ) {
-							var timer = total_seconds, hours, minutes, seconds;
-							var target_element = target_dom.find('#wc_sc_remaining_time');
-							var target_element_label = target_dom.find('#wc_sc_remaining_time_label');
-							if ( false !== current_interval ) {
-								clearInterval( current_interval );
-							}
-							current_interval = setInterval(function(){
-								hours   = Math.floor(timer / 3600);
-								timer   %= 3600;
-								minutes = Math.floor(timer / 60);
-								seconds = timer % 60;
-
-								hours   = hours < 10 ? "0" + hours : hours;
-								minutes = minutes < 10 ? "0" + minutes : minutes;
-								seconds = seconds < 10 ? "0" + seconds : seconds;
-
-								target_element_label.show();
-								target_element.text(hours + ":" + minutes + ":" + seconds);
-
-								if (--timer < 0) {
-									timer = 0;
-									clearInterval( current_interval );
-									location.reload( true );
-								}
-
-							}, 1000);
-						}
-						function wc_sc_start_coupon_background_progress_percentage( progress_data, target_dom ) {
-							let target_element_label = target_dom.find('#wc_sc_remaining_time_label');
-							let target_element = target_dom.find('#wc_sc_remaining_time');
-							let percent_completion = progress_data.percent_completion;
-							let coupon_action = progress_data.coupon_action;
-							let action_stage = progress_data.action_stage;
-							let action_data = progress_data.action_data;
-
-							let percent_ratio_data = {
-								'add_to_store': [20, 80],
-								'sc_export_and_import': [100],
-								'import_from_csv': [100],
-							}
-
-							let total_percent_ratio = 0;
-							if( 'add_to_store' == coupon_action ) {
-								let percent_ratio = percent_ratio_data[coupon_action];
-								jQuery.each(percent_ratio,function( index, value ){
-									if( index < action_stage ) {
-										total_percent_ratio += value;
-									} else if( index == action_stage ) {
-										current_ratio = value;
-									}
-								});
-								percent_completion = percent_completion * ( current_ratio / 100 );
-								percent_completion += total_percent_ratio;
-							}
-
-							target_element_label.show();
-							percent_completion = Math.round( percent_completion  * 100 ) / 100;
-							target_element.text(percent_completion + '%');
-							jQuery('.woo-sc-importer-progress').val(percent_completion);
-						}
-						function wc_sc_hide_coupon_form() {
-							jQuery('.woo-sc-form-wrapper').hide();
-							if( 0 === jQuery('.woo-sc-scheduler-running-message').length ) {
-								let backgroudn_process_message = '<div class="woo-sc-scheduler-running-message"><div class="woocommerce-progress-form-wrapper"><div class="wc-progress-form-content woocommerfce-importer woocommerce-importer__importing">\
-									<header>\
-										<p><?php echo esc_html__( 'We are processing coupons in background. Please wait before starting new process.', 'woocommerce-smart-coupons' ); ?></p>\
-									</header>\
-								<section>\
-									<progress class="woocommerce-importer-progress woo-sc-importer-progress" max="100" value="0"></progress>\
-								</section></div></div></p>';
-								jQuery(backgroudn_process_message).insertAfter('.woo-sc-form-wrapper');		
-							}
-						}
-
-						function wc_sc_check_coupon_background_progress() {
-							jQuery.ajax({
-									url: admin_ajax_url,
-									method: 'post',
-									dataType: 'json',
-									data: {
-										action: 'wc_sc_coupon_background_progress',
-										security: '<?php echo esc_attr( wp_create_nonce( 'wc-sc-background-coupon-progress' ) ); ?>'
-									},
-									success: function( response ) {
-
-										let percent_completion = response.percent_completion;
-										let coupon_action = response.coupon_action;
-										let action_stage = response.action_stage;
-										let action_data = response.action_data;
-
-										let progress_data = {
-											percent_completion: response.percent_completion,
-											coupon_action: response.coupon_action,
-											action_stage: response.action_stage,
-											action_data: response.action_data
-										}
-
-										let target_dom = jQuery('#wc_sc_coupon_background_progress');
-
-										if ( response.percent_completion !== undefined && response.percent_completion !== '' ) {
-											if( 100 == response.percent_completion) {
-												let should_reload = false;
-												if( ( 'add_to_store' === response.coupon_action || 'woo_sc_is_email_imported_coupons' === response.coupon_action ) && 1 === response.action_stage ) {
-													should_reload = true;
-												} else if ( 'import_from_csv' === response.coupon_action ){
-													should_reload = true;
-												} else if ( 'sc_export_and_import' === response.coupon_action ) {
-													should_reload = true;
-												}
-
-												if( should_reload ) {
-													window.location.reload();
-												} 
-											}
-
-											target_dom.show();
-											wc_sc_hide_coupon_form();
-											wc_sc_start_coupon_background_progress_percentage( progress_data, target_dom );
-										}
-									}
-								});	
-						}
-
-						jQuery(document).on( 'ready', function( event, data, response ){
-							wc_sc_check_coupon_background_progress();
-							setInterval(function(){
-								wc_sc_check_coupon_background_progress();
-							},5000);
+						jQuery(document).ready(function() {
+							jQuery('#generate_and_import').addClass('disabled')
+							.attr( 'data-tip', '<?php echo esc_js( __( 'Bulk generation is disabled since uploads directory is not writable. Please ensure uploads directory is writable before starting bulk generate process.', 'woocommerce-smart-coupons' ) ); ?>' )
+							.tipTip({
+								'attribute': 'data-tip',
+								'fadeIn':    50,
+								'fadeOut':   50,
+								'delay':     100
+							});
 						});
 					});
 				</script>
 				<?php
 			} else {
-				$background_coupon_process_result = get_site_option( 'wc_sc_background_coupon_process_result' );
-				if ( false !== $background_coupon_process_result ) {
-					switch ( $background_coupon_process_result['action'] ) {
-						case 'import_email':
-							$action_title = __( 'Coupon import', 'woocommerce-smart-coupons' );
-							$action_text  = __( 'added & emailed', 'woocommerce-smart-coupons' );
-							break;
-						case 'generate_email':
-							$action_title = __( 'Coupon bulk generation', 'woocommerce-smart-coupons' );
-							$action_text  = __( 'added & emailed', 'woocommerce-smart-coupons' );
-							break;
-						case 'import':
-							$action_title = __( 'Coupon import', 'woocommerce-smart-coupons' );
-							$action_text  = __( 'added', 'woocommerce-smart-coupons' );
-							break;
-						case 'generate':
-						default:
-							$action_title = __( 'Coupon bulk generation', 'woocommerce-smart-coupons' );
-							$action_text  = __( 'added', 'woocommerce-smart-coupons' );
-							break;
-					}
-					?>
-					<div id="wc_sc_coupon_background_progress" class="updated" style="display: none;">
-						<p>
-							<strong><?php echo esc_html( $action_title ); ?></strong>:&nbsp;
-							<?php echo esc_html__( 'Successfully', 'woocommerce-smart-coupons' ) . ' ' . esc_html( $action_text ) . ' ' . esc_html( $background_coupon_process_result['successful'] ) . ' ' . esc_html( _n( 'coupon', 'coupons', $background_coupon_process_result['successful'], 'woocommerce-smart-coupons' ) ) . '.'; ?>
 
-						</p>
-						<?php
-							$woo_sc_action_data = get_site_option( 'woo_sc_action_data', false );
-						if ( $woo_sc_action_data ) {
-							if ( 'download_csv' === $woo_sc_action_data['name'] ) {
-								?>
-									<p class="download-csv-wrapper">
-										<?php
-											echo esc_html__( 'CSV file has been generated. You can download it from ', 'woocommerce-smart-coupons' ) . '<a href="' . esc_url( admin_url( 'admin-ajax.php' ) ) . '?action=wc_sc_download_csv&download_nonce=' . esc_attr( wp_create_nonce( 'wc_sc_download_csv' ) ) . '">' . esc_html__( 'here', 'woocommerce-smart-coupons' ) . '</a>.';
-										?>
-									</p>
-									<?php
+				if ( $this->is_process_running() ) {
+					?>
+					<div id="wc_sc_coupon_background_progress" class="error" style="display: none;">
+						<p>
+							<?php
+							$bulk_action = get_site_option( 'bulk_coupon_action_woo_sc' );
+
+							switch ( $bulk_action ) {
+
+								case 'import_email':
+								case 'import':
+									$bulk_text = __( 'imported', 'woocommerce-smart-coupons' );
+									break;
+
+								case 'generate_email':
+								case 'generate':
+								default:
+									$bulk_text = __( 'generated', 'woocommerce-smart-coupons' );
+									break;
+
 							}
-						} else {
-							delete_site_option( 'wc_sc_background_coupon_process_result' );
+
+								echo '<strong>' . esc_html__( 'Important', 'woocommerce-smart-coupons' ) . '</strong>: ' . esc_html__( 'Coupons are being', 'woocommerce-smart-coupons' );
+								echo '&nbsp;' . esc_html( $bulk_text ) . '&nbsp;';
+								echo esc_html__( 'in the background. You will be notified when it is completed.', 'woocommerce-smart-coupons' ) . '&nbsp;';
+							?>
+							<span id="wc_sc_remaining_time_label" style="display: none;">
+								<?php echo esc_html__( 'Progress', 'woocommerce-smart-coupons' ); ?>:&nbsp;
+								<strong><span id="wc_sc_remaining_time"><?php echo esc_html( '--:--:--', 'woocommerce-smart-coupons' ); ?></span></strong>
+							</span>
+						</p>
+						<p>
+							<?php echo esc_html__( 'You can continue with other work. But before bulk generating or importing new coupons, you need to wait for this process to complete.', 'woocommerce-smart-coupons' ); ?>
+						</p>
+					</div>
+					<script type="text/javascript">
+						jQuery(function(){
+							let admin_ajax_url = '<?php echo esc_url( admin_url( 'admin-ajax.php' ) ); ?>';
+							let current_interval = false;
+							function wc_sc_start_coupon_background_progress_timer( total_seconds, target_dom ) {
+								var timer = total_seconds, hours, minutes, seconds;
+								var target_element = target_dom.find('#wc_sc_remaining_time');
+								var target_element_label = target_dom.find('#wc_sc_remaining_time_label');
+								if ( false !== current_interval ) {
+									clearInterval( current_interval );
+								}
+								current_interval = setInterval(function(){
+									hours   = Math.floor(timer / 3600);
+									timer   %= 3600;
+									minutes = Math.floor(timer / 60);
+									seconds = timer % 60;
+
+									hours   = hours < 10 ? "0" + hours : hours;
+									minutes = minutes < 10 ? "0" + minutes : minutes;
+									seconds = seconds < 10 ? "0" + seconds : seconds;
+
+									target_element_label.show();
+									target_element.text(hours + ":" + minutes + ":" + seconds);
+
+									if (--timer < 0) {
+										timer = 0;
+										clearInterval( current_interval );
+										location.reload( true );
+									}
+
+								}, 1000);
+							}
+							function wc_sc_start_coupon_background_progress_percentage( progress_data, target_dom ) {
+								let target_element_label = target_dom.find('#wc_sc_remaining_time_label');
+								let target_element = target_dom.find('#wc_sc_remaining_time');
+								let percent_completion = progress_data.percent_completion;
+								let coupon_action = progress_data.coupon_action;
+								let action_stage = progress_data.action_stage;
+								let action_data = progress_data.action_data;
+
+								let percent_ratio_data = {
+									'add_to_store': [20, 80],
+									'sc_export_and_import': [100],
+									'import_from_csv': [100],
+								}
+
+								let total_percent_ratio = 0;
+								if( 'add_to_store' == coupon_action ) {
+									let percent_ratio = percent_ratio_data[coupon_action];
+									jQuery.each(percent_ratio,function( index, value ){
+										if( index < action_stage ) {
+											total_percent_ratio += value;
+										} else if( index == action_stage ) {
+											current_ratio = value;
+										}
+									});
+									percent_completion = percent_completion * ( current_ratio / 100 );
+									percent_completion += total_percent_ratio;
+								}
+
+								target_element_label.show();
+								percent_completion = Math.round( percent_completion  * 100 ) / 100;
+								target_element.text(percent_completion + '%');
+								jQuery('.woo-sc-importer-progress').val(percent_completion);
+							}
+							function wc_sc_hide_coupon_form() {
+								jQuery('.woo-sc-form-wrapper').hide();
+								if( 0 === jQuery('.woo-sc-scheduler-running-message').length ) {
+									let backgroudn_process_message = '<div class="woo-sc-scheduler-running-message"><div class="woocommerce-progress-form-wrapper"><div class="wc-progress-form-content woocommerfce-importer woocommerce-importer__importing">\
+										<header>\
+											<p><?php echo esc_html__( 'We are processing coupons in background. Please wait before starting new process.', 'woocommerce-smart-coupons' ); ?></p>\
+										</header>\
+									<section>\
+										<progress class="woocommerce-importer-progress woo-sc-importer-progress" max="100" value="0"></progress>\
+									</section></div></div></p>';
+									jQuery(backgroudn_process_message).insertAfter('.woo-sc-form-wrapper');
+								}
+							}
+
+							function wc_sc_check_coupon_background_progress() {
+								jQuery.ajax({
+										url: admin_ajax_url,
+										method: 'post',
+										dataType: 'json',
+										data: {
+											action: 'wc_sc_coupon_background_progress',
+											security: '<?php echo esc_attr( wp_create_nonce( 'wc-sc-background-coupon-progress' ) ); ?>'
+										},
+										success: function( response ) {
+
+											let percent_completion = response.percent_completion;
+											let coupon_action = response.coupon_action;
+											let action_stage = response.action_stage;
+											let action_data = response.action_data;
+
+											let progress_data = {
+												percent_completion: response.percent_completion,
+												coupon_action: response.coupon_action,
+												action_stage: response.action_stage,
+												action_data: response.action_data
+											}
+
+											let target_dom = jQuery('#wc_sc_coupon_background_progress');
+
+											if ( response.percent_completion !== undefined && response.percent_completion !== '' ) {
+												if( 100 == response.percent_completion) {
+													let should_reload = false;
+													if( ( 'add_to_store' === response.coupon_action || 'woo_sc_is_email_imported_coupons' === response.coupon_action ) && 1 === response.action_stage ) {
+														should_reload = true;
+													} else if ( 'import_from_csv' === response.coupon_action ){
+														should_reload = true;
+													} else if ( 'sc_export_and_import' === response.coupon_action ) {
+														should_reload = true;
+													}
+
+													if( should_reload ) {
+														window.location.reload();
+													}
+												}
+
+												target_dom.show();
+												wc_sc_hide_coupon_form();
+												wc_sc_start_coupon_background_progress_percentage( progress_data, target_dom );
+											}
+										}
+									});
+							}
+
+							jQuery(document).on( 'ready', function( event, data, response ){
+								wc_sc_check_coupon_background_progress();
+								setInterval(function(){
+									wc_sc_check_coupon_background_progress();
+								},5000);
+							});
+						});
+					</script>
+					<?php
+				} else {
+					$background_coupon_process_result = get_site_option( 'wc_sc_background_coupon_process_result' );
+					if ( false !== $background_coupon_process_result ) {
+						switch ( $background_coupon_process_result['action'] ) {
+							case 'import_email':
+								$action_title = __( 'Coupon import', 'woocommerce-smart-coupons' );
+								$action_text  = __( 'added & emailed', 'woocommerce-smart-coupons' );
+								break;
+							case 'generate_email':
+								$action_title = __( 'Coupon bulk generation', 'woocommerce-smart-coupons' );
+								$action_text  = __( 'added & emailed', 'woocommerce-smart-coupons' );
+								break;
+							case 'import':
+								$action_title = __( 'Coupon import', 'woocommerce-smart-coupons' );
+								$action_text  = __( 'added', 'woocommerce-smart-coupons' );
+								break;
+							case 'generate':
+							default:
+								$action_title = __( 'Coupon bulk generation', 'woocommerce-smart-coupons' );
+								$action_text  = __( 'added', 'woocommerce-smart-coupons' );
+								break;
 						}
 						?>
-					</div>	
-					<?php
+						<div id="wc_sc_coupon_background_progress" class="updated" style="display: none;">
+							<p>
+								<strong><?php echo esc_html( $action_title ); ?></strong>:&nbsp;
+								<?php echo esc_html__( 'Successfully', 'woocommerce-smart-coupons' ) . ' ' . esc_html( $action_text ) . ' ' . esc_html( $background_coupon_process_result['successful'] ) . ' ' . esc_html( _n( 'coupon', 'coupons', $background_coupon_process_result['successful'], 'woocommerce-smart-coupons' ) ) . '.'; ?>
+
+							</p>
+							<?php
+								$woo_sc_action_data = get_site_option( 'woo_sc_action_data', false );
+							if ( $woo_sc_action_data ) {
+								if ( 'download_csv' === $woo_sc_action_data['name'] ) {
+									?>
+										<p class="download-csv-wrapper">
+											<?php
+												echo esc_html__( 'CSV file has been generated. You can download it from ', 'woocommerce-smart-coupons' ) . '<a href="' . esc_url( admin_url( 'admin-ajax.php' ) ) . '?action=wc_sc_download_csv&download_nonce=' . esc_attr( wp_create_nonce( 'wc_sc_download_csv' ) ) . '">' . esc_html__( 'here', 'woocommerce-smart-coupons' ) . '</a>.';
+											?>
+										</p>
+										<?php
+								}
+							} else {
+								delete_site_option( 'wc_sc_background_coupon_process_result' );
+							}
+							?>
+						</div>
+						<?php
+					}
 				}
 			}
 			?>
@@ -514,11 +552,11 @@ if ( ! class_exists( 'WC_SC_Background_Coupon_Importer' ) ) {
 						$csv_file_path = $file_path;
 						$file_path     = $zip_path;
 					} else {
-						echo 'Cannot create zip file';
+						echo esc_html__( 'Failed to create export file.', 'woocommerce-smart-coupons' );
 						exit();
 					}
 				}
-				if ( file_exists( $file_path ) ) {
+				if ( file_exists( $file_path ) && is_readable( $file_path ) ) {
 
 					nocache_headers();
 					header( 'X-Robots-Tag: noindex, nofollow', true );
@@ -528,6 +566,9 @@ if ( ! class_exists( 'WC_SC_Background_Coupon_Importer' ) ) {
 					header( 'Content-Disposition: attachment; filename="' . sanitize_file_name( $file_name ) . '";' );
 					readfile( $file_path ); // phpcs:ignore
 					unlink( $file_path );
+				} else {
+					echo esc_html__( 'Failed to create export file.', 'woocommerce-smart-coupons' );
+					exit();
 				}
 
 				if ( file_exists( $csv_file_path ) ) {
@@ -669,79 +710,79 @@ if ( ! class_exists( 'WC_SC_Background_Coupon_Importer' ) ) {
 				update_site_option( 'all_tasks_count_woo_sc', $posted_data['total_coupons_to_generate'] );
 			}
 
-			for ( $no_of_coupons_created = 1; $no_of_coupons_created <= $no_of_coupons_to_generate; $no_of_coupons_created++ ) {
-				$posted_data['no_of_coupons_to_generate'] = 1;
-				$coupon_data                              = $woocommerce_smart_coupon->generate_coupons_code( $posted_data, '', '' );
+			if ( isset( $posted_data['export_file'] ) && is_array( $posted_data['export_file'] ) ) {
+				$export_file      = $posted_data['export_file'];
+				$csv_folder       = $export_file['wp_upload_dir'];
+				$filename         = str_replace( array( '\'', '"', ',', ';', '<', '>', '/', ':' ), '', $export_file['file_name'] );
+				$csvfilename      = $csv_folder . $filename;
+				$csv_file_handler          = fopen( $csvfilename, 'a' ); // phpcs:ignore
+				// Proceed only if file has opened in append mode.
+				if ( false !== $csv_file_handler ) {
+					for ( $no_of_coupons_created = 1; $no_of_coupons_created <= $no_of_coupons_to_generate; $no_of_coupons_created++ ) {
+						$posted_data['no_of_coupons_to_generate'] = 1;
+						$coupon_data                              = $woocommerce_smart_coupon->generate_coupons_code( $posted_data, '', '' );
+						$file_data = $woocommerce_smart_coupon->get_coupon_csv_data( $column_headers, $coupon_data ); // phpcs:ignore
+						if ( $file_data ) {
 
-				if ( isset( $posted_data['export_file'] ) && is_array( $posted_data['export_file'] ) ) {
-					$export_file = $posted_data['export_file'];
+								fwrite( $csv_file_handler, $file_data ); // phpcs:ignore
+								$no_of_remaining_coupons = $no_of_coupons_to_generate - $no_of_coupons_created;
 
-					$file_data = $woocommerce_smart_coupon->get_coupon_csv_data( $column_headers, $coupon_data ); // phpcs:ignore
-					if ( $file_data ) {
-						$csv_folder  = $export_file['wp_upload_dir'];
-						$filename    = str_replace( array( '\'', '"', ',', ';', '<', '>', '/', ':' ), '', $export_file['file_name'] );
-						$csvfilename = $csv_folder . $filename;
-						$fp          = fopen( $csvfilename, 'a' ); // phpcs:ignore
-						fwrite( $fp, $file_data ); // phpcs:ignore
-						fclose( $fp ); // phpcs:ignore
-						$no_of_remaining_coupons = $no_of_coupons_to_generate - $no_of_coupons_created;
+								update_site_option( 'current_time_woo_sc', time() );
+								update_site_option( 'remaining_tasks_count_woo_sc', $no_of_remaining_coupons );
 
-						update_site_option( 'current_time_woo_sc', time() );
-						update_site_option( 'remaining_tasks_count_woo_sc', $no_of_remaining_coupons );
+							if ( ! empty( $posted_data['customer_email'] ) ) {
+								$emails = explode( ',', $posted_data['customer_email'] );
+								array_shift( $emails ); // Remove first email so that it does not included in next run.
+								$posted_data['customer_email'] = implode( ',', $emails );
+							}
 
-						if ( ! empty( $posted_data['customer_email'] ) ) {
-							$emails = explode( ',', $posted_data['customer_email'] );
-							array_shift( $emails ); // Remove first email so that it does not included in next run.
-							$posted_data['customer_email'] = implode( ',', $emails );
-						}
+							// If csv generation is complete.
+							if ( 0 === $no_of_remaining_coupons ) {
+								// If user opted for add_to_store option then create another scheduler to generate actual coupons.
+								if ( in_array( $posted_data['smart_coupons_generate_action'], array( 'add_to_store', 'woo_sc_is_email_imported_coupons' ), true ) ) {
 
-						// If csv generation is complete.
-						if ( 0 === $no_of_remaining_coupons ) {
-							// If user opted for add_to_store option then create another scheduler to generate actual coupons.
-							if ( 'add_to_store' === $posted_data['smart_coupons_generate_action'] || 'woo_sc_is_email_imported_coupons' === $posted_data['smart_coupons_generate_action'] ) {
+									delete_site_option( 'start_time_woo_sc' );
+									delete_site_option( 'current_time_woo_sc' );
 
-								delete_site_option( 'start_time_woo_sc' );
-								delete_site_option( 'current_time_woo_sc' );
+									$posted_data['no_of_coupons_to_generate'] = $posted_data['total_coupons_to_generate'];
+									$posted_data['action_stage']              = 1;
+									update_site_option( 'woo_sc_generate_coupon_posted_data', $posted_data );
 
-								$posted_data['no_of_coupons_to_generate'] = $posted_data['total_coupons_to_generate'];
-								$posted_data['action_stage']              = 1;
-								update_site_option( 'woo_sc_generate_coupon_posted_data', $posted_data );
+									do_action( 'woo_sc_import_coupons_from_csv' );
+								} else {
 
-								if ( function_exists( 'as_schedule_single_action' ) ) {
-									as_schedule_single_action( time(), 'woo_sc_import_coupons_from_csv' );
+									$bulk_coupon_action    = get_site_option( 'bulk_coupon_action_woo_sc' );
+									$all_tasks_count       = get_site_option( 'all_tasks_count_woo_sc' );
+									$remaining_tasks_count = get_site_option( 'remaining_tasks_count_woo_sc' );
+									$success_count         = $all_tasks_count - $remaining_tasks_count;
+
+									$coupon_background_process_result = array(
+										'action'     => $bulk_coupon_action,
+										'successful' => $success_count,
+									);
+
+									delete_site_option( 'bulk_coupon_action_woo_sc' );
+									update_option( 'wc_sc_background_coupon_process_result', $coupon_background_process_result, 'no' );
+
+									$action_data = array(
+										'name' => 'download_csv',
+										'data' => array(
+											'generated_file_path' => $csvfilename,
+										),
+									);
+									update_site_option( 'woo_sc_action_data', $action_data );
 								}
-							} else {
-
-								$bulk_coupon_action    = get_site_option( 'bulk_coupon_action_woo_sc' );
-								$all_tasks_count       = get_site_option( 'all_tasks_count_woo_sc' );
-								$remaining_tasks_count = get_site_option( 'remaining_tasks_count_woo_sc' );
-								$success_count         = $all_tasks_count - $remaining_tasks_count;
-
-								$coupon_background_process_result = array(
-									'action'     => $bulk_coupon_action,
-									'successful' => $success_count,
-								);
-
-								delete_site_option( 'bulk_coupon_action_woo_sc' );
-								update_option( 'wc_sc_background_coupon_process_result', $coupon_background_process_result, 'no' );
-
-								$action_data = array(
-									'name' => 'download_csv',
-									'data' => array(
-										'generated_file_path' => $csvfilename,
-									),
-								);
-								update_site_option( 'woo_sc_action_data', $action_data );
+							} elseif ( $this->time_exceeded( $batch_start_time ) || $this->memory_exceeded() ) {
+								$posted_data['no_of_coupons_to_generate'] = $no_of_remaining_coupons;
+								update_site_option( 'woo_sc_generate_coupon_posted_data', $posted_data );
+								if ( function_exists( 'as_schedule_single_action' ) ) {
+									as_schedule_single_action( time(), 'woo_sc_generate_coupon_csv' );
+								}
+								break;
 							}
-						} elseif ( $this->time_exceeded( $batch_start_time ) || $this->memory_exceeded() ) {
-							$posted_data['no_of_coupons_to_generate'] = $no_of_remaining_coupons;
-							update_site_option( 'woo_sc_generate_coupon_posted_data', $posted_data );
-							if ( function_exists( 'as_schedule_single_action' ) ) {
-								as_schedule_single_action( time(), 'woo_sc_generate_coupon_csv' );
-							}
-							break;
 						}
 					}
+					fclose( $csv_file_handler ); // phpcs:ignore
 				}
 			}
 
@@ -770,71 +811,82 @@ if ( ! class_exists( 'WC_SC_Background_Coupon_Importer' ) ) {
 				$csvfilename   = $csv_folder . $filename;
 				$file_position = isset( $posted_data['file_position'] ) && is_numeric( $posted_data['file_position'] ) ? $posted_data['file_position'] : 0;
 
-				$counter = 0;
-
-				$batch_start_time = time();
-				$start_time       = get_site_option( 'start_time_woo_sc', false );
-				if ( false === $start_time ) {
-					update_site_option( 'start_time_woo_sc', $batch_start_time );
+				// Set locale.
+				$encoding = mb_detect_encoding( $csvfilename, 'UTF-8, ISO-8859-1', true );
+				if ( $encoding ) {
+					setlocale( LC_ALL, 'en_US.' . $encoding );
 				}
+				ini_set( 'auto_detect_line_endings', true ); // phpcs:ignore
+				$csv_file_handler = fopen( $csvfilename, 'r' ); // phpcs:ignore
+				if ( false !== $csv_file_handler ) {
+					$csv_header = fgetcsv( $csv_file_handler, 0 );
+					$counter    = 0;
 
-				$reading_completed       = false;
-				$no_of_remaining_coupons = -1;
-				for ( $no_of_coupons_created = 1; $no_of_coupons_created <= $no_of_coupons_to_generate; $no_of_coupons_created++ ) {
-
-					$result            = $wc_csv_coupon_import->parser->parse_data_by_row( $csvfilename, $file_position );
-					$file_position     = $result['file_position'];
-					$parsed_csv_data   = $result['parsed_csv_data'];
-					$reading_completed = $result['reading_completed'];
-					if ( ! $reading_completed ) {
-						$coupon             = $wc_csv_coupon_import->parser->parse_coupon( $parsed_csv_data );
-						$coupon_parsed_data = array(
-							'filter' => array(
-								'class'    => 'WC_SC_Coupon_Import',
-								'function' => 'process_coupon',
-							),
-							'args'   => array( $coupon ),
-						);
-
-						$coupon_id = $this->create_coupon( $coupon_parsed_data );
-						$counter++;
+					$batch_start_time = time();
+					$start_time       = get_site_option( 'start_time_woo_sc', false );
+					if ( false === $start_time ) {
+						update_site_option( 'start_time_woo_sc', $batch_start_time );
 					}
 
-					$no_of_remaining_coupons = $no_of_coupons_to_generate - $no_of_coupons_created;
-					update_site_option( 'current_time_woo_sc', time() );
-					update_site_option( 'remaining_tasks_count_woo_sc', $no_of_remaining_coupons );
+					$reading_completed       = false;
+					$no_of_remaining_coupons = -1;
+					for ( $no_of_coupons_created = 1; $no_of_coupons_created <= $no_of_coupons_to_generate; $no_of_coupons_created++ ) {
 
-					if ( 0 === $no_of_remaining_coupons ) {
+						$result            = $wc_csv_coupon_import->parser->parse_data_by_row( $csv_file_handler, $csv_header, $file_position, $encoding );
+						$file_position     = $result['file_position'];
+						$parsed_csv_data   = $result['parsed_csv_data'];
+						$reading_completed = $result['reading_completed'];
+						if ( ! $reading_completed ) {
+							$coupon             = $wc_csv_coupon_import->parser->parse_coupon( $parsed_csv_data );
+							$coupon_parsed_data = array(
+								'filter' => array(
+									'class'    => 'WC_SC_Coupon_Import',
+									'function' => 'process_coupon',
+								),
+								'args'   => array( $coupon ),
+							);
 
-						$bulk_coupon_action    = get_site_option( 'bulk_coupon_action_woo_sc' );
-						$all_tasks_count       = get_site_option( 'all_tasks_count_woo_sc' );
-						$remaining_tasks_count = get_site_option( 'remaining_tasks_count_woo_sc' );
-						$success_count         = $all_tasks_count - $remaining_tasks_count;
-
-						$coupon_background_process_result = array(
-							'action'     => $bulk_coupon_action,
-							'successful' => $success_count,
-						);
-
-						unlink( $csvfilename );
-						update_option( 'woo_sc_is_email_imported_coupons', 'no', 'no' );
-						delete_site_option( 'bulk_coupon_action_woo_sc' );
-
-						update_option( 'wc_sc_background_coupon_process_result', $coupon_background_process_result, 'no' );
-						break;
-					}
-					$posted_data['no_of_coupons_to_generate'] = $no_of_remaining_coupons;
-					if ( $this->time_exceeded( $batch_start_time ) || $this->memory_exceeded() ) {
-						$posted_data['file_position'] = $file_position;
-						update_site_option( 'woo_sc_generate_coupon_posted_data', $posted_data );
-						if ( function_exists( 'as_schedule_single_action' ) ) {
-							as_schedule_single_action( time(), 'woo_sc_import_coupons_from_csv' );
+							$coupon_id = $this->create_coupon( $coupon_parsed_data );
+							$counter++;
 						}
-						break;
+
+						$no_of_remaining_coupons = $no_of_coupons_to_generate - $no_of_coupons_created;
+						update_site_option( 'current_time_woo_sc', time() );
+						update_site_option( 'remaining_tasks_count_woo_sc', $no_of_remaining_coupons );
+
+						if ( 0 === $no_of_remaining_coupons ) {
+
+							$bulk_coupon_action    = get_site_option( 'bulk_coupon_action_woo_sc' );
+							$all_tasks_count       = get_site_option( 'all_tasks_count_woo_sc' );
+							$remaining_tasks_count = get_site_option( 'remaining_tasks_count_woo_sc' );
+							$success_count         = $all_tasks_count - $remaining_tasks_count;
+
+							$coupon_background_process_result = array(
+								'action'     => $bulk_coupon_action,
+								'successful' => $success_count,
+							);
+
+							fclose( $csv_file_handler ); // phpcs:ignore
+							unlink( $csvfilename );
+							update_option( 'woo_sc_is_email_imported_coupons', 'no', 'no' );
+							delete_site_option( 'bulk_coupon_action_woo_sc' );
+
+							update_option( 'wc_sc_background_coupon_process_result', $coupon_background_process_result, 'no' );
+							break;
+						}
+						$posted_data['no_of_coupons_to_generate'] = $no_of_remaining_coupons;
+						if ( $this->time_exceeded( $batch_start_time ) || $this->memory_exceeded() ) {
+							fclose( $csv_file_handler ); // phpcs:ignore
+							$posted_data['file_position'] = $file_position;
+							update_site_option( 'woo_sc_generate_coupon_posted_data', $posted_data );
+							if ( function_exists( 'as_schedule_single_action' ) ) {
+								as_schedule_single_action( time(), 'woo_sc_import_coupons_from_csv' );
+							}
+							break;
+						}
 					}
 				}
 			}
-
 		}
 
 		/**

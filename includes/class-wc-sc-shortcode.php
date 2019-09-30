@@ -80,7 +80,7 @@ if ( ! class_exists( 'WC_SC_Shortcode' ) ) {
 		 */
 		public function smart_coupon_shortcode_button_init() {
 
-			if ( ! current_user_can( 'edit_posts' ) && ! current_user_can( 'edit_pages' ) && get_user_option( 'rich_editing' ) === 'true' ) {
+			if ( get_user_option( 'rich_editing' ) === 'true' && ! current_user_can( 'manage_options' ) ) { // Add shortcode button to WP Editor only when the user is from the top level.
 				return;
 			}
 
@@ -429,6 +429,11 @@ if ( ! class_exists( 'WC_SC_Shortcode' ) ) {
 				case 'percent':
 					$coupon_type    = ( $this->is_wc_gte_30() ) ? __( 'Discount', 'woocommerce-smart-coupons' ) : __( 'Cart Discount', 'woocommerce-smart-coupons' );
 					$_coupon_amount = $coupon_amount . '%';
+					$max_discount   = get_post_meta( $coupon_id, 'wc_sc_max_discount', true );
+					if ( ! empty( $max_discount ) && is_numeric( $max_discount ) ) {
+						/* translators: %s: Maximum coupon discount amount */
+						$coupon_type .= ' ' . sprintf( __( ' upto %s', 'woocommerce-smart-coupons' ), wc_price( $max_discount ) );
+					}
 					break;
 
 				default:
@@ -456,7 +461,7 @@ if ( ! class_exists( 'WC_SC_Shortcode' ) ) {
 			$foreground_color = get_option( 'wc_sc_setting_coupon_foreground_color', '#30050b' );
 
 			?>
-			<style type="text/css"><?php echo $this->get_coupon_styles( $design ); // WPCS: XSS ok. ?></style>
+			<style type="text/css"><?php echo $this->get_coupon_styles( $design ); // phpcs:ignore ?></style>
 			<style type="text/css">
 				.coupon-container.left:before,
 				.coupon-container.bottom:before {
@@ -469,9 +474,9 @@ if ( ! class_exists( 'WC_SC_Shortcode' ) ) {
 			</style>
 
 			<?php
-			echo '<div class="coupon-container ' . esc_attr( $this->get_coupon_container_classes() ) . '" style="cursor:inherit; ' . $this->get_coupon_style_attributes() . '">
+			echo '<div class="coupon-container ' . esc_attr( $this->get_coupon_container_classes() ) . '" style="cursor:inherit; ' . esc_attr( $this->get_coupon_style_attributes() ) . '">
 						<div class="coupon-content ' . esc_attr( $this->get_coupon_content_classes() ) . '">
-							<div class="discount-info">'; // WPCS: XSS ok.
+							<div class="discount-info">'; // phpcs:ignore
 			if ( ! empty( $discount_text ) ) {
 				echo esc_html( $discount_text );
 			}
@@ -632,6 +637,9 @@ if ( ! class_exists( 'WC_SC_Shortcode' ) ) {
 		 * @param mixed $mce_settings The editor settings.
 		 */
 		public function smart_coupons_after_wp_tiny_mce( $mce_settings ) {
+			if ( ! is_admin() || ! current_user_can( 'manage_options' ) ) { // Show shortcode attribute dialog to only top level users.
+				return;
+			}
 			$this->sc_attributes_dialog();
 		}
 
@@ -698,7 +706,7 @@ if ( ! class_exists( 'WC_SC_Shortcode' ) ) {
 							jQuery('#search-results ul').empty();
 						}
 
-						jQuery('div#search-results ul li').live('click', function() {
+						jQuery('div#search-results').on('click', 'ul li', function() {
 							var couponCode = jQuery(this).attr('class');
 							jQuery('input#search-coupon-field').val(couponCode);
 						});
@@ -744,7 +752,7 @@ if ( ! class_exists( 'WC_SC_Shortcode' ) ) {
 							$background_color = get_option( 'wc_sc_setting_coupon_background_color', '#39cccc' );
 							$foreground_color = get_option( 'wc_sc_setting_coupon_foreground_color', '#30050b' );
 						?>
-						<style type="text/css"><?php echo $this->get_coupon_styles( $design ); // WPCS: XSS ok. ?></style>
+						<style type="text/css"><?php echo $this->get_coupon_styles( $design ); // phpcs:ignore ?></style>
 						<style type="text/css">
 							.coupon-container.left:before,
 							.coupon-container.bottom:before {
@@ -755,7 +763,7 @@ if ( ! class_exists( 'WC_SC_Shortcode' ) ) {
 								color: <?php echo esc_html( $background_color ); ?> !important;
 							}
 						</style>
-						<div class="coupon-container <?php echo esc_attr( $this->get_coupon_container_classes() ); ?>" style="<?php echo str_replace( '!important', '', $this->get_coupon_style_attributes() ); // WPCS: XSS ok. ?>">
+						<div class="coupon-container <?php echo esc_attr( $this->get_coupon_container_classes() ); ?>" style="<?php echo str_replace( '!important', '', $this->get_coupon_style_attributes() ); // phpcs:ignore ?>">
 							<div class="coupon-content <?php echo esc_attr( $this->get_coupon_content_classes() ); ?>">
 								<div class="discount-info"><?php echo esc_html__( 'XX Discount type', 'woocommerce-smart-coupons' ); ?></div>
 								<div class="code"><?php echo esc_html__( 'coupon-code', 'woocommerce-smart-coupons' ); ?></div>

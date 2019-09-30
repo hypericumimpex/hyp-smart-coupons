@@ -18,9 +18,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 	<p style="float: left">
 	<?php
 	if ( ! empty( $currency_symbol ) ) {
-		echo stripslashes( $smart_coupon_store_gift_page_text ) . ' (' . $currency_symbol . ')'; // WPCS: XSS ok.
+		echo stripslashes( $smart_coupon_store_gift_page_text ) . ' (' . $currency_symbol . ')'; // phpcs:ignore
 	} else {
-		echo stripslashes( $smart_coupon_store_gift_page_text ); // WPCS: XSS ok.
+		echo stripslashes( $smart_coupon_store_gift_page_text ); // phpcs:ignore
 	}
 		echo '</p>&nbsp;';
 		echo "<input id='credit_called' step='any' type='number' min='1' name='credit_called' value='' autocomplete='off' autofocus />";    // This line is required in this template.

@@ -390,7 +390,8 @@ if ( ! class_exists( 'WC_SC_URL_Coupon' ) ) {
 				foreach ( $coupon_notices as $notice_type => $notices ) {
 					if ( count( $coupon_notices[ $notice_type ] ) > 0 ) {
 						wc_get_template(
-							"notices/{$notice_type}.php", array(
+							"notices/{$notice_type}.php",
+							array(
 								'messages' => $coupon_notices[ $notice_type ],
 							)
 						);

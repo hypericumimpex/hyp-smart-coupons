@@ -360,6 +360,144 @@ if ( ! class_exists( 'WC_SC_Purchase_Credit' ) ) {
 		}
 
 		/**
+		 * Receiver Detail Form Styles And Scripts
+		 */
+		public function receiver_detail_form_styles_and_scripts() {
+			if ( ! wp_script_is( 'jquery' ) ) {
+				wp_enqueue_script( 'jquery' );
+			}
+			?>
+			<!-- WooCommerce Smart Coupons Styles And Scripts Start -->
+			<style type="text/css" media="screen">
+
+				.wc-sc-toggle-check-input {
+					width: 0;
+					height: 0;
+					visibility: hidden;
+				}
+
+				.wc-sc-toggle-check-text {
+					display: inline-block;
+					position: relative;
+					text-transform: uppercase;
+					font-size: small;
+					background: #71b02f;
+					padding: 0 .8rem 0 1.5rem;
+					border-radius: 1rem;
+					color: #fff;
+					cursor: pointer;
+					transition: background-color 0.15s;
+				}
+
+				.wc-sc-toggle-check-text:after {
+					content: ' ';
+					display: block;
+					background: #fff;
+					width: 0.8rem;
+					height: 0.8rem;
+					border-radius: 0.8rem;
+					position: absolute;
+					left: 0.3rem;
+					top: 0.25rem;
+					transition: left 0.15s, margin-left 0.15s;
+				}
+
+				.wc-sc-toggle-check-text:before {
+					content: '<?php echo esc_attr__( 'Now', 'woocommerce-smart-coupons' ); ?>';
+				}
+
+				.wc-sc-toggle-check-input:checked ~ .wc-sc-toggle-check-text {
+					background: #96588a;
+					padding-left: .5rem;
+					padding-right: 1.4rem;
+				}
+
+				.wc-sc-toggle-check-input:checked ~ .wc-sc-toggle-check-text:before {
+					content: '<?php echo esc_attr__( 'Later', 'woocommerce-smart-coupons' ); ?>';
+				}
+
+				.wc-sc-toggle-check-input:checked ~ .wc-sc-toggle-check-text:after {
+					left: 100%;
+					margin-left: -1.1rem;
+				}
+
+			</style>
+			<script type="text/javascript">
+				jQuery(function(){
+					var is_multi_form = function() {
+						var creditCount = jQuery('div#gift-certificate-receiver-form-multi div.form_table').length;
+
+						if ( creditCount <= 1 ) {
+							return false;
+						} else {
+							return true;
+						}
+					};
+
+					jQuery('form.woocommerce-checkout').on('click', 'input#show_form', function(){
+						if ( is_multi_form() ) {
+							jQuery('ul.single_multi_list').slideDown();
+						}
+						jQuery('div.gift-certificate-receiver-detail-form').slideDown();
+						jQuery('.wc_sc_schedule_gift_sending_wrapper').addClass('show');
+					});
+					jQuery('form.woocommerce-checkout').on('click', 'input#hide_form', function(){
+						if ( is_multi_form() ) {
+							jQuery('ul.single_multi_list').slideUp();
+						}
+						jQuery('div.gift-certificate-receiver-detail-form').slideUp();
+						jQuery('.wc_sc_schedule_gift_sending_wrapper').removeClass('show');
+					});
+					jQuery('form.woocommerce-checkout').on('change', 'input[name=sc_send_to]', function(){
+						jQuery('div#gift-certificate-receiver-form-single').slideToggle(1);
+						jQuery('div#gift-certificate-receiver-form-multi').slideToggle(1);
+					});
+					jQuery('form.woocommerce-checkout').on('change', 'input#wc_sc_schedule_gift_sending', function(){
+						if( jQuery(this).is(':checked') ) {
+							jQuery('.email_sending_date_time_wrapper').addClass('show');
+						} else {
+							jQuery('.email_sending_date_time_wrapper').removeClass('show');
+						}
+					});
+					jQuery('form.woocommerce-checkout').on('change', 'input#wc_sc_schedule_gift_sending', function(){
+						if ( jQuery(this).is(':checked') && false === jQuery('.gift_sending_date_time').hasClass('hasDatepicker') ) {
+							setTimeout(function(){
+								jQuery('input.gift_sending_date_time')
+								.datetimepicker({ 
+													dateFormat: 'dd-mm-yy', 
+													minDate: 0,
+													inline: true,
+													changeMonth: true, 
+													changeYear: true,
+													timeInput: true,
+												});
+							}, 10);
+						}
+					});
+					jQuery('form.woocommerce-checkout').on('change', 'input.gift_sending_date_time', function(e){
+						let date_time_wrapper           = jQuery(this).closest('.email_sending_date_time_wrapper');
+						let gift_sending_date_time      = jQuery(date_time_wrapper).find('.gift_sending_date_time').val();
+						if( '' === gift_sending_date_time ) {
+							return;
+						}
+						gift_sending_date_time          = gift_sending_date_time.split(' ');
+						let gift_sending_date           = gift_sending_date_time[0];
+						let gift_sending_time           = gift_sending_date_time[1];
+						gift_sending_date               = gift_sending_date.split('-');
+						gift_sending_date               = gift_sending_date[2] + '-' + gift_sending_date[1] + '-' + gift_sending_date[0]; // Convert date from dd-mm-yy format to yy-mm-dd format
+						let gift_sending_date_time_time = gift_sending_date + ' ' + gift_sending_time;
+						let gift_sending_utc_date_time  = new Date(gift_sending_date_time_time).toUTCString();
+						let utc_date_time               = new Date(gift_sending_utc_date_time);
+						let gift_sending_timestamp      = Math.floor(utc_date_time.getTime()/1000); // Remove milliseconds from timestamp.
+						jQuery(date_time_wrapper).find('.gift_sending_timestamp').val(gift_sending_timestamp);
+					});
+				});
+			</script>
+			<!-- WooCommerce Smart Coupons Styles And Scripts End -->
+			<?php
+		}
+
+		/**
 		 * Function to display form for entering details of the gift certificate's receiver
 		 */
 		public function gift_certificate_receiver_detail_form() {
@@ -369,6 +507,10 @@ if ( ! class_exists( 'WC_SC_Purchase_Credit' ) ) {
 
 			if ( ! $is_show ) {
 				return;
+			}
+
+			if ( ! is_ajax() ) {
+				add_action( 'wp_footer', array( $this, 'receiver_detail_form_styles_and_scripts' ) );
 			}
 
 			$form_started = false;
@@ -424,130 +566,7 @@ if ( ! class_exists( 'WC_SC_Purchase_Credit' ) ) {
 						if ( array_key_exists( $discount_type, $all_discount_types ) || ( 'yes' === $pick_price_of_prod && '' === $price ) || ( 'yes' === $pick_price_of_prod && '' !== $price && $coupon_amount > 0 ) ) {
 
 							if ( ! $form_started ) {
-
-								$js = "
-											var is_multi_form = function() {
-												var creditCount = jQuery('div#gift-certificate-receiver-form-multi div.form_table').length;
-
-												if ( creditCount <= 1 ) {
-													return false;
-												} else {
-													return true;
-												}
-											};
-
-											jQuery('input#show_form').on('click', function(){
-												if ( is_multi_form() ) {
-													jQuery('ul.single_multi_list').slideDown();
-												}
-												jQuery('div.gift-certificate-receiver-detail-form').slideDown();
-												jQuery('.wc_sc_schedule_gift_sending_wrapper').addClass('show');
-											});
-											jQuery('input#hide_form').on('click', function(){
-												if ( is_multi_form() ) {
-													jQuery('ul.single_multi_list').slideUp();
-												}
-												jQuery('div.gift-certificate-receiver-detail-form').slideUp();
-												jQuery('.wc_sc_schedule_gift_sending_wrapper').removeClass('show');
-											});
-											jQuery('input[name=sc_send_to]').on('change', function(){
-												jQuery('div#gift-certificate-receiver-form-single').slideToggle(1);
-												jQuery('div#gift-certificate-receiver-form-multi').slideToggle(1);
-											});
-											jQuery('input#wc_sc_schedule_gift_sending').on('change',function(){
-												if( jQuery(this).is(':checked') ) {
-													jQuery('.email_sending_date_time_wrapper').addClass('show');
-												} else {
-													jQuery('.email_sending_date_time_wrapper').removeClass('show');
-												}
-											});
-											jQuery('input.gift_sending_date_time')
-											.datetimepicker({ 
-																dateFormat: 'dd-mm-yy', 
-																minDate: 0,
-																inline: true,
-																changeMonth: true, 
-																changeYear: true,
-																timeInput: true,
-															});
-											jQuery('input.gift_sending_date_time').on('change', function(e){
-												let date_time_wrapper = jQuery(this).closest('.email_sending_date_time_wrapper');
-												let gift_sending_date_time = jQuery(date_time_wrapper).find('.gift_sending_date_time').val();
-												if( '' === gift_sending_date_time ) {
-													return;
-												}
-												gift_sending_date_time = gift_sending_date_time.split(' ');
-												let gift_sending_date = gift_sending_date_time[0];
-												let gift_sending_time = gift_sending_date_time[1];
-												gift_sending_date = gift_sending_date.split('-');
-												gift_sending_date = gift_sending_date[2] + '-' + gift_sending_date[1] + '-' + gift_sending_date[0]; // Convert date from dd-mm-yy format to yy-mm-dd format
-												let gift_sending_date_time_time = gift_sending_date + ' ' + gift_sending_time;
-												let gift_sending_utc_date_time = new Date(gift_sending_date_time_time).toUTCString();
-												let utc_date_time = new Date(gift_sending_utc_date_time);
-												let gift_sending_timestamp = Math.floor(utc_date_time.getTime()/1000); // Remove milliseconds from timestamp.
-												jQuery(date_time_wrapper).find('.gift_sending_timestamp').val(gift_sending_timestamp);
-											});
-										";
-
-								wc_enqueue_js( $js );
-
 								?>
-
-								<style type="text/css" media="screen">
-
-									.wc-sc-toggle-check-input {
-										width: 0;
-										height: 0;
-										visibility: hidden;
-									}
-
-									.wc-sc-toggle-check-text {
-										display: inline-block;
-										position: relative;
-										text-transform: uppercase;
-										font-size: small;
-										background: #71b02f;
-										padding: 0 .8rem 0 1.5rem;
-										border-radius: 1rem;
-										color: #fff;
-										cursor: pointer;
-										transition: background-color 0.15s;
-									}
-
-									.wc-sc-toggle-check-text:after {
-										content: ' ';
-										display: block;
-										background: #fff;
-										width: 0.8rem;
-										height: 0.8rem;
-										border-radius: 0.8rem;
-										position: absolute;
-										left: 0.3rem;
-										top: 0.25rem;
-										transition: left 0.15s, margin-left 0.15s;
-									}
-
-									.wc-sc-toggle-check-text:before {
-										content: '<?php echo esc_attr( 'Now', 'woocommerce-smart-coupons' ); ?>';
-									}
-
-									.wc-sc-toggle-check-input:checked ~ .wc-sc-toggle-check-text {
-										background: #96588a;
-										padding-left: .5rem;
-										padding-right: 1.4rem;
-									}
-
-									.wc-sc-toggle-check-input:checked ~ .wc-sc-toggle-check-text:before {
-										content: '<?php echo esc_attr( 'Later', 'woocommerce-smart-coupons' ); ?>';
-									}
-
-									.wc-sc-toggle-check-input:checked ~ .wc-sc-toggle-check-text:after {
-										left: 100%;
-										margin-left: -1.1rem;
-									}
-
-								</style>
-
 								<div class="gift-certificate sc_info_box">
 									<h3><?php echo esc_html( stripslashes( $smart_coupon_gift_certificate_form_page_text ) ); ?></h3>
 										<?php if ( ! empty( $smart_coupon_gift_certificate_form_details_text ) ) { ?>
@@ -920,6 +939,7 @@ if ( ! class_exists( 'WC_SC_Purchase_Credit' ) ) {
 		 * @return array $cart_item_data
 		 */
 		public function call_for_credit_cart_item_data( $cart_item_data = array(), $product_id = '', $variation_id = '' ) {
+
 			if ( ! empty( $variation_id ) && $variation_id > 0 || empty( $product_id ) ) {
 				return $cart_item_data;
 			}
@@ -931,43 +951,21 @@ if ( ! class_exists( 'WC_SC_Purchase_Credit' ) ) {
 			if ( ! empty( $coupons ) && $this->is_coupon_amount_pick_from_product_price( $coupons ) && ! ( $_product->get_price() > 0 ) ) {
 				$request_credit_called           = ( ! empty( $_REQUEST['credit_called'] ) ) ? wc_clean( wp_unslash( $_REQUEST['credit_called'] ) ) : array(); // phpcs:ignore
 				$request_add_to_cart             = ( ! empty( $_REQUEST['add-to-cart'] ) ) ? wc_clean( wp_unslash( $_REQUEST['add-to-cart'] ) ) : 0; // phpcs:ignore
-				$cart_item_data['credit_amount'] = ( ! empty( $request_credit_called ) && ! empty( $request_add_to_cart ) && ! empty( $request_credit_called[ $request_add_to_cart ] ) ) ? $request_credit_called[ $request_add_to_cart ] : 0;
+				$product_id                      = apply_filters(
+					'wc_sc_call_for_credit_product_id',
+					$request_add_to_cart,
+					array(
+						'cart_item_data' => $cart_item_data,
+						'product_id'     => $product_id,
+						'variation_id'   => $variation_id,
+						'source'         => $this,
+					)
+				);
+				$cart_item_data['credit_amount'] = ( ! empty( $request_credit_called ) && ! empty( $product_id ) && ! empty( $request_credit_called[ $product_id ] ) ) ? $request_credit_called[ $product_id ] : 0;
 				return $cart_item_data;
 			}
 
 			return $cart_item_data;
-		}
-
-		/**
-		 * Validate addition of product for purchasing store credit to cart
-		 *
-		 * @param boolean $validation Is validation.
-		 * @param int     $product_id The product id.
-		 * @param int     $quantity The quantity of the product.
-		 * @param int     $variation_id Optional default:''.
-		 * @param array   $variations Optional default:'' associative array containing variations attributes & values.
-		 * @param array   $cart_item_data Optional default:array() associative array containing additional data.
-		 * @return boolean $validation
-		 */
-		public function sc_woocommerce_add_to_cart_validation( $validation, $product_id, $quantity, $variation_id = '', $variations = '', $cart_item_data = array() ) {
-
-			$post_credit_called = ( isset( $_POST['credit_called'] ) ) ? wc_clean( wp_unslash( $_POST['credit_called'] ) ) : array(); // phpcs:ignore
-
-			if ( empty( $post_credit_called ) ) {
-				return $validation;
-			}
-
-			$cart_item_data['credit_amount'] = $post_credit_called[ $product_id ];
-
-			$cart_id = WC()->cart->generate_cart_id( $product_id, $variation_id, $variations, $cart_item_data );
-
-			$credit_called = WC()->session->get( 'credit_called' );
-
-			if ( empty( $credit_called[ $cart_id ] ) ) {
-				return false;
-			}
-
-			return $validation;
 		}
 
 		/**
@@ -1014,6 +1012,15 @@ if ( ! class_exists( 'WC_SC_Purchase_Credit' ) ) {
 				return;
 			}
 
+			$this->enqueue_timepicker();
+
+		}
+
+		/**
+		 * Add timepicker
+		 */
+		public function enqueue_timepicker() {
+
 			if ( is_callable( 'WC_Smart_Coupons::get_smart_coupons_plugin_data' ) ) {
 				$plugin_data = WC_Smart_Coupons::get_smart_coupons_plugin_data();
 				$version     = $plugin_data['Version'];
@@ -1042,6 +1049,7 @@ if ( ! class_exists( 'WC_SC_Purchase_Credit' ) ) {
 			if ( ! wp_script_is( 'jquery-ui-timepicker' ) ) {
 				wp_enqueue_script( 'jquery-ui-timepicker' );
 			}
+
 		}
 
 	}

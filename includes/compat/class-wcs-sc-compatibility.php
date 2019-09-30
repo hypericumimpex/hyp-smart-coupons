@@ -212,7 +212,7 @@ if ( ! class_exists( 'WCS_SC_Compatibility' ) ) {
 					}
 				} else {
 					if ( ! empty( $data['meta_key'] ) && array_key_exists( $data['meta_key'], $meta_exists ) ) {
-						$meta_exists[ $data['meta_key'] ] = true; // WPCS: slow query ok.
+						$meta_exists[ $data['meta_key'] ] = true; // phpcs:ignore
 					}
 				}
 			}
@@ -243,9 +243,9 @@ if ( ! class_exists( 'WCS_SC_Compatibility' ) ) {
 						$meta = array();
 					}
 					$meta[] = array(
-						'meta_key'   => $key,
-						'meta_value' => $meta_value,
-					);  // WPCS: slow query ok.
+						'meta_key'   => $key, // phpcs:ignore
+						'meta_value' => $meta_value, // phpcs:ignore
+					);
 				}
 			}
 
@@ -300,7 +300,7 @@ if ( ! class_exists( 'WCS_SC_Compatibility' ) ) {
 				);
 				// @codingStandardsIgnoreEnd.
 
-				$product_ids_results = $wpdb->get_results( $query_to_fetch_product_ids, 'ARRAY_A' ); // WPCS: cache ok, db call ok, unprepared SQL ok.
+				$product_ids_results = $wpdb->get_results( $query_to_fetch_product_ids, 'ARRAY_A' ); // phpcs:ignore
 
 				if ( ! is_wp_error( $product_ids_results ) && ! empty( $product_ids_results ) ) {
 					$product_to_old_item = array();
@@ -326,7 +326,7 @@ if ( ! class_exists( 'WCS_SC_Compatibility' ) ) {
 						$renewal_order_id
 					);
 
-					$new_order_item_ids_result = $wpdb->get_results( $query_to_fetch_new_order_item_ids, 'ARRAY_A' ); // WPCS: cache ok, db call ok, unprepared SQL ok.
+					$new_order_item_ids_result = $wpdb->get_results( $query_to_fetch_new_order_item_ids, 'ARRAY_A' ); // phpcs:ignore
 
 					if ( ! is_wp_error( $new_order_item_ids_result ) && ! empty( $new_order_item_ids_result ) ) {
 						$product_to_new_item = array();

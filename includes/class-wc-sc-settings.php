@@ -132,7 +132,7 @@ if ( ! class_exists( 'WC_SC_Settings' ) ) {
 					background-color: transparent !important; 
 				}
 			</style>
-			<style type="text/css"><?php echo $this->get_coupon_styles(); // WPCS: XSS ok. ?></style>
+			<style type="text/css"><?php echo $this->get_coupon_styles(); // phpcs:ignore ?></style>
 			<script type="text/javascript">
 				jQuery(function(){
 
@@ -559,7 +559,7 @@ if ( ! class_exists( 'WC_SC_Settings' ) ) {
 		 * Function for saving settings for Gift Certificate
 		 */
 		public function save_smart_coupon_admin_settings() {
-			if ( empty( $_POST['sc_security'] ) || ! wp_verify_nonce( wp_unslash( $_POST['sc_security'] ), 'wc_smart_coupons_settings' ) ) { // WPCS: input var ok, sanitization ok.
+			if ( empty( $_POST['sc_security'] ) || ! wp_verify_nonce( wp_unslash( $_POST['sc_security'] ), 'wc_smart_coupons_settings' ) ) { // phpcs:ignore
 				return;
 			}
 
@@ -603,7 +603,7 @@ if ( ! class_exists( 'WC_SC_Settings' ) ) {
 			$is_hide_delete_after_usage_notice = get_user_meta( $current_user_id, 'hide_delete_credit_after_usage_notice', true ); // @codingStandardsIgnoreLine
 			if ( 'yes' !== $is_hide_delete_after_usage_notice ) {
 				echo '<div class="error"><p>';
-				if ( ! empty( $_GET['page'] ) && 'wc-settings' === $_GET['page'] && empty( $_GET['tab'] ) ) { // WPCS: input var ok, CSRF ok.
+				if ( ! empty( $_GET['page'] ) && 'wc-settings' === $_GET['page'] && empty( $_GET['tab'] ) ) { // phpcs:ignore
 					/* translators: 1: plugin name 2: page based text 3: Hide notice text */
 					echo sprintf( esc_html__( '%1$s: %2$s to avoid issues related to missing data for store credits. %3$s', 'woocommerce-smart-coupons' ), '<strong>' . esc_html__( 'WooCommerce Smart Coupons', 'woocommerce-smart-coupons' ) . '</strong>', esc_html__( 'Uncheck', 'woocommerce-smart-coupons' ) . ' &quot;<strong>' . esc_html__( 'Delete Gift / Credit, when credit is used up', 'woocommerce-smart-coupons' ) . '</strong>&quot;', '<a href="' . esc_url( admin_url( 'admin.php?page=wc-settings&tab=wc-smart-coupons' ) ) . '">' . esc_html__( 'Setting', 'woocommerce-smart-coupons' ) . '</a>' ) . ' <button type="button" class="button" id="hide_notice_delete_credit_after_usage">' . esc_html__( 'Hide this notice', 'woocommerce-smart-coupons' ) . '</button>'; // phpcs ignore.
 				} else {

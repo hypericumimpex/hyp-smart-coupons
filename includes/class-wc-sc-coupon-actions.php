@@ -54,6 +54,8 @@ if ( ! class_exists( 'WC_SC_Coupon_Actions' ) ) {
 			add_action( 'wc_sc_new_coupon_generated', array( $this, 'copy_coupon_action_meta' ) );
 
 			add_filter( 'show_zero_amount_coupon', array( $this, 'show_coupon_with_actions' ), 10, 2 );
+			add_filter( 'wc_sc_is_auto_generate', array( $this, 'auto_generate_coupon_with_actions' ), 10, 2 );
+			add_filter( 'wc_sc_validate_coupon_amount', array( $this, 'validate_coupon_amount' ), 10, 2 );
 
 		}
 
@@ -637,6 +639,60 @@ if ( ! class_exists( 'WC_SC_Coupon_Actions' ) ) {
 
 			return $is_show;
 
+		}
+
+		/**
+		 * Allow auto-generate of coupon with coupon action
+		 *
+		 * @param  boolean $is_auto_generate Whether to auto-generate or not.
+		 * @param  array   $args             Additional parameters.
+		 * @return boolean $is_auto_generate
+		 */
+		public function auto_generate_coupon_with_actions( $is_auto_generate = false, $args = array() ) {
+
+			$coupon    = ( ! empty( $args['coupon_obj'] ) && $args['coupon_obj'] instanceof WC_Coupon ) ? $args['coupon_obj'] : false;
+			$coupon_id = ( ! empty( $args['coupon_id'] ) ) ? $args['coupon_id'] : false;
+
+			if ( ! empty( $coupon ) && ! empty( $coupon_id ) ) {
+				if ( $this->is_wc_gte_30() ) {
+					$coupon_code = $coupon->get_code();
+				} else {
+					$coupon_code = ( ! empty( $coupon->code ) ) ? $coupon->code : '';
+				}
+				if ( ! empty( $coupon_code ) ) {
+					$actions        = get_post_meta( $coupon_id, 'wc_sc_add_product_details', true );
+					$coupon_actions = apply_filters( 'wc_sc_coupon_actions', $actions, array( 'coupon_code' => $coupon_code ) );
+					if ( ! empty( $coupon_actions ) ) {
+						return true;
+					}
+				}
+			}
+
+			return $is_auto_generate;
+		}
+
+		/**
+		 * Validate coupon having actions but without an amount
+		 *
+		 * @param  boolean $is_valid_coupon_amount Whether the amount is validate or not.
+		 * @param  array   $args                   Additional parameters.
+		 * @return boolean
+		 */
+		public function validate_coupon_amount( $is_valid_coupon_amount = true, $args = array() ) {
+
+			if ( ! $is_valid_coupon_amount ) {
+				$coupon_amount = ( ! empty( $args['coupon_amount'] ) ) ? $args['coupon_amount'] : 0;
+				$discount_type = ( ! empty( $args['discount_type'] ) ) ? $args['discount_type'] : '';
+				$coupon_code   = ( ! empty( $args['coupon_code'] ) ) ? $args['coupon_code'] : '';
+
+				$coupon_actions = ( ! empty( $coupon_code ) ) ? $this->get_coupon_actions( $coupon_code ) : array();
+
+				if ( 'smart_coupon' === $discount_type && $coupon_amount <= 0 && ! empty( $coupon_actions ) ) {
+					return true;
+				}
+			}
+
+			return $is_valid_coupon_amount;
 		}
 
 	}

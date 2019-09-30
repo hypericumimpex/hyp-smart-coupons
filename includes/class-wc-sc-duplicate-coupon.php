@@ -112,7 +112,7 @@ if ( ! class_exists( 'WC_SC_Duplicate_Coupon' ) ) {
 			$how_many     = count( $meta_keys );
 			$placeholders = array_fill( 0, $how_many, '%s' );
 
-			$post_meta_infos = $wpdb->get_results( $wpdb->prepare( "SELECT meta_key, meta_value FROM $wpdb->postmeta WHERE post_id=%d AND meta_key NOT IN ( " . implode( ',', $placeholders ) . ' )', array_merge( array( $id ), $meta_keys ) ) ); // WPCS: cache ok, db call ok, unprepared SQL ok.
+			$post_meta_infos = $wpdb->get_results( $wpdb->prepare( "SELECT meta_key, meta_value FROM $wpdb->postmeta WHERE post_id=%d AND meta_key NOT IN ( " . implode( ',', $placeholders ) . ' )', array_merge( array( $id ), $meta_keys ) ) ); // phpcs:ignore
 
 			if ( 0 !== count( $post_meta_infos ) ) {
 				$sql_query = "INSERT INTO $wpdb->postmeta (post_id, meta_key, meta_value) ";
@@ -122,7 +122,7 @@ if ( ! class_exists( 'WC_SC_Duplicate_Coupon' ) ) {
 						$sql_query_sel[] = $wpdb->prepare( 'SELECT %d, %s, %s', $new_id, $meta_key, $meta_value );
 				}
 				$sql_query .= implode( ' UNION ALL ', $sql_query_sel );
-				$wpdb->query( $sql_query ); // WPCS: cache ok, db call ok, unprepared SQL ok.
+				$wpdb->query( $sql_query ); // phpcs:ignore
 			}
 		}
 
@@ -234,7 +234,7 @@ if ( ! class_exists( 'WC_SC_Duplicate_Coupon' ) ) {
 		 * Function to validate condition and create duplicate coupon
 		 */
 		public function woocommerce_duplicate_coupon() {
-			if ( empty( $_REQUEST['post'] ) || ( isset( $_REQUEST['action'] ) && 'duplicate_post_save_as_new_page' === $_REQUEST['action'] ) ) { // WPCS: input var ok, CSRF ok.
+			if ( empty( $_REQUEST['post'] ) || ( isset( $_REQUEST['action'] ) && 'duplicate_post_save_as_new_page' === $_REQUEST['action'] ) ) { // phpcs:ignore
 				wp_die( esc_html__( 'No coupon to duplicate has been supplied!', 'woocommerce-smart-coupons' ) );
 			}
 

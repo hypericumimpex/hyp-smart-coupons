@@ -220,6 +220,11 @@ if ( ! class_exists( 'WC_SC_Ajax' ) ) {
 							case 'percent':
 								$coupon_type   = ( $this->is_wc_gte_30() ) ? __( 'Discount', 'woocommerce-smart-coupons' ) : __( 'Cart Discount', 'woocommerce-smart-coupons' );
 								$coupon_amount = $coupon_amount . '%';
+								$max_discount  = get_post_meta( $post->ID, 'wc_sc_max_discount', true );
+								if ( ! empty( $max_discount ) && is_numeric( $max_discount ) ) {
+									/* translators: %s: Maximum coupon discount amount */
+									$coupon_type .= ' ' . sprintf( __( 'upto %s', 'woocommerce-smart-coupons' ), wc_price( $max_discount ) );
+								}
 								break;
 
 							default:

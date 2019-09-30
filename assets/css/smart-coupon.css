@@ -151,6 +151,9 @@ form#generate_coupons p.form-field input[type=text] {
 form#generate_coupons p.form-field input[type=number] {
 	width: 15%;
 }
+form#generate_coupons p.form-field input[name="wc_sc_max_discount"] {
+	width: 30%;
+}
 div.gift-certificate-receiver-detail-form,
 div#gift-certificate-receiver-form-multi {
 	display: none;

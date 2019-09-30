@@ -54,7 +54,7 @@ if ( function_exists( 'wc_get_template' ) ) {
 		}
 
 </style>
-<style type="text/css"><?php echo ( isset( $coupon_styles ) && ! empty( $coupon_styles ) ) ? $coupon_styles : ''; // WPCS: XSS ok. ?></style>
+<style type="text/css"><?php echo ( isset( $coupon_styles ) && ! empty( $coupon_styles ) ) ? $coupon_styles : ''; // phpcs:ignore ?></style>
 <style type="text/css">
 	.coupon-container.left:before,
 	.coupon-container.bottom:before {
@@ -66,7 +66,7 @@ if ( function_exists( 'wc_get_template' ) ) {
 	}
 </style>
 
-<?php echo $message_from_sender; // WPCS: XSS ok. ?>
+<?php echo $message_from_sender; // phpcs:ignore ?>
 
 <p>
 <?php
@@ -120,14 +120,14 @@ if ( ! empty( $coupon_target ) ) {
 <div style="margin: 10px 0; text-align: center;" title="<?php echo esc_html__( 'Click to visit store. This coupon will be applied automatically.', 'woocommerce-smart-coupons' ); ?>">
 	<a href="<?php echo esc_url( $coupon_target ); ?>" style="color: #444;">
 
-		<div class="coupon-container <?php echo esc_attr( $this->get_coupon_container_classes() ); ?>" style="cursor:pointer; text-align:center; <?php echo $this->get_coupon_style_attributes(); // WPCS: XSS ok. ?>">
+		<div class="coupon-container <?php echo esc_attr( $this->get_coupon_container_classes() ); ?>" style="cursor:pointer; text-align:center; <?php echo $this->get_coupon_style_attributes(); // phpcs:ignore ?>">
 			<?php
 				echo '<div class="coupon-content ' . esc_attr( $this->get_coupon_content_classes() ) . '">
 					<div class="discount-info">';
 
 			if ( ! empty( $coupon_data['coupon_amount'] ) && 0 !== $coupon_amount ) {
 				echo $coupon_data['coupon_amount']; // phpcs:ignore
-				echo ' ' . esc_html( $coupon_data['coupon_type'] );
+				echo ' ' . $coupon_data['coupon_type'];  // phpcs:ignore
 				if ( 'yes' === $is_free_shipping ) {
 					echo esc_html__( ' &amp; ', 'woocommerce-smart-coupons' );
 				}
@@ -142,10 +142,22 @@ if ( ! empty( $coupon_target ) ) {
 
 					$show_coupon_description = get_option( 'smart_coupons_show_coupon_description', 'no' );
 			if ( ! empty( $coupon_post->post_excerpt ) && 'yes' === $show_coupon_description ) {
-				echo '<div class="discount-description">' . $coupon_post->post_excerpt . '</div>'; // WPCS: XSS ok.
+				echo '<div class="discount-description">' . $coupon_post->post_excerpt . '</div>'; // phpcs:ignore
 			}
 
 			if ( ! empty( $expiry_date ) ) {
+				if ( $this->is_wc_gte_30() && $expiry_date instanceof WC_DateTime ) {
+					$expiry_date = $expiry_date->getTimestamp();
+				} elseif ( ! is_int( $expiry_date ) ) {
+					$expiry_date = strtotime( $expiry_date );
+				}
+
+				if ( ! empty( $expiry_date ) && is_int( $expiry_date ) ) {
+					$expiry_time = (int) get_post_meta( $coupon_id, 'wc_sc_expiry_time', true );
+					if ( ! empty( $expiry_time ) ) {
+						$expiry_date += $expiry_time; // Adding expiry time to expiry date.
+					}
+				}
 				$expiry_date = $this->get_expiration_format( $expiry_date );
 				echo '<div class="coupon-expire">' . esc_html( $expiry_date ) . '</div>';
 			} else {

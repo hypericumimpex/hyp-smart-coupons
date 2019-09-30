@@ -854,7 +854,7 @@ if ( ! class_exists( 'WC_SC_Admin_Pages' ) ) {
 						$css = ob_get_clean();
 						$css = apply_filters( 'woocommerce_email_styles', $css );
 						ob_start();
-						echo '<style type="text/css">' . $css . '</style>'; // WPCS: XSS ok.
+						echo '<style type="text/css">' . $css . '</style>'; // phpcs:ignore
 						include apply_filters( 'woocommerce_gift_certificates_email_template', 'templates/email.php' );
 						echo ob_get_clean(); // phpcs:ignore
 					}
@@ -917,7 +917,12 @@ if ( ! class_exists( 'WC_SC_Admin_Pages' ) ) {
 			<script type="text/javascript">
 				jQuery(function(){
 					jQuery('input#generate_and_import').on('click', function(){
-						if( jQuery('input#no_of_coupons_to_generate').val() == "" ){
+						if( jQuery( this ).hasClass('disabled') ) {
+							jQuery('html, body').animate({
+								scrollTop: jQuery('#wc_sc_folder_permission_warning').offset().top - 100 // Scroll to admin notice.
+							}, 'slow');
+							return false;
+						} else if( jQuery('input#no_of_coupons_to_generate').val() == "" ){
 							jQuery("div#message").removeClass("updated fade").addClass("error fade");
 							jQuery('div#message p').html( "<?php echo esc_html__( 'Please enter a valid value for Number of Coupons to Generate', 'woocommerce-smart-coupons' ); ?>");
 							scrollTop();

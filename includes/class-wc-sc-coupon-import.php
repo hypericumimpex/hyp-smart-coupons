@@ -192,6 +192,8 @@ if ( ! class_exists( 'WC_SC_Coupon_Import' ) ) {
 				case 2:
 					check_admin_referer( 'import-woocommerce-coupon' );
 
+					$schedule_action  = '';
+					$permission_error = false;
 					if ( empty( $post_smart_coupons_generate_action ) && empty( $post_generate_and_import ) ) {
 
 						$this->id       = ( ! empty( $_POST['import_id'] ) ) ? absint( wc_clean( wp_unslash( $_POST['import_id'] ) ) ) : 0; // phpcs:ignore
@@ -210,8 +212,12 @@ if ( ! class_exists( 'WC_SC_Coupon_Import' ) ) {
 						$_POST['export_file'] = $csv_file_data;
 
 						if ( ! isset( $_POST['no_of_coupons_to_generate'] ) ) {
-							$fp                                 = file( $file );
-							$_POST['no_of_coupons_to_generate'] = count( $fp ) - 1;
+							$fp = file( $file );
+							if ( is_array( $fp ) && ! empty( $fp ) ) {
+								$_POST['no_of_coupons_to_generate'] = count( $fp ) - 1;
+							} else {
+								$permission_error = true;
+							}
 						}
 
 						$total_coupons_to_generate          = sanitize_text_field( wp_unslash( $_POST['no_of_coupons_to_generate'] ) );
@@ -230,9 +236,7 @@ if ( ! class_exists( 'WC_SC_Coupon_Import' ) ) {
 						as_unschedule_action( 'woo_sc_generate_coupon_csv' );
 						as_unschedule_action( 'woo_sc_import_coupons_from_csv' );
 
-						if ( function_exists( 'as_schedule_single_action' ) ) {
-							as_schedule_single_action( time(), 'woo_sc_import_coupons_from_csv' );
-						}
+						$schedule_action = 'woo_sc_import_coupons_from_csv';
 					} else {
 
 						// If we are exporting coupons then create export file and save its path in options table.
@@ -242,56 +246,68 @@ if ( ! class_exists( 'WC_SC_Coupon_Import' ) ) {
 
 						$column_headers = array_merge( $coupon_posts_headers, $coupon_postmeta_headers );
 						$export_file = $woocommerce_smart_coupon->export_coupon_csv( $column_headers, array() ); // phpcs:ignore
-						if ( is_array( $export_file ) ) {
+
+						if ( is_array( $export_file ) && ! isset( $export_file['error'] ) ) {
 
 							// Create CSV file.
 							$csv_folder  = $export_file['wp_upload_dir'];
 							$filename    = str_replace( array( '\'', '"', ',', ';', '<', '>', '/', ':' ), '', $export_file['file_name'] );
 							$csvfilename = $csv_folder . $filename;
 							$fp          = fopen( $csvfilename, 'w' ); // phpcs:ignore
-							file_put_contents( $csvfilename, $export_file['file_content'] ); // phpcs:ignore
-							fclose( $fp ); // phpcs:ignore
-							$_POST['export_file'] = $export_file;
+							if ( false !== $fp ) {
+								file_put_contents( $csvfilename, $export_file['file_content'] ); // phpcs:ignore
+								fclose( $fp ); // phpcs:ignore
+								$_POST['export_file'] = $export_file;
 
-							$total_coupons_to_generate          = sanitize_text_field( wp_unslash( $_POST['no_of_coupons_to_generate'] ) );
-							$_POST['total_coupons_to_generate'] = $total_coupons_to_generate;
+								$total_coupons_to_generate          = sanitize_text_field( wp_unslash( $_POST['no_of_coupons_to_generate'] ) );
+								$_POST['total_coupons_to_generate'] = $total_coupons_to_generate;
 
-							$_POST['action_stage'] = 0;
+								$_POST['action_stage'] = 0;
 
-							update_site_option( 'woo_sc_generate_coupon_posted_data', $_POST );
-							update_site_option( 'start_time_woo_sc', time() );
-							update_site_option( 'current_time_woo_sc', time() );
-							update_site_option( 'all_tasks_count_woo_sc', sanitize_text_field( wp_unslash( $_POST['no_of_coupons_to_generate'] ) ) );
-							update_site_option( 'remaining_tasks_count_woo_sc', sanitize_text_field( wp_unslash( $_POST['no_of_coupons_to_generate'] ) ) );
+								update_site_option( 'woo_sc_generate_coupon_posted_data', $_POST );
+								update_site_option( 'start_time_woo_sc', time() );
+								update_site_option( 'current_time_woo_sc', time() );
+								update_site_option( 'all_tasks_count_woo_sc', sanitize_text_field( wp_unslash( $_POST['no_of_coupons_to_generate'] ) ) );
+								update_site_option( 'remaining_tasks_count_woo_sc', sanitize_text_field( wp_unslash( $_POST['no_of_coupons_to_generate'] ) ) );
 
-							as_unschedule_action( 'woo_sc_generate_coupon_csv' );
-							as_unschedule_action( 'woo_sc_import_coupons_from_csv' );
-							delete_site_option( 'woo_sc_action_data' );
+								as_unschedule_action( 'woo_sc_generate_coupon_csv' );
+								as_unschedule_action( 'woo_sc_import_coupons_from_csv' );
+								delete_site_option( 'woo_sc_action_data' );
 
-							if ( function_exists( 'as_schedule_single_action' ) ) {
-								as_schedule_single_action( time(), 'woo_sc_generate_coupon_csv' );
+								$schedule_action = 'woo_sc_generate_coupon_csv';
+							} else {
+								$permission_error = true;
 							}
+						} else {
+							$permission_error = true;
 						}
 					}
 
-					if ( ( ! empty( $post_smart_coupons_generate_action ) && 'woo_sc_is_email_imported_coupons' === $post_smart_coupons_generate_action ) || ( isset( $_POST['woo_sc_is_email_imported_coupons'] ) ) ) {
-						update_option( 'woo_sc_is_email_imported_coupons', 'yes', 'no' );
+					// Proceed only if there is no any file permission error.
+					if ( true !== $permission_error ) {
+						if ( ( ! empty( $post_smart_coupons_generate_action ) && 'woo_sc_is_email_imported_coupons' === $post_smart_coupons_generate_action ) || ( isset( $_POST['woo_sc_is_email_imported_coupons'] ) ) ) {
+							update_option( 'woo_sc_is_email_imported_coupons', 'yes', 'no' );
+						}
+
+						$generate_action = ( isset( $_POST['smart_coupons_generate_action'] ) ) ? wc_clean( wp_unslash( $_POST['smart_coupons_generate_action'] ) ) : ''; // phpcs:ignore
+						$is_import_email = get_option( 'woo_sc_is_email_imported_coupons' );
+
+						if ( 'yes' === $is_import_email && ( isset( $_POST['import_id'] ) || isset( $_POST['import_url'] ) ) ) { // phpcs:ignore
+							$bulk_action = 'import_email';
+						} elseif ( isset( $_POST['import_id'] ) || isset( $_POST['import_url'] ) ) { // phpcs:ignore
+							$bulk_action = 'import';
+						} elseif ( 'woo_sc_is_email_imported_coupons' === $generate_action ) {
+							$bulk_action = 'generate_email';
+						} else {
+							$bulk_action = 'generate';
+						}
+
+						update_site_option( 'bulk_coupon_action_woo_sc', $bulk_action );
+
+						if ( ! empty( $schedule_action ) ) {
+							do_action( $schedule_action );
+						}
 					}
-
-					$generate_action = ( isset( $_POST['smart_coupons_generate_action'] ) ) ? wc_clean( wp_unslash( $_POST['smart_coupons_generate_action'] ) ) : ''; // WPCS: sanitization ok. CSRF ok, input var ok.
-					$is_import_email = get_option( 'woo_sc_is_email_imported_coupons' );
-
-					if ( 'yes' === $is_import_email && ( isset( $_POST['import_id'] ) || isset( $_POST['import_url'] ) ) ) { // WPCS: CSRF ok.
-						$bulk_action = 'import_email';
-					} elseif ( isset( $_POST['import_id'] ) || isset( $_POST['import_url'] ) ) { // WPCS: CSRF ok.
-						$bulk_action = 'import';
-					} elseif ( 'woo_sc_is_email_imported_coupons' === $generate_action ) {
-						$bulk_action = 'generate_email';
-					} else {
-						$bulk_action = 'generate';
-					}
-
-					update_site_option( 'bulk_coupon_action_woo_sc', $bulk_action );
 
 					$url = admin_url( 'edit.php?post_type=shop_coupon' );
 
@@ -464,6 +480,13 @@ if ( ! class_exists( 'WC_SC_Coupon_Import' ) ) {
 						if ( true === $is_import_meta ) {
 							if ( $this->is_wc_gte_30() && 'expiry_date' === $meta_key ) {
 								$meta_value = strtotime( $meta_value );
+								if ( ! empty( $meta_value ) && is_numeric( $meta_value ) ) {
+									$gmt_offset = get_option( 'gmt_offset', false );
+									if ( false !== $gmt_offset && is_numeric( $gmt_offset ) ) {
+										$gmt_offset_timestamp = $gmt_offset * HOUR_IN_SECONDS;
+										$meta_value           = $meta_value - $gmt_offset_timestamp; // Substracts GMT offset from expiry date timestamp.
+									}
+								}
 								update_post_meta( $post_id, 'date_expires', $meta_value );
 							} else {
 								update_post_meta( $post_id, $meta_key, maybe_unserialize( $meta_value ) );

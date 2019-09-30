@@ -97,7 +97,7 @@ if ( ! class_exists( 'WC_SC_Apply_Before_Tax' ) ) {
 		public function order_calculate_discount_amount_before_tax( $and_taxes, $order ) {
 			$order_actions = array( 'woocommerce_add_coupon_discount', 'woocommerce_calc_line_taxes', 'woocommerce_save_order_items' );
 
-			if ( $order instanceof WC_Order && ! empty( $_POST['action'] ) && ( in_array( wp_unslash( $_POST['action'] ), $order_actions, true ) || ( ! empty( $_POST['post_type'] ) && 'shop_order' === wp_unslash( $_POST['post_type'] ) && 'editpost' === wp_unslash( $_POST['action'] ) ) ) ) { // WPCS: input var ok, sanitization ok, CSRF ok.
+			if ( $order instanceof WC_Order && ! empty( $_POST['action'] ) && ( in_array( wp_unslash( $_POST['action'] ), $order_actions, true ) || ( ! empty( $_POST['post_type'] ) && 'shop_order' === wp_unslash( $_POST['post_type'] ) && 'editpost' === wp_unslash( $_POST['action'] ) ) ) ) { // phpcs:ignore
 				if ( ! is_object( $order ) || ! is_callable( array( $order, 'get_id' ) ) ) {
 					return;
 				}
@@ -231,7 +231,7 @@ if ( ! class_exists( 'WC_SC_Apply_Before_Tax' ) ) {
 				$total_credit_used = array_sum( $order->sc_total_credit_used );
 				$this->update_discount_total( $order, $total_credit_used );
 
-				if ( ! empty( $_POST['action'] ) && 'woocommerce_add_coupon_discount' === wp_unslash( $_POST['action'] ) && $order->has_status( array( 'on-hold', 'auto-draft', 'pending' ) ) ) { // WPCS: input var ok, sanitization ok, CSRF ok.
+				if ( ! empty( $_POST['action'] ) && 'woocommerce_add_coupon_discount' === wp_unslash( $_POST['action'] ) && $order->has_status( array( 'on-hold', 'auto-draft', 'pending' ) ) ) { // phpcs:ignore
 					do_action( 'sc_after_order_calculate_discount_amount', $order->get_id() );
 				}
 			}

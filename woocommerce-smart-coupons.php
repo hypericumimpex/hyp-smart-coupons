@@ -3,13 +3,13 @@
  * Plugin Name: HYP Smart Coupons
  * Plugin URI: https://github.com/hypericumimpex/hyp-smart-coupons/
  * Description: <strong>Smart Coupons</strong> permite clienților să cumpere cu ușurință vouchere cadou, credite sau cupoane.
- * Version: 4.1.0
+ * Version: 4.1.3
  * Author: Romeo C.
  * Author URI: https://github.com/hypericumimpex/
  * Developer: StoreApps
  * Developer URI: https://github.com/hypericumimpex/
  * Requires at least: 4.4
- * Tested up to: 5.2.2
+ * Tested up to: 5.2.3
  * WC requires at least: 2.5.0
  * WC tested up to: 3.7.0
  * Text Domain: woocommerce-smart-coupons

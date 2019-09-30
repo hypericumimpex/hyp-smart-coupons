@@ -162,7 +162,7 @@ if ( ! class_exists( 'WC_SC_Coupon_Message' ) ) {
 			if ( is_int( wp_is_post_autosave( $post ) ) ) {
 				return;
 			}
-			if ( empty( $_POST['woocommerce_meta_nonce'] ) || ! wp_verify_nonce( wc_clean( wp_unslash( $_POST['woocommerce_meta_nonce'] ) ), 'woocommerce_save_data' ) ) { // WPCS: sanitization ok. CSRF ok, input var ok.
+			if ( empty( $_POST['woocommerce_meta_nonce'] ) || ! wp_verify_nonce( wc_clean( wp_unslash( $_POST['woocommerce_meta_nonce'] ) ), 'woocommerce_save_data' ) ) { // phpcs:ignore
 				return;
 			}
 			if ( ! current_user_can( 'edit_post', $post_id ) ) {
@@ -173,11 +173,11 @@ if ( ! class_exists( 'WC_SC_Coupon_Message' ) ) {
 			}
 
 			if ( isset( $_POST['wc_coupon_message'] ) ) {
-				update_post_meta( $post_id, 'wc_coupon_message', wp_filter_post_kses( $_POST['wc_coupon_message'] ) ); // WPCS: sanitization ok. CSRF ok, input var ok.
+				update_post_meta( $post_id, 'wc_coupon_message', wp_filter_post_kses( $_POST['wc_coupon_message'] ) ); // phpcs:ignore
 			}
 
 			if ( isset( $_POST['wc_email_message'] ) ) {
-				update_post_meta( $post_id, 'wc_email_message', wc_clean( wp_unslash( $_POST['wc_email_message'] ) ) ); // WPCS: sanitization ok. CSRF ok, input var ok.
+				update_post_meta( $post_id, 'wc_email_message', wc_clean( wp_unslash( $_POST['wc_email_message'] ) ) ); // phpcs:ignore
 			} else {
 				update_post_meta( $post_id, 'wc_email_message', 'no' );
 			}
@@ -214,7 +214,7 @@ if ( ! class_exists( 'WC_SC_Coupon_Message' ) ) {
 				?>
 					<div id="wc_coupon_message_<?php echo esc_attr( $coupon_id ); ?>" class="wc_coupon_message_container">
 						<div class="wc_coupon_message_body">
-							<?php echo apply_filters( 'the_content', $wc_coupon_message ); // WPCS: XSS ok. ?>
+							<?php echo apply_filters( 'the_content', $wc_coupon_message ); // phpcs:ignore ?>
 						</div>
 					</div>
 				<?php
@@ -316,7 +316,7 @@ if ( ! class_exists( 'WC_SC_Coupon_Message' ) ) {
 				<h2><?php echo esc_html__( 'Coupon Message', 'woocommerce-smart-coupons' ); ?></h2>
 				<?php
 				echo '<div class="wc_coupon_message_wrap" style="padding: 10px 0 10px;">';
-				echo $coupon_messages; // WPCS: XSS ok.
+				echo $coupon_messages; // phpcs:ignore
 				echo '</div>';
 			}
 		}

@@ -147,6 +147,7 @@ if ( ! class_exists( 'WC_SC_Coupon_Parser' ) ) {
 					'usage_count'                  => '',
 					'_used_by'                     => '',
 					'sc_restrict_to_new_user'      => '',
+					'wc_sc_max_discount'           => '',
 				)
 			);
 
@@ -235,43 +236,34 @@ if ( ! class_exists( 'WC_SC_Coupon_Parser' ) ) {
 		/**
 		 * Parse data one row at a time
 		 *
-		 * @param string $file Imported file.
-		 * @param string $file_position file pointer posistion to read from.
-		 * @return array $result parsed data with current file pointer position
+		 * @param  boolean $file_handler        CSV file handler.
+		 * @param  array   $header        CSV header meta column name.
+		 * @param  integer $file_position file pointer posistion to read from.
+		 * @param  string  $encoding      Character encoding.
+		 * @return array  $result parsed data with current file pointer position
 		 */
-		public function parse_data_by_row( $file, $file_position = 0 ) {
-
-			// Set locale.
-			$enc = mb_detect_encoding( $file, 'UTF-8, ISO-8859-1', true );
-			if ( $enc ) {
-				setlocale( LC_ALL, 'en_US.' . $enc );
-			}
-			ini_set( 'auto_detect_line_endings', true ); // phpcs:ignore
+		public function parse_data_by_row( $file_handler = false, $header = array(), $file_position = 0, $encoding = '' ) {
 
 			$parsed_csv_data = array();
 
-			$handle = fopen( $file, 'r' ); // phpcs:ignore
-
 			$reading_completed = false;
 
-			// Put all CSV data into an associative array.
-			if ( false !== $handle ) {
-
-				$header = fgetcsv( $handle, 0 );
+			if ( false !== $file_handler ) {
 
 				if ( $file_position > 0 ) {
 
-					fseek( $handle, (int) $file_position );
+					fseek( $file_handler, (int) $file_position );
 
 				}
 
-				if ( false !== ( $postmeta = fgetcsv( $handle, 0 ) ) ) { // phpcs:ignore
+				if ( false !== ( $postmeta = fgetcsv( $file_handler, 0 ) ) ) { // phpcs:ignore
 					$row = array();
 					foreach ( $header as $key => $heading ) {
 
 						$s_heading = strtolower( $heading );
 
-						$row[ $s_heading ] = ( isset( $postmeta[ $key ] ) ) ? $this->format_data_from_csv( stripslashes( $postmeta[ $key ] ), $enc ) : '';
+						// Put all CSV data into an associative array by row.
+						$row[ $s_heading ] = ( isset( $postmeta[ $key ] ) ) ? $this->format_data_from_csv( stripslashes( $postmeta[ $key ] ), $encoding ) : '';
 					}
 
 					$parsed_csv_data = $row;
@@ -284,9 +276,7 @@ if ( ! class_exists( 'WC_SC_Coupon_Parser' ) ) {
 
 				}
 
-				$file_position = ftell( $handle );
-
-				fclose( $handle ); // phpcs:ignore
+				$file_position = ftell( $file_handler );
 			}
 
 			$result = array(

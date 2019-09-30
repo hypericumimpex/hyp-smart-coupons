@@ -1,5 +1,27 @@
 *** WooCommerce Smart Coupons Changelog ***
 
+2019.09.27 - version 4.1.3
+* Fix: Not showing coupon receiver detail form under checkout section [WooCommerce One Page Checkout] IS#84
+* Fix: Display of gift card amount in summary of the linked coupons when setting 'Sell store credit at less price' is enabled
+* Fix: Duplicate coupon showing on cart, checkout & my account page
+* Update: Updated code as per the latest version of WordPress Standard
+* Update: Prevent unnecessary loading of some JavaScript code
+* Update: Prevent unnecessary database call for options 'wc_sc_coupon_code_length', 'sc_store_credit_singular_text', 'sc_store_credit_plural_text', 'sa_cbl_additional_locations'
+* Update: jQuery improvements related to deprecated functions, replaced '.live' with '.on'
+* Update: Make the word 'Now' & 'Later' translatable
+* Update: POT file
+
+2019.09.16 - version 4.1.2
+* Fix: Unable to create/auto-generate coupons that are having some actions but the amount field is either zero or empty
+* Fix: Use Action Schedulers only when required to speed up bulk generate process when small number of coupons has to be processed
+* Update: Show admin notice when upload directory is not writable to avoid empty coupon codes generation.
+* Update: POT file
+
+2019.09.03 - version 4.1.1
+* New: Set a max discount amount for percentage discount type coupon
+* New: Feature to allow store admin to set expiry time for coupon [WC3.2+]
+* Update: POT file
+
 2019.08.23 - version 4.1.0
 * New: Feature to allow buyers to schedule delivery of coupons
 * New: WooCommerce 3.7 Compatibility

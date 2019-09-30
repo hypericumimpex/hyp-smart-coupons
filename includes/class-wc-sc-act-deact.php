@@ -30,7 +30,7 @@ if ( ! class_exists( 'WC_SC_Act_Deact' ) ) {
 
 			set_transient( '_smart_coupons_process_activation', 1, 30 );
 
-			if ( ! is_network_admin() && ! isset( $_GET['activate-multi'] ) ) { // WPCS: input var ok, CSRF ok.
+			if ( ! is_network_admin() && ! isset( $_GET['activate-multi'] ) ) { // phpcs:ignore
 				set_transient( '_smart_coupons_activation_redirect', 1, 30 );
 			}
 
@@ -83,7 +83,7 @@ if ( ! class_exists( 'WC_SC_Act_Deact' ) ) {
 						update_post_meta( $tax_post_id, 'apply_before_tax', 'no' );
 					}
 
-					$wpdb = clone $wpdb_obj; // WPCS: override ok.
+					$wpdb = clone $wpdb_obj; // phpcs:ignore
 				}
 			}
 

@@ -81,12 +81,11 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 		 */
 		private function __construct() {
 
-			$this->define_constants();
-			$this->define_label_for_store_credit();
 			$this->includes();
 
 			add_action( 'init', array( $this, 'process_activation' ) );
 			add_action( 'init', array( $this, 'add_sc_options' ) );
+			add_action( 'init', array( $this, 'define_label_for_store_credit' ) );
 
 			add_filter( 'woocommerce_coupon_is_valid', array( $this, 'is_smart_coupon_valid' ), 10, 3 );
 			add_filter( 'woocommerce_coupon_is_valid', array( $this, 'is_user_usage_limit_valid' ), 10, 3 );
@@ -132,6 +131,15 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 			add_action( 'before_delete_post', array( $this, 'delete_scheduled_coupon_actions' ) );
 			add_action( 'admin_footer', array( $this, 'enqueue_admin_footer_scripts' ) );
 			add_action( 'wp_ajax_wc_sc_check_scheduled_coupon_actions', array( $this, 'check_scheduled_coupon_actions' ) );
+
+			// Filter to modify discount amount for percentage type coupon.
+			add_filter( 'woocommerce_coupon_get_discount_amount', array( $this, 'get_coupon_discount_amount' ), 10, 5 );
+
+			// Filter to add default values to coupon meta fields.
+			add_filter( 'smart_coupons_parser_postmeta_defaults', array( $this, 'postmeta_defaults' ) );
+
+			// Filter to validate coupon expiry time.
+			add_filter( 'woocommerce_coupon_validate_expiry_date', array( $this, 'validate_coupon_expiry_time' ), 10, 2 );
 		}
 
 		/**
@@ -156,15 +164,6 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 		}
 
 		/**
-		 * Define SC constants.
-		 */
-		private function define_constants() {
-			if ( ! defined( 'WC_SC_COUPON_CODE_LENGTH' ) ) {
-				define( 'WC_SC_COUPON_CODE_LENGTH', $this->get_coupon_code_length() );
-			}
-		}
-
-		/**
 		 * Include files
 		 */
 		public function includes() {
@@ -178,6 +177,7 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 			include_once 'compat/class-sa-wc-compatibility-3-4.php';
 			include_once 'compat/class-sa-wc-compatibility-3-7.php';
 			include_once 'compat/class-wc-sc-wpml-compatibility.php';
+			include_once 'compat/class-wcopc-sc-compatibility.php';
 			include_once 'compat/class-wcs-sc-compatibility.php';
 
 			include_once 'class-wc-sc-admin-welcome.php';
@@ -285,7 +285,9 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 				$expiry_date = strtotime( $expiry_date );
 			}
 
-			$expiry_days = (int) ( ( $expiry_date - time() ) / ( 24 * 60 * 60 ) );
+			$timestamp_diff = $expiry_date - time();
+
+			$expiry_days = (int) ( ( $timestamp_diff ) / ( DAY_IN_SECONDS ) );
 
 			if ( $expiry_days < 0 ) {
 
@@ -293,8 +295,24 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 
 			} elseif ( 0 === absint( $expiry_days ) ) {
 
-				$expires_string = __( 'Expires Today ', 'woocommerce-smart-coupons' );
+				$expiry_hours    = (int) ( ( $timestamp_diff ) / ( HOUR_IN_SECONDS ) );
+				$is_time_expired = false;
+				if ( $expiry_hours > 0 ) {
+					$expires_string = __( 'Expires in ', 'woocommerce-smart-coupons' ) . $expiry_hours . _n( ' hour', ' hours', $expiry_hours, 'woocommerce-smart-coupons' );
+				} elseif ( 0 === $expiry_hours ) {
+					$expiry_minutes = (int) ( ( $timestamp_diff ) / ( MINUTE_IN_SECONDS ) );
+					if ( $expiry_minutes > 0 ) {
+						$expires_string = __( 'Expires in ', 'woocommerce-smart-coupons' ) . $expiry_minutes . _n( ' minute', ' minutes', $expiry_minutes, 'woocommerce-smart-coupons' );
+					} else {
+						$is_time_expired = true;
+					}
+				} else {
+					$is_time_expired = true;
+				}
 
+				if ( true === $is_time_expired ) {
+					$expires_string = __( 'Expired Today ', 'woocommerce-smart-coupons' );
+				}
 			} elseif ( $expiry_days < 31 ) {
 
 				$expires_string = __( 'Expires in ', 'woocommerce-smart-coupons' ) . $expiry_days . _n( ' day', ' days', $expiry_days, 'woocommerce-smart-coupons' );
@@ -367,6 +385,7 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 				$_coupon = new WC_Coupon( $coupon['code'] );
 
 				if ( $this->is_wc_gte_30() ) {
+					$_coupon_id                   = ( is_object( $_coupon ) && is_callable( array( $_coupon, 'get_id' ) ) ) ? $_coupon->get_id() : 0;
 					$_is_free_shipping            = ( $_coupon->get_free_shipping() ) ? 'yes' : 'no';
 					$_discount_type               = $_coupon->get_discount_type();
 					$_product_ids                 = $_coupon->get_product_ids();
@@ -374,6 +393,7 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 					$_product_categories          = $_coupon->get_product_categories();
 					$_excluded_product_categories = $_coupon->get_excluded_product_categories();
 				} else {
+					$_coupon_id                   = ( ! empty( $_coupon->id ) ) ? $_coupon->id : 0;
 					$_is_free_shipping            = ( ! empty( $_coupon->free_shipping ) ) ? $_coupon->free_shipping : '';
 					$_discount_type               = ( ! empty( $_coupon->discount_type ) ) ? $_coupon->discount_type : '';
 					$_product_ids                 = ( ! empty( $_coupon->product_ids ) ) ? $_coupon->product_ids : array();
@@ -426,8 +446,15 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 							$_discount_for_text = __( 'for entire purchase', 'woocommerce-smart-coupons' );
 						}
 
-						/* translators: 1: coupon amount 2: discount for text */
-						$email_heading = sprintf( __( 'You have received a coupon worth %1$s%% (%2$s) ', 'woocommerce-smart-coupons' ), $amount, $_discount_for_text );
+						$max_discount_text = '';
+						$max_discount      = get_post_meta( $_coupon_id, 'wc_sc_max_discount', true );
+						if ( ! empty( $max_discount ) && is_numeric( $max_discount ) ) {
+							/* translators: %s: Maximum coupon discount amount */
+							$max_discount_text = sprintf( __( ' upto %s', 'woocommerce-smart-coupons' ), wc_price( $max_discount ) );
+						}
+
+						/* translators: 1: coupon amount 2: max discount text 3: discount for text */
+						$email_heading = sprintf( __( 'You have received a coupon worth %1$s%% %2$s (%3$s) ', 'woocommerce-smart-coupons' ), $amount, $max_discount_text, $_discount_for_text );
 						break;
 
 					default:
@@ -752,7 +779,7 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 				return;
 			}
 
-			$coupon_status = ( ! empty( $_GET['post_status'] ) ) ? wc_clean( wp_unslash( $_GET['post_status'] ) ) : ''; // WPCS: sanitization ok. CSRF ok, input var ok.
+			$coupon_status = ( ! empty( $_GET['post_status'] ) ) ? wc_clean( wp_unslash( $_GET['post_status'] ) ) : ''; // phpcs:ignore
 			if ( 'edit.php' === $pagenow && 'shop_coupon' === $typenow && 'trash' === $coupon_status ) {
 				if ( ! wp_script_is( 'jquery' ) ) {
 					wp_enqueue_script( 'jquery' );
@@ -919,9 +946,11 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 			$all_discount_types = wc_get_coupon_types();
 
 			if ( $this->is_wc_gte_30() ) {
+				$coupon_id     = ( ! empty( $coupon ) && is_callable( array( $coupon, 'get_id' ) ) ) ? $coupon->get_id() : 0;
 				$coupon_amount = ( is_object( $coupon ) && is_callable( array( $coupon, 'get_amount' ) ) ) ? $coupon->get_amount() : 0;
 				$discount_type = ( is_object( $coupon ) && is_callable( array( $coupon, 'get_discount_type' ) ) ) ? $coupon->get_discount_type() : '';
 			} else {
+				$coupon_id     = ( ! empty( $coupon->id ) ) ? $coupon->id : 0;
 				$coupon_amount = ( ! empty( $coupon->amount ) ) ? $coupon->amount : 0;
 				$discount_type = ( ! empty( $coupon->discount_type ) ) ? $coupon->discount_type : '';
 			}
@@ -951,6 +980,11 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 				case 'percent':
 					$coupon_data['coupon_type']   = ( $this->is_wc_gte_30() ) ? __( 'Discount', 'woocommerce-smart-coupons' ) : __( 'Cart Discount', 'woocommerce-smart-coupons' );
 					$coupon_data['coupon_amount'] = $coupon_amount . '%';
+					$max_discount                 = get_post_meta( $coupon_id, 'wc_sc_max_discount', true );
+					if ( ! empty( $max_discount ) && is_numeric( $max_discount ) ) {
+						/* translators: %s: Maximum coupon discount amount */
+						$coupon_data['coupon_type'] .= ' ' . sprintf( __( ' upto %s', 'woocommerce-smart-coupons' ), wc_price( $max_discount ) );
+					}
 					break;
 
 				default:
@@ -1418,7 +1452,7 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 
 			if ( ! empty( $applied_coupons ) ) {
 				foreach ( $applied_coupons as $code ) {
-					$request_wc_ajax    = ( ! empty( $_REQUEST['wc-ajax'] ) ) ? wc_clean( wp_unslash( $_REQUEST['wc-ajax'] ) ) : ''; // WPCS: sanitization ok. CSRF ok, input var ok.
+					$request_wc_ajax    = ( ! empty( $_REQUEST['wc-ajax'] ) ) ? wc_clean( wp_unslash( $_REQUEST['wc-ajax'] ) ) : ''; // phpcs:ignore
 					$ignore_ajax_action = array( 'update_order_review', 'checkout' );
 					if ( ! empty( $request_wc_ajax ) && in_array( $request_wc_ajax, $ignore_ajax_action, true ) && array_key_exists( $code, $smart_coupon_credit_used ) && true !== $cart_contains_subscription && ! isset( WC()->session->reload_checkout ) ) {
 						continue;
@@ -1502,6 +1536,154 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 				do_action( 'smart_coupons_after_calculate_totals' );
 			}
 
+		}
+
+		/**
+		 * Get coupon discount amount for percentage type coupon.
+		 *
+		 * @param  float      $discount Amount this coupon has discounted.
+		 * @param  float      $discounting_amount Amount the coupon is being applied to.
+		 * @param  array|null $cart_item Cart item being discounted if applicable.
+		 * @param  bool       $single True if discounting a single qty item, false if its the line.
+		 * @param  WC_Coupon  $coupon Coupon object.
+		 * @return float      $discount
+		 */
+		public function get_coupon_discount_amount( $discount = 0, $discounting_amount = 0, $cart_item = array(), $single = false, $coupon = object ) {
+
+			if ( is_a( $coupon, 'WC_Coupon' ) ) {
+
+				if ( $coupon->is_valid() && $coupon->is_type( 'percent' ) ) {
+					if ( $this->is_wc_gte_30() ) {
+						$coupon_id = $coupon->get_id();
+					} else {
+						$coupon_id = ( ! empty( $coupon->id ) ) ? $coupon->id : 0;
+					}
+					$max_discount = get_post_meta( $coupon_id, 'wc_sc_max_discount', true );
+					if ( ! empty( $max_discount ) && is_numeric( $max_discount ) && is_array( $cart_item ) && ! empty( $cart_item ) ) {
+						$inc_tax             = wc_prices_include_tax();
+						$coupon_product_ids  = $coupon->get_product_ids();
+						$coupon_category_ids = $coupon->get_product_categories();
+						$cart_items_subtotal = 0;
+						if ( count( $coupon_product_ids ) > 0 || count( $coupon_category_ids ) > 0 ) {
+							if ( class_exists( 'WC_Discounts' ) && isset( WC()->cart ) ) {
+								$wc_cart           = WC()->cart;
+								$wc_discounts      = new WC_Discounts( $wc_cart );
+								$items_to_validate = $wc_discounts->get_items_to_validate();
+								if ( is_array( $items_to_validate ) && ! empty( $items_to_validate ) ) {
+									foreach ( $items_to_validate as $item ) {
+										$item_to_apply = clone $item; // Clone the item so changes to wc_discounts item do not affect the originals.
+
+										if ( 0 === $wc_discounts->get_discounted_price_in_cents( $item_to_apply ) || 0 >= $item_to_apply->quantity ) {
+											continue;
+										}
+
+										if ( ! $coupon->is_valid_for_product( $item_to_apply->product, $item_to_apply->object ) && ! $coupon->is_valid_for_cart() ) {
+											continue;
+										}
+
+										if ( true === $inc_tax ) {
+											$cart_items_subtotal += $item_to_apply->object['line_subtotal'] + $item_to_apply->object['line_subtotal_tax'];
+										} else {
+											$cart_items_subtotal += $item_to_apply->object['line_subtotal'];
+										}
+									}
+								}
+							}
+						} else {
+							if ( true === $inc_tax ) {
+								$cart_items_subtotal = WC()->cart->subtotal;
+							} else {
+								$cart_items_subtotal = WC()->cart->subtotal_ex_tax;
+							}
+						}
+
+						if ( 0 !== $cart_items_subtotal ) {
+							$cart_item_qty = isset( $cart_item['quantity'] ) ? $cart_item['quantity'] : 1;
+
+							if ( true === $inc_tax ) {
+								$discount_percent = ( wc_get_price_including_tax( $cart_item['data'] ) * $cart_item_qty ) / $cart_items_subtotal;
+							} else {
+								$discount_percent = ( wc_get_price_excluding_tax( $cart_item['data'] ) * $cart_item_qty ) / $cart_items_subtotal;
+							}
+
+							if ( $this->is_wc_gte_32() ) {
+								$max_discount_amount = ( $max_discount * $discount_percent );
+							} else {
+								$max_discount_amount = ( $max_discount * $discount_percent ) / $cart_item_qty;
+							}
+
+							$discount = min( $max_discount_amount, $discount );
+						}
+					}
+				}
+			}
+
+			return $discount;
+		}
+
+		/**
+		 * Function to check coupon expiry time
+
+		 * @param  boolean $is_expired Is coupon expired.
+		 * @param  object  $coupon   The coupon object.
+		 * @return boolean  $is_expired Is coupon expired.
+		 */
+		public function validate_coupon_expiry_time( $is_expired = false, $coupon = object ) {
+
+			// Proceed only if WooCommerce has flag this coupon as expired.
+			if ( true === $is_expired ) {
+				if ( $this->is_wc_gte_30() ) {
+					$coupon_id = ( is_object( $coupon ) && is_callable( array( $coupon, 'get_id' ) ) ) ? $coupon->get_id() : 0;
+				} else {
+					$coupon_id = ( ! empty( $coupon->id ) ) ? $coupon->id : 0;
+				}
+
+				if ( 0 !== $coupon_id ) {
+					$expiry_date_timestamp = 0;
+					if ( $this->is_wc_gte_30() ) {
+						if ( is_object( $coupon ) && is_callable( array( $coupon, 'get_date_expires' ) ) ) {
+							$expiry_date_object = $coupon->get_date_expires();
+							if ( is_a( $expiry_date_object, 'WC_DateTime' ) && is_callable( array( $expiry_date_object, 'getTimestamp' ) ) ) {
+								$expiry_date_timestamp = $expiry_date_object->getTimestamp();
+							}
+						}
+					} else {
+						$expiry_date_timestamp = ( ! empty( $coupon->expiry_date ) ) ? $coupon->expiry_date : 0;
+						if ( ! is_int( $expiry_date_timestamp ) ) {
+							$expiry_date_timestamp = strtotime( $expiry_date_timestamp );
+						}
+					}
+
+					if ( 0 !== $expiry_date_timestamp ) {
+						$expiry_time = (int) get_post_meta( $coupon_id, 'wc_sc_expiry_time', true );
+						if ( ! empty( $expiry_time ) ) {
+							$expiry_date_timestamp = $expiry_date_timestamp + $expiry_time; // Adding expiry time to expiry date.
+						}
+
+						$current_timestamp = current_time( 'timestamp', true );
+						if ( $current_timestamp <= $expiry_date_timestamp ) {
+							$is_expired = false;
+						}
+					}
+				}
+			}
+
+			return $is_expired;
+		}
+
+		/**
+		 * Function to set default values to postmeta fields
+		 *
+		 * @param  array $defaults Existing postmeta defaults.
+		 * @return array
+		 */
+		public function postmeta_defaults( $defaults = array() ) {
+
+			if ( $this->is_wc_gte_32() ) {
+				$defaults['wc_sc_expiry_time'] = '';
+			}
+
+			return $defaults;
 		}
 
 		/**
@@ -1786,7 +1968,7 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 			if ( ! empty( $posted_data['billing_email'] ) ) {
 				$applied_coupons = ( is_object( WC()->cart ) && is_callable( array( WC()->cart, 'get_applied_coupons' ) ) ) ? WC()->cart->get_applied_coupons() : array();
 				if ( ! empty( $applied_coupons ) ) {
-					if ( empty( $_REQUEST['billing_email'] ) ) { // WPCS: CSRF ok.
+					if ( empty( $_REQUEST['billing_email'] ) ) { // phpcs:ignore
 						$_REQUEST['billing_email'] = $posted_data['billing_email'];
 					}
 					foreach ( $applied_coupons as $coupon_code ) {
@@ -1837,7 +2019,21 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 				return $valid;
 			}
 
-			if ( $valid && $coupon_amount <= 0 ) {
+			$is_valid_coupon_amount = ( $coupon_amount <= 0 ) ? false : true;
+
+			$is_valid_coupon_amount = apply_filters(
+				'wc_sc_validate_coupon_amount',
+				$is_valid_coupon_amount,
+				array(
+					'coupon'        => $coupon,
+					'discounts'     => $discounts,
+					'coupon_amount' => $coupon_amount,
+					'discount_type' => $discount_type,
+					'coupon_code'   => $coupon_code,
+				)
+			);
+
+			if ( $valid && ! $is_valid_coupon_amount ) {
 				WC()->cart->remove_coupon( $coupon_code );
 				/* translators: The coupon code */
 				wc_add_notice( sprintf( __( 'Coupon removed. There is no credit remaining in %s.', 'woocommerce-smart-coupons' ), '<strong>' . $coupon_code . '</strong>' ), 'error' );
@@ -2065,8 +2261,10 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 			$unique_code = '';
 			srand( (double) microtime( true ) * 1000000 ); // phpcs:ignore
 
+			$coupon_code_length = $this->get_coupon_code_length();
+
 			$chars = array_merge( range( 'a', 'z' ), range( '1', '9' ) );
-			for ( $rand = 1; $rand <= WC_SC_COUPON_CODE_LENGTH; $rand++ ) {
+			for ( $rand = 1; $rand <= $coupon_code_length; $rand++ ) {
 				$random       = rand( 0, count( $chars ) - 1 ); // phpcs:ignore
 				$unique_code .= $chars[ $random ];
 			}
@@ -2242,7 +2440,6 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 					}
 				}
 
-				$expiry_date                = ( ! empty( $expiry_date ) ) ? date( 'Y-m-d', intval( $expiry_date ) ) : '';
 				$free_shipping              = ( ! empty( $is_free_shipping ) ) ? $is_free_shipping : 'no';
 				$product_categories         = ( ! empty( $coupon_product_categories ) ) ? $coupon_product_categories : array();
 				$exclude_product_categories = ( ! empty( $coupon_excluded_product_categories ) ) ? $coupon_excluded_product_categories : array();
@@ -2260,10 +2457,10 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 
 				if ( $this->is_wc_gte_30() ) {
 					if ( ! empty( $expiry_date ) ) {
-						$expiry_date = strtotime( $expiry_date );
 						update_post_meta( $smart_coupon_id, 'date_expires', $expiry_date );
 					}
 				} else {
+					$expiry_date = ( ! empty( $expiry_date ) ) ? gmdate( 'Y-m-d', intval( $expiry_date ) ) : '';
 					update_post_meta( $smart_coupon_id, 'expiry_date', $expiry_date );
 				}
 
@@ -2288,6 +2485,18 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 
 				$sc_restrict_to_new_user = get_post_meta( $coupon_id, 'sc_restrict_to_new_user', true );
 				update_post_meta( $smart_coupon_id, 'sc_restrict_to_new_user', $sc_restrict_to_new_user );
+
+				$wc_sc_max_discount = get_post_meta( $coupon_id, 'wc_sc_max_discount', true );
+				if ( ! empty( $wc_sc_max_discount ) ) {
+					update_post_meta( $smart_coupon_id, 'wc_sc_max_discount', $wc_sc_max_discount );
+				}
+
+				if ( $this->is_wc_gte_32() ) {
+					$wc_sc_expiry_time = (int) get_post_meta( $coupon_id, 'wc_sc_expiry_time', true );
+					if ( ! empty( $wc_sc_expiry_time ) ) {
+						update_post_meta( $smart_coupon_id, 'wc_sc_expiry_time', $wc_sc_expiry_time );
+					}
+				}
 
 				/**
 				 * Hook for 3rd party developers to add data in generated coupon
@@ -2537,6 +2746,8 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 					$data[ $i ]['sc_restrict_to_new_user']      = ( isset( $post['sc_restrict_to_new_user'] ) ) ? $post['sc_restrict_to_new_user'] : '';
 					$data[ $i ]['post_status']                  = 'publish';
 					$data[ $i ]['post_excerpt']                 = ( isset( $post['excerpt'] ) ) ? $post['excerpt'] : '';
+					$data[ $i ]['wc_sc_max_discount']           = ( isset( $post['wc_sc_max_discount'] ) ) ? $post['wc_sc_max_discount'] : '';
+					$data[ $i ]['wc_sc_expiry_time']            = ( isset( $post['wc_sc_expiry_time'] ) ) ? $post['wc_sc_expiry_time'] : '';
 
 					$data[ $i ] = apply_filters( 'sc_generate_coupon_meta', $data[ $i ], $post );
 
@@ -2675,6 +2886,10 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 			$file_data['file_name']     = $csv_file_name;
 			$file_data['file_content']  = $fields;
 
+			if ( isset( $upload_dir['error'] ) && ! empty( $upload_dir['error'] ) ) {
+				$file_data['error'] = $upload_dir['error'];
+			}
+
 			return $file_data;
 		}
 
@@ -2738,7 +2953,12 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 				'sc_disable_email_restriction' => __( 'Disable Email Restriction', 'woocommerce-smart-coupons' ),
 				'sc_is_visible_storewide'      => __( 'Coupon Is Visible Storewide', 'woocommerce-smart-coupons' ),
 				'sc_restrict_to_new_user'      => __( 'For new user only?', 'woocommerce-smart-coupons' ),
+				'wc_sc_max_discount'           => __( 'Max discount', 'woocommerce-smart-coupons' ),
 			);
+
+			if ( $this->is_wc_gte_32() ) {
+				$sc_postmeta_headers['wc_sc_expiry_time'] = __( 'Coupon expiry time', 'woocommerce-smart-coupons' );
+			}
 
 			return array_merge( $coupon_postmeta_headers, $sc_postmeta_headers );
 
@@ -2850,15 +3070,18 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 				exit;
 			} else {
 
-				// Create CSV file.
-				$csv_folder  = $file_data['wp_upload_dir'];
-				$filename    = str_replace( array( '\'', '"', ',', ';', '<', '>', '/', ':' ), '', $file_data['file_name'] );
-				$csvfilename = $csv_folder . $filename;
-				$fp          = fopen( $csvfilename, 'w' ); // phpcs:ignore
-				file_put_contents( $csvfilename, $file_data['file_content'] ); // phpcs:ignore
-				fclose( $fp ); // phpcs:ignore
+				// Proceed only if there is no directory permission related issue.
+				if ( ! isset( $file_data['error'] ) ) {
+					// Create CSV file.
+					$csv_folder  = $file_data['wp_upload_dir'];
+					$filename    = str_replace( array( '\'', '"', ',', ';', '<', '>', '/', ':' ), '', $file_data['file_name'] );
+					$csvfilename = $csv_folder . $filename;
+					$fp          = fopen( $csvfilename, 'w' ); // phpcs:ignore
+					file_put_contents( $csvfilename, $file_data['file_content'] ); // phpcs:ignore
+					fclose( $fp ); // phpcs:ignore
 
-				return $csvfilename;
+					return $csvfilename;
+				}
 			}
 
 		}
@@ -2871,8 +3094,8 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 
 			if ( ! empty( $pagenow ) ) {
 				$show_css_for_smart_coupon_tab = false;
-				$get_post_type                 = ( ! empty( $post->post_type ) ) ? $post->post_type : ( ( ! empty( $_GET['post_type'] ) ) ? wc_clean( wp_unslash( $_GET['post_type'] ) ) : '' ); // WPCS: sanitization ok. CSRF ok, input var ok.
-				$get_page                      = ( ! empty( $_GET['page'] ) ) ? wc_clean( wp_unslash( $_GET['page'] ) ) : ''; // WPCS: sanitization ok. CSRF ok, input var ok.
+				$get_post_type                 = ( ! empty( $post->post_type ) ) ? $post->post_type : ( ( ! empty( $_GET['post_type'] ) ) ? wc_clean( wp_unslash( $_GET['post_type'] ) ) : '' ); // phpcs:ignore
+				$get_page                      = ( ! empty( $_GET['page'] ) ) ? wc_clean( wp_unslash( $_GET['page'] ) ) : ''; // phpcs:ignore
 				if ( 'edit.php' === $pagenow && 'shop_coupon' === $get_post_type ) {
 					$show_css_for_smart_coupon_tab = true;
 				}
@@ -2973,6 +3196,8 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 				'validity_suffix',
 				'sc_restrict_to_new_user',
 				'wc_sc_schedule_gift_sending',
+				'wc_sc_max_discount',
+				'wc_sc_expiry_time',
 			);
 			if ( in_array( $meta_key, $sc_meta, true ) ) {
 				return true;
@@ -3144,18 +3369,21 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 		/**
 		 * Function to get singular/plural name for store credit
 		 */
-		public static function define_label_for_store_credit() {
+		public function define_label_for_store_credit() {
 			global $store_credit_label;
 
-			$store_credit_singular = get_option( 'sc_store_credit_singular_text' );
-			$store_credit_plural   = get_option( 'sc_store_credit_plural_text' );
-
-			if ( ! empty( $store_credit_singular ) && ! empty( $store_credit_plural ) ) {
-				$store_credit_label = array(
-					'singular' => $store_credit_singular,
-					'plural'   => $store_credit_plural,
-				);
+			if ( empty( $store_credit_label ) || ! is_array( $store_credit_label ) ) {
+				$store_credit_label = array();
 			}
+
+			if ( empty( $store_credit_label['singular'] ) ) {
+				$store_credit_label['singular'] = get_option( 'sc_store_credit_singular_text' );
+			}
+
+			if ( empty( $store_credit_label['plural'] ) ) {
+				$store_credit_label['plural'] = get_option( 'sc_store_credit_plural_text' );
+			}
+
 		}
 
 		/**
