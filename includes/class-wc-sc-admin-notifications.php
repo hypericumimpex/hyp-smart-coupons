@@ -31,7 +31,7 @@ if ( ! class_exists( 'WC_SC_Admin_Notifications' ) ) {
 		/**
 		 * Constructor
 		 */
-		public function __construct() {
+		private function __construct() {
 
 			add_filter( 'plugin_action_links_' . plugin_basename( WC_SC_PLUGIN_FILE ), array( $this, 'plugin_action_links' ) );
 

@@ -71,7 +71,7 @@ if ( ! class_exists( 'WC_SC_Coupons_By_Location' ) ) {
 		/**
 		 * Constructor
 		 */
-		public function __construct() {
+		private function __construct() {
 
 			add_action( 'init', array( $this, 'initialize_cbl_additional_locations' ) );
 

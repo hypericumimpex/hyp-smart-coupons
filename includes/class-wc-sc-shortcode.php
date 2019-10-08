@@ -30,7 +30,7 @@ if ( ! class_exists( 'WC_SC_Shortcode' ) ) {
 		/**
 		 * Constructor
 		 */
-		public function __construct() {
+		private function __construct() {
 
 			add_action( 'admin_enqueue_scripts', array( $this, 'smart_coupon_shortcode_button_init' ) );    // Use 'admin_enqueue_scripts' instead of 'init' // Credit: Jonathan Desrosiers <jdesrosiers@linchpinagency.com>.
 			add_action( 'init', array( $this, 'register_smart_coupon_shortcode' ) );

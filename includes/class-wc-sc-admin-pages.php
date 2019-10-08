@@ -30,7 +30,7 @@ if ( ! class_exists( 'WC_SC_Admin_Pages' ) ) {
 		/**
 		 * Constructor
 		 */
-		public function __construct() {
+		private function __construct() {
 
 			add_filter( 'views_edit-shop_coupon', array( $this, 'smart_coupons_views_row' ) );
 			add_action( 'admin_enqueue_scripts', array( $this, 'generate_coupon_styles_and_scripts' ) );

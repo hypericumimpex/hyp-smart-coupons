@@ -36,7 +36,7 @@ if ( ! class_exists( 'WC_SC_Apply_Before_Tax' ) ) {
 		/**
 		 * Constructor
 		 */
-		public function __construct() {
+		private function __construct() {
 			add_action( 'woocommerce_order_before_calculate_totals', array( $this, 'order_calculate_discount_amount_before_tax' ), 10, 2 );
 
 			add_action( 'woocommerce_order_after_calculate_totals', array( $this, 'order_set_discount_total' ), 10, 2 );

@@ -30,7 +30,7 @@ if ( ! class_exists( 'WC_SC_Admin_Welcome' ) ) {
 		/**
 		 * Hook in tabs.
 		 */
-		public function __construct() {
+		private function __construct() {
 			add_action( 'admin_menu', array( $this, 'admin_menus' ) );
 			add_action( 'admin_head', array( $this, 'admin_head' ) );
 			add_action( 'admin_init', array( $this, 'sc_welcome' ) );

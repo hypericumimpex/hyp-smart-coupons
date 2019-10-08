@@ -29,7 +29,7 @@ if ( ! class_exists( 'WC_SC_Duplicate_Coupon' ) ) {
 		/**
 		 * Constructor
 		 */
-		public function __construct() {
+		private function __construct() {
 
 			add_filter( 'post_row_actions', array( $this, 'woocommerce_duplicate_coupon_link_row' ), 1, 2 );
 			add_action( 'admin_action_duplicate_coupon', array( $this, 'woocommerce_duplicate_coupon_action' ) );

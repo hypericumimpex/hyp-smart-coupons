@@ -30,7 +30,7 @@ if ( ! class_exists( 'WC_SC_Coupon_Fields' ) ) {
 		/**
 		 * Constructor
 		 */
-		public function __construct() {
+		private function __construct() {
 
 			add_action( 'woocommerce_coupon_options', array( $this, 'woocommerce_smart_coupon_options' ) );
 			add_action( 'woocommerce_coupon_options_usage_restriction', array( $this, 'sc_woocommerce_coupon_options_usage_restriction' ) );

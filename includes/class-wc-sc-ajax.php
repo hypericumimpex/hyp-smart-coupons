@@ -30,7 +30,7 @@ if ( ! class_exists( 'WC_SC_Ajax' ) ) {
 		/**
 		 * Constructor
 		 */
-		public function __construct() {
+		private function __construct() {
 
 			add_action( 'wp_ajax_sc_json_search_coupons', array( $this, 'sc_json_search_coupons' ) );
 			add_action( 'wp_ajax_smart_coupons_json_search', array( $this, 'smart_coupons_json_search' ) );

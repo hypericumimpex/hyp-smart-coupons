@@ -37,7 +37,7 @@ if ( ! class_exists( 'WC_SC_Settings' ) ) {
 		/**
 		 * Constructor
 		 */
-		public function __construct() {
+		private function __construct() {
 			add_action( 'admin_init', array( $this, 'add_delete_credit_after_usage_notice' ) );
 
 			add_filter( 'woocommerce_settings_tabs_array', array( $this, 'add_smart_coupon_settings_tab' ), 50 );
@@ -530,6 +530,14 @@ if ( ! class_exists( 'WC_SC_Settings' ) ) {
 					'default'       => 'no',
 					'autoload'      => false,
 					'desc_tip'      => '',
+				),
+				array(
+					'name'     => __( 'Combine Emails', 'woocommerce-smart-coupons' ),
+					'desc'     => __( 'Send only one email instead of multiple emails when multiple coupons are generated for same recipient', 'woocommerce-smart-coupons' ),
+					'id'       => 'smart_coupons_combine_emails',
+					'type'     => 'checkbox',
+					'default'  => 'no',
+					'autoload' => false,
 				),
 				array(
 					'type' => 'sectionend',

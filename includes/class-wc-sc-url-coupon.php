@@ -37,7 +37,7 @@ if ( ! class_exists( 'WC_SC_URL_Coupon' ) ) {
 		/**
 		 * Constructor
 		 */
-		public function __construct() {
+		private function __construct() {
 
 			add_action( 'wp_loaded', array( $this, 'apply_coupon_from_url' ), 20 );
 			add_action( 'wp_loaded', array( $this, 'apply_coupon_from_session' ), 20 );

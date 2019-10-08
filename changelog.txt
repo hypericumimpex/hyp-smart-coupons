@@ -1,5 +1,18 @@
 *** WooCommerce Smart Coupons Changelog ***
 
+2019.10.08 - version 4.3.0
+* New: Setting to allow combining of coupons emails when multiple emails are sent to the same recipient
+* New: Restrict Coupons by User Roles
+* Fix: Store Credit's amount not decreasing even after applying the discount on the renewal order [WooCommerce Subscriptions]
+* Update: POT file
+
+2019.10.05 - version 4.2.0
+* New: Restrict Coupons by Payment Methods
+* New: Restrict Coupons by Shipping Methods
+* Fix: Bulk Coupon import not working in some cases 
+* Update: Make all the constructor of Singleton classes as private
+* Update: POT file
+
 2019.09.27 - version 4.1.3
 * Fix: Not showing coupon receiver detail form under checkout section [WooCommerce One Page Checkout] IS#84
 * Fix: Display of gift card amount in summary of the linked coupons when setting 'Sell store credit at less price' is enabled

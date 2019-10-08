@@ -30,7 +30,7 @@ if ( ! class_exists( 'WC_SC_Global_Coupons' ) ) {
 		/**
 		 * Constructor
 		 */
-		public function __construct() {
+		private function __construct() {
 
 			add_action( 'admin_init', array( $this, 'set_global_coupons' ) );
 			add_action( 'save_post', array( $this, 'update_global_coupons' ), 10, 2 );

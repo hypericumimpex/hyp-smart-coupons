@@ -31,7 +31,7 @@ if ( ! class_exists( 'WC_SC_Coupon_Message' ) ) {
 		 *
 		 * @since 1.0
 		 */
-		public function __construct() {
+		private function __construct() {
 
 			add_action( 'wc_smart_coupons_actions', array( $this, 'wc_coupon_message_options' ), 10, 2 );
 			add_action( 'save_post', array( $this, 'wc_process_coupon_message_meta' ), 1, 2 );

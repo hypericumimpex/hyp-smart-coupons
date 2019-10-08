@@ -30,7 +30,7 @@ if ( ! class_exists( 'WC_SC_Coupon_Process' ) ) {
 		/**
 		 * Constructor
 		 */
-		public function __construct() {
+		private function __construct() {
 
 			add_action( 'woocommerce_new_order', array( $this, 'add_gift_certificate_receiver_details_in_order' ) );
 			add_action( 'woocommerce_new_order', array( $this, 'smart_coupons_contribution' ), 8 );
@@ -54,6 +54,7 @@ if ( ! class_exists( 'WC_SC_Coupon_Process' ) ) {
 			add_action( 'woocommerce_order_status_on-hold_to_failed', array( $this, 'sa_restore_smart_coupon_amount' ), 19 );
 
 			add_filter( 'woocommerce_gift_certificates_email_template', array( $this, 'woocommerce_gift_certificates_email_template_path' ) );
+			add_filter( 'woocommerce_combined_gift_certificates_email_template', array( $this, 'woocommerce_combined_gift_certificates_email_template_path' ) );
 
 			add_action( 'woocommerce_order_status_pending_to_on-hold', array( $this, 'update_smart_coupon_balance' ) );
 			add_action( 'woocommerce_order_status_pending_to_processing', array( $this, 'update_smart_coupon_balance' ) );
@@ -333,7 +334,10 @@ if ( ! class_exists( 'WC_SC_Coupon_Process' ) ) {
 							}
 							$coupon_id = $smart_coupon->get_id();
 							if ( empty( $coupon_id ) ) {
-								continue;
+								$coupon_id = wc_get_coupon_id_by_code( $code );
+								if ( empty( $coupon_id ) ) {
+									continue;
+								}
 							}
 							$coupon_amount = $smart_coupon->get_amount();
 							$discount_type = $smart_coupon->get_discount_type();
@@ -793,6 +797,7 @@ if ( ! class_exists( 'WC_SC_Coupon_Process' ) ) {
 			$receivers_messages = get_post_meta( $order_id, 'gift_receiver_message', true );
 			$sending_timestamps = get_post_meta( $order_id, 'gift_sending_timestamp', true );
 			$is_coupon_sent     = get_post_meta( $order_id, 'coupon_sent', true );
+			$is_send_email      = get_option( 'smart_coupons_is_send_email', 'yes' );
 
 			if ( 'yes' === $is_coupon_sent ) {
 				return;
@@ -914,6 +919,7 @@ if ( ! class_exists( 'WC_SC_Coupon_Process' ) ) {
 
 			if ( ! empty( $email_to_credit ) && count( $email_to_credit ) > 0 ) {
 				$update_temp_email = false;
+				$temp_email        = $email;
 				foreach ( $email_to_credit as $email_id => $credits ) {
 					$email_to_credit[ $email_id ] = array_count_values( $credits );
 					foreach ( $email_to_credit[ $email_id ] as $coupon_credit => $qty ) {
@@ -934,20 +940,26 @@ if ( ! class_exists( 'WC_SC_Coupon_Process' ) ) {
 							$coupon_id     = ( ! empty( $coupon->id ) ) ? $coupon->id : 0;
 							$discount_type = ( ! empty( $coupon->discount_type ) ) ? $coupon->discount_type : '';
 						}
-						$message_index = array_search( $email_id, $email[ $coupon_id ], true );
-						if ( false !== $message_index && isset( $receivers_messages[ $coupon_id ][ $message_index ] ) && ! empty( $receivers_messages[ $coupon_id ][ $message_index ] ) ) {
-							$message_from_sender = $receivers_messages[ $coupon_id ][ $message_index ];
-						} else {
-							$message_from_sender = '';
-						}
-						if ( false !== $message_index && isset( $sending_timestamps[ $coupon_id ][ $message_index ] ) && ! empty( $sending_timestamps[ $coupon_id ][ $message_index ] ) ) {
-							$sending_timestamp = $sending_timestamps[ $coupon_id ][ $message_index ];
-						} else {
-							$sending_timestamp = '';
-						}
+
 						for ( $i = 0; $i < $qty; $i++ ) {
 							if ( 'smart_coupon' !== $discount_type ) {
 								continue; // only process smart_coupon here, rest coupon will be processed by function update_coupon.
+							}
+
+							$message_index = array_search( $email_id, $temp_email[ $coupon_id ], true );
+
+							if ( false !== $message_index ) {
+								$temp_email[ $coupon_id ][ $message_index ] = ''; // Empty value at found index so that we don't get same index in next loop run.
+							}
+							if ( false !== $message_index && isset( $receivers_messages[ $coupon_id ][ $message_index ] ) && ! empty( $receivers_messages[ $coupon_id ][ $message_index ] ) ) {
+								$message_from_sender = $receivers_messages[ $coupon_id ][ $message_index ];
+							} else {
+								$message_from_sender = '';
+							}
+							if ( false !== $message_index && isset( $sending_timestamps[ $coupon_id ][ $message_index ] ) && ! empty( $sending_timestamps[ $coupon_id ][ $message_index ] ) ) {
+								$sending_timestamp = $sending_timestamps[ $coupon_id ][ $message_index ];
+							} else {
+								$sending_timestamp = '';
 							}
 
 							$this->generate_smart_coupon( $email_id, $credit_amount, $order_id, $coupon, 'smart_coupon', $gift_certificate_receiver_name, $message_from_sender, $gift_certificate_sender_name, $gift_certificate_sender_email, $sending_timestamp );
@@ -996,11 +1008,31 @@ if ( ! class_exists( 'WC_SC_Coupon_Process' ) ) {
 				}
 
 				if ( $flag && 'add' === $operation ) {
+					$combine_emails = get_option( 'smart_coupons_combine_emails', 'no' );
+					if ( 'yes' === $is_send_email && 'yes' === $combine_emails ) {
+						$coupon_receiver_details = get_post_meta( $order_id, 'sc_coupon_receiver_details', true );
+						if ( is_array( $coupon_receiver_details ) && ! empty( $coupon_receiver_details ) ) {
+							$combined_coupon_receiver_details = array();
+							foreach ( $coupon_receiver_details as $receiver_detail ) {
+								$receiver_email = $receiver_detail['email'];
+								if ( ! isset( $combined_coupon_receiver_details[ $receiver_email ] ) || ! is_array( $combined_coupon_receiver_details[ $receiver_email ] ) ) {
+									$combined_coupon_receiver_details[ $receiver_email ] = array();
+								}
+								$combined_coupon_receiver_details[ $receiver_email ][] = array(
+									'code'    => $receiver_detail['code'],
+									'message' => $receiver_detail['message'],
+								);
+							}
+							if ( ! empty( $combined_coupon_receiver_details ) ) {
+								foreach ( $combined_coupon_receiver_details as $combined_receiver_email => $combined_receiver_details ) {
+									$this->send_combined_coupon_email( $combined_receiver_email, $combined_receiver_details, $order_id );
+								}
+							}
+						}
+					}
 					update_post_meta( $order_id, 'coupon_sent', 'yes' );              // to know whether coupon has sent or not.
 				}
 			}
-
-			$is_send_email = get_option( 'smart_coupons_is_send_email', 'yes' );
 
 			if ( 'yes' === $is_send_email && ( count( $receivers_detail ) + $receiver_count ) > 0 ) {
 				$this->acknowledge_gift_certificate_sender( $receivers_detail, $gift_certificate_receiver_name, $email, $gift_certificate_sender_email, ( count( $receivers_detail ) ) );
@@ -1185,9 +1217,25 @@ if ( ! class_exists( 'WC_SC_Coupon_Process' ) ) {
 		 * @param string $template The template name.
 		 * @return mixed $template
 		 */
-		public function woocommerce_gift_certificates_email_template_path( $template ) {
+		public function woocommerce_gift_certificates_email_template_path( $template = '' ) {
 
 			$template_name = 'email.php';
+
+			$template = $this->locate_template_for_smart_coupons( $template_name, $template );
+
+			return $template;
+
+		}
+
+		/**
+		 * Allow overridding of Smart Coupon's template for combined emails template
+		 *
+		 * @param string $template The template name.
+		 * @return mixed $template
+		 */
+		public function woocommerce_combined_gift_certificates_email_template_path( $template = '' ) {
+
+			$template_name = 'combined-email.php';
 
 			$template = $this->locate_template_for_smart_coupons( $template_name, $template );
 

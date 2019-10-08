@@ -201,6 +201,9 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 			include_once 'class-wc-sc-privacy.php';
 			include_once 'class-wc-sc-coupon-actions.php';
 			include_once 'class-wc-sc-coupons-by-location.php';
+			include_once 'class-wc-sc-coupons-by-payment-method.php';
+			include_once 'class-wc-sc-coupons-by-shipping-method.php';
+			include_once 'class-wc-sc-coupons-by-user-role.php';
 			include_once 'class-wc-sc-coupon-message.php';
 
 			include_once 'blocks/class-wc-sc-gutenberg-coupon-block.php';
@@ -344,7 +347,8 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 
 			$blogname = wp_specialchars_decode( get_option( 'blogname' ), ENT_QUOTES );
 
-			$is_send_email = get_option( 'smart_coupons_is_send_email', 'yes' );
+			$is_send_email  = get_option( 'smart_coupons_is_send_email', 'yes' );
+			$combine_emails = get_option( 'smart_coupons_combine_emails', 'no' );
 
 			if ( $this->is_wc_gte_30() ) {
 				$page_id = wc_get_page_id( 'shop' );
@@ -382,101 +386,12 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 
 			foreach ( $coupon_title as $email => $coupon ) {
 
-				$_coupon = new WC_Coupon( $coupon['code'] );
-
-				if ( $this->is_wc_gte_30() ) {
-					$_coupon_id                   = ( is_object( $_coupon ) && is_callable( array( $_coupon, 'get_id' ) ) ) ? $_coupon->get_id() : 0;
-					$_is_free_shipping            = ( $_coupon->get_free_shipping() ) ? 'yes' : 'no';
-					$_discount_type               = $_coupon->get_discount_type();
-					$_product_ids                 = $_coupon->get_product_ids();
-					$_excluded_product_ids        = $_coupon->get_excluded_product_ids();
-					$_product_categories          = $_coupon->get_product_categories();
-					$_excluded_product_categories = $_coupon->get_excluded_product_categories();
-				} else {
-					$_coupon_id                   = ( ! empty( $_coupon->id ) ) ? $_coupon->id : 0;
-					$_is_free_shipping            = ( ! empty( $_coupon->free_shipping ) ) ? $_coupon->free_shipping : '';
-					$_discount_type               = ( ! empty( $_coupon->discount_type ) ) ? $_coupon->discount_type : '';
-					$_product_ids                 = ( ! empty( $_coupon->product_ids ) ) ? $_coupon->product_ids : array();
-					$_excluded_product_ids        = ( ! empty( $_coupon->exclude_product_ids ) ) ? $_coupon->exclude_product_ids : array();
-					$_product_categories          = ( ! empty( $_coupon->product_categories ) ) ? $_coupon->product_categories : array();
-					$_excluded_product_categories = ( ! empty( $_coupon->exclude_product_categories ) ) ? $_coupon->exclude_product_categories : array();
+				if ( empty( $email ) ) {
+					$email = $gift_certificate_sender_email;
 				}
 
 				$amount      = $coupon['amount'];
 				$coupon_code = $coupon['code'];
-
-				switch ( $discount_type ) {
-
-					case 'smart_coupon':
-						/* translators: 1: coupon type 2: coupon amount */
-						$email_heading = sprintf( __( 'You have received a %1$s worth %2$s ', 'woocommerce-smart-coupons' ), $smart_coupon_type, wc_price( $amount ) );
-						break;
-
-					case 'fixed_cart':
-						/* translators: %s: coupon amount */
-						$email_heading = sprintf( __( 'You have received a coupon worth %s (for entire purchase) ', 'woocommerce-smart-coupons' ), wc_price( $amount ) );
-						break;
-
-					case 'fixed_product':
-						if ( ! empty( $_product_ids ) || ! empty( $_excluded_product_ids ) || ! empty( $_product_categories ) || ! empty( $_excluded_product_categories ) ) {
-							$_discount_for_text = __( 'for some products', 'woocommerce-smart-coupons' );
-						} else {
-							$_discount_for_text = __( 'for all products', 'woocommerce-smart-coupons' );
-						}
-
-						/* translators: 1: coupon amount 2: discount for text */
-						$email_heading = sprintf( __( 'You have received a coupon worth %1$s (%2$s) ', 'woocommerce-smart-coupons' ), wc_price( $amount ), $_discount_for_text );
-						break;
-
-					case 'percent_product':
-						if ( ! empty( $_product_ids ) || ! empty( $_excluded_product_ids ) || ! empty( $_product_categories ) || ! empty( $_excluded_product_categories ) ) {
-							$_discount_for_text = __( 'for some products', 'woocommerce-smart-coupons' );
-						} else {
-							$_discount_for_text = __( 'for all products', 'woocommerce-smart-coupons' );
-						}
-
-						/* translators: 1: coupon amount 2: discount for text */
-						$email_heading = sprintf( __( 'You have received a coupon worth %1$s%% (%2$s) ', 'woocommerce-smart-coupons' ), $amount, $_discount_for_text );
-						break;
-
-					case 'percent':
-						if ( ! empty( $_product_ids ) || ! empty( $_excluded_product_ids ) || ! empty( $_product_categories ) || ! empty( $_excluded_product_categories ) ) {
-							$_discount_for_text = __( 'for some products', 'woocommerce-smart-coupons' );
-						} else {
-							$_discount_for_text = __( 'for entire purchase', 'woocommerce-smart-coupons' );
-						}
-
-						$max_discount_text = '';
-						$max_discount      = get_post_meta( $_coupon_id, 'wc_sc_max_discount', true );
-						if ( ! empty( $max_discount ) && is_numeric( $max_discount ) ) {
-							/* translators: %s: Maximum coupon discount amount */
-							$max_discount_text = sprintf( __( ' upto %s', 'woocommerce-smart-coupons' ), wc_price( $max_discount ) );
-						}
-
-						/* translators: 1: coupon amount 2: max discount text 3: discount for text */
-						$email_heading = sprintf( __( 'You have received a coupon worth %1$s%% %2$s (%3$s) ', 'woocommerce-smart-coupons' ), $amount, $max_discount_text, $_discount_for_text );
-						break;
-
-					default:
-						$default_coupon_type = ( ! empty( $all_discount_types[ $discount_type ] ) ) ? $all_discount_types[ $discount_type ] : ucwords( str_replace( array( '_', '-' ), ' ', $discount_type ) );
-						$coupon_type         = apply_filters( 'wc_sc_coupon_type', $default_coupon_type, $_coupon, $all_discount_types );
-						$coupon_amount       = apply_filters( 'wc_sc_coupon_amount', $amount, $_coupon );
-
-						/* translators: 1: coupon type 2: coupon amount */
-						$email_heading = sprintf( __( 'You have received %1$s coupon of %2$s', 'woocommerce-smart-coupons' ), $coupon_type, $coupon_amount ); /* translators: 1: coupon type 2: coupon amount */
-						$email_heading = apply_filters( 'wc_sc_email_heading', $email_heading, $_coupon );
-						break;
-
-				}
-
-				if ( 'yes' === $_is_free_shipping && in_array( $_discount_type, array( 'fixed_cart', 'fixed_product', 'percent_product', 'percent' ), true ) ) {
-					/* translators: 1: email heading 2: suffix */
-					$email_heading = sprintf( __( '%1$s Free Shipping%2$s', 'woocommerce-smart-coupons' ), ( ( ! empty( $amount ) ) ? $email_heading . __( '&', 'woocommerce-smart-coupons' ) : __( 'You have received a', 'woocommerce-smart-coupons' ) ), ( ( empty( $amount ) ) ? __( ' coupon', 'woocommerce-smart-coupons' ) : '' ) );
-				}
-
-				if ( empty( $email ) ) {
-					$email = $gift_certificate_sender_email;
-				}
 
 				if ( ! empty( $order_id ) ) {
 					$coupon_receiver_details = get_post_meta( $order_id, 'sc_coupon_receiver_details', true );
@@ -492,7 +407,95 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 					update_post_meta( $order_id, 'sc_coupon_receiver_details', $coupon_receiver_details );
 				}
 
-				if ( 'yes' === $is_send_email ) {
+				if ( 'yes' === $is_send_email && 'no' === $combine_emails ) {
+					$_coupon = new WC_Coupon( $coupon_code );
+
+					if ( $this->is_wc_gte_30() ) {
+						$_coupon_id                   = ( is_object( $_coupon ) && is_callable( array( $_coupon, 'get_id' ) ) ) ? $_coupon->get_id() : 0;
+						$_is_free_shipping            = ( $_coupon->get_free_shipping() ) ? 'yes' : 'no';
+						$_discount_type               = $_coupon->get_discount_type();
+						$_product_ids                 = $_coupon->get_product_ids();
+						$_excluded_product_ids        = $_coupon->get_excluded_product_ids();
+						$_product_categories          = $_coupon->get_product_categories();
+						$_excluded_product_categories = $_coupon->get_excluded_product_categories();
+					} else {
+						$_coupon_id                   = ( ! empty( $_coupon->id ) ) ? $_coupon->id : 0;
+						$_is_free_shipping            = ( ! empty( $_coupon->free_shipping ) ) ? $_coupon->free_shipping : '';
+						$_discount_type               = ( ! empty( $_coupon->discount_type ) ) ? $_coupon->discount_type : '';
+						$_product_ids                 = ( ! empty( $_coupon->product_ids ) ) ? $_coupon->product_ids : array();
+						$_excluded_product_ids        = ( ! empty( $_coupon->exclude_product_ids ) ) ? $_coupon->exclude_product_ids : array();
+						$_product_categories          = ( ! empty( $_coupon->product_categories ) ) ? $_coupon->product_categories : array();
+						$_excluded_product_categories = ( ! empty( $_coupon->exclude_product_categories ) ) ? $_coupon->exclude_product_categories : array();
+					}
+
+					switch ( $discount_type ) {
+
+						case 'smart_coupon':
+							/* translators: 1: coupon type 2: coupon amount */
+							$email_heading = sprintf( __( 'You have received a %1$s worth %2$s ', 'woocommerce-smart-coupons' ), $smart_coupon_type, wc_price( $amount ) );
+							break;
+
+						case 'fixed_cart':
+							/* translators: %s: coupon amount */
+							$email_heading = sprintf( __( 'You have received a coupon worth %s (for entire purchase) ', 'woocommerce-smart-coupons' ), wc_price( $amount ) );
+							break;
+
+						case 'fixed_product':
+							if ( ! empty( $_product_ids ) || ! empty( $_excluded_product_ids ) || ! empty( $_product_categories ) || ! empty( $_excluded_product_categories ) ) {
+								$_discount_for_text = __( 'for some products', 'woocommerce-smart-coupons' );
+							} else {
+								$_discount_for_text = __( 'for all products', 'woocommerce-smart-coupons' );
+							}
+
+							/* translators: 1: coupon amount 2: discount for text */
+							$email_heading = sprintf( __( 'You have received a coupon worth %1$s (%2$s) ', 'woocommerce-smart-coupons' ), wc_price( $amount ), $_discount_for_text );
+							break;
+
+						case 'percent_product':
+							if ( ! empty( $_product_ids ) || ! empty( $_excluded_product_ids ) || ! empty( $_product_categories ) || ! empty( $_excluded_product_categories ) ) {
+								$_discount_for_text = __( 'for some products', 'woocommerce-smart-coupons' );
+							} else {
+								$_discount_for_text = __( 'for all products', 'woocommerce-smart-coupons' );
+							}
+
+							/* translators: 1: coupon amount 2: discount for text */
+							$email_heading = sprintf( __( 'You have received a coupon worth %1$s%% (%2$s) ', 'woocommerce-smart-coupons' ), $amount, $_discount_for_text );
+							break;
+
+						case 'percent':
+							if ( ! empty( $_product_ids ) || ! empty( $_excluded_product_ids ) || ! empty( $_product_categories ) || ! empty( $_excluded_product_categories ) ) {
+								$_discount_for_text = __( 'for some products', 'woocommerce-smart-coupons' );
+							} else {
+								$_discount_for_text = __( 'for entire purchase', 'woocommerce-smart-coupons' );
+							}
+
+							$max_discount_text = '';
+							$max_discount      = get_post_meta( $_coupon_id, 'wc_sc_max_discount', true );
+							if ( ! empty( $max_discount ) && is_numeric( $max_discount ) ) {
+								/* translators: %s: Maximum coupon discount amount */
+								$max_discount_text = sprintf( __( ' upto %s', 'woocommerce-smart-coupons' ), wc_price( $max_discount ) );
+							}
+
+							/* translators: 1: coupon amount 2: max discount text 3: discount for text */
+							$email_heading = sprintf( __( 'You have received a coupon worth %1$s%% %2$s (%3$s) ', 'woocommerce-smart-coupons' ), $amount, $max_discount_text, $_discount_for_text );
+							break;
+
+						default:
+							$default_coupon_type = ( ! empty( $all_discount_types[ $discount_type ] ) ) ? $all_discount_types[ $discount_type ] : ucwords( str_replace( array( '_', '-' ), ' ', $discount_type ) );
+							$coupon_type         = apply_filters( 'wc_sc_coupon_type', $default_coupon_type, $_coupon, $all_discount_types );
+							$coupon_amount       = apply_filters( 'wc_sc_coupon_amount', $amount, $_coupon );
+
+							/* translators: 1: coupon type 2: coupon amount */
+							$email_heading = sprintf( __( 'You have received %1$s coupon of %2$s', 'woocommerce-smart-coupons' ), $coupon_type, $coupon_amount ); /* translators: 1: coupon type 2: coupon amount */
+							$email_heading = apply_filters( 'wc_sc_email_heading', $email_heading, $_coupon );
+							break;
+
+					}
+
+					if ( 'yes' === $_is_free_shipping && in_array( $_discount_type, array( 'fixed_cart', 'fixed_product', 'percent_product', 'percent' ), true ) ) {
+						/* translators: 1: email heading 2: suffix */
+						$email_heading = sprintf( __( '%1$s Free Shipping%2$s', 'woocommerce-smart-coupons' ), ( ( ! empty( $amount ) ) ? $email_heading . __( '&', 'woocommerce-smart-coupons' ) : __( 'You have received a', 'woocommerce-smart-coupons' ) ), ( ( empty( $amount ) ) ? __( ' coupon', 'woocommerce-smart-coupons' ) : '' ) );
+					}
 
 					$design           = get_option( 'wc_sc_setting_coupon_design', 'round-dashed' );
 					$background_color = get_option( 'wc_sc_setting_coupon_background_color', '#39cccc' );
@@ -519,6 +522,84 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 
 				}
 			}
+
+		}
+
+		/**
+		 * Function to send combined e-mail containing coupon codes to receiver
+		 *
+		 * @param string $receiver_email receiver's email.
+		 * @param array  $receiver_details receiver details(code,message etc).
+		 * @param int    $order_id Associated order id.
+		 */
+		public function send_combined_coupon_email( $receiver_email = '', $receiver_details = array(), $order_id = 0 ) {
+
+			$blogname = wp_specialchars_decode( get_option( 'blogname' ), ENT_QUOTES );
+
+			if ( $this->is_wc_gte_30() ) {
+				$page_id = wc_get_page_id( 'shop' );
+			} else {
+				$page_id = woocommerce_get_page_id( 'shop' );
+			}
+
+			$url = ( get_option( 'permalink_structure' ) ) ? get_permalink( $page_id ) : get_post_type_archive_link( 'product' );
+
+			if ( ! empty( $order_id ) ) {
+				$order = wc_get_order( $order_id );
+				if ( $this->is_wc_gte_30() ) {
+					$order_billing_email      = $order->get_billing_email();
+					$order_billing_first_name = $order->get_billing_first_name();
+					$order_billing_last_name  = $order->get_billing_last_name();
+				} else {
+					$order_billing_email      = ( ! empty( $order->billing_email ) ) ? $order->billing_email : '';
+					$order_billing_first_name = ( ! empty( $order->billing_first_name ) ) ? $order->billing_first_name : '';
+					$order_billing_last_name  = ( ! empty( $order->billing_last_name ) ) ? $order->billing_last_name : '';
+				}
+
+				$sender_name  = $order_billing_first_name . ' ' . $order_billing_last_name;
+				$sender_email = $order_billing_email;
+
+				$sender_name = trim( $sender_name );
+				$sender      = ( ! empty( $sender_name ) ) ? $sender_name : '';
+				$sender     .= ( ! empty( $sender_name ) ) ? ' (' : '';
+				$sender     .= ( ! empty( $sender_email ) ) ? $sender_email : '';
+				$sender     .= ( ! empty( $sender_name ) ) ? ')' : '';
+				$from        = ' ' . __( 'from', 'woocommerce-smart-coupons' ) . ' ';
+			}
+
+			$subject_string  = __( "Congratulations! You've received coupons", 'woocommerce-smart-coupons' );
+			$subject_string  = ( get_option( 'smart_coupon_email_subject' ) && '' !== get_option( 'smart_coupon_email_subject' ) ) ? get_option( 'smart_coupon_email_subject' ) : $subject_string;
+			$subject_string .= ( ! empty( $sender ) ) ? $from . $sender : '';
+
+			$subject       = apply_filters( 'woocommerce_email_subject_gift_certificate', sprintf( '%1$s: %2$s', $blogname, $subject_string ) );
+			$email_heading = __( 'You have received coupons.', 'woocommerce-smart-coupons' );
+
+			if ( empty( $receiver_email ) ) {
+				$receiver_email = $sender_email;
+			}
+
+			$design           = get_option( 'wc_sc_setting_coupon_design', 'round-dashed' );
+			$background_color = get_option( 'wc_sc_setting_coupon_background_color', '#39cccc' );
+			$foreground_color = get_option( 'wc_sc_setting_coupon_foreground_color', '#30050b' );
+			$coupon_styles    = $this->get_coupon_styles( $design );
+
+			ob_start();
+
+			include apply_filters( 'woocommerce_combined_gift_certificates_email_template', 'templates/combined-email.php' );
+
+			$message = ob_get_clean();
+
+			if ( ! class_exists( 'WC_Email' ) ) {
+				include_once dirname( WC_PLUGIN_FILE ) . '/includes/emails/class-wc-email.php';
+			}
+
+			$mailer         = new WC_Email();
+			$mailer->id     = 'wc_sc_coupon';
+			$mailer->object = wc_get_order( $order_id );
+			$headers        = $mailer->get_headers();
+			$attachments    = $mailer->get_attachments();
+
+			wc_mail( $receiver_email, $subject, $message, $headers, $attachments );
 
 		}
 
@@ -2787,7 +2868,7 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 									GROUP_CONCAT(pm.meta_value order by pm.meta_id SEPARATOR '###') AS coupon_meta_value
 								FROM {$wpdb->prefix}posts as p JOIN {$wpdb->prefix}postmeta as pm ON (p.ID = pm.post_id
 									AND pm.meta_key IN (" . implode( ',', $header_placeholder ) . ') )
-								WHERE p.ID IN (' . implode( ',', $id_placeholder ) . ')
+								WHERE p.ID IN (' . implode( ',', $id_placeholder ) . ') AND pm.meta_value IS NOT NULL
 								GROUP BY p.id ORDER BY p.id',
 							array_merge( $headers, $post_ids )
 						),
@@ -2847,7 +2928,18 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 								} else {
 									$temp_data = $coupon_meta_value[ $index ];
 								}
-								$data[ $id ][ $key ] = $temp_data;
+								$data[ $id ][ $key ] = apply_filters(
+									'wc_sc_export_coupon_meta',
+									$temp_data,
+									array(
+										'coupon_id'   => $id,
+										'index'       => $index,
+										'meta_key'    => $key, // phpcs:ignore
+										'meta_value'  => $coupon_meta_value[ $index ], // phpcs:ignore
+										'meta_keys'   => $coupon_meta_key,
+										'meta_values' => $coupon_meta_value,
+									)
+								);
 							}
 						}
 					}
@@ -3396,7 +3488,7 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 
 		/**
 		 * Function to get coupon codes used in an order
-
+		 *
 		 * @param mixed $order Order object or order ID.
 		 * @return array $coupon_codes coupon codes used in order.
 		 */

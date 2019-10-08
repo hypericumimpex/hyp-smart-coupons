@@ -32,7 +32,7 @@ if ( ! class_exists( 'WC_SC_Gutenberg_Coupon_Block' ) ) {
 		/**
 		 * Constructor
 		 */
-		public function __construct() {
+		private function __construct() {
 
 			global $wp_version;
 			if ( ! function_exists( 'is_plugin_active' ) ) {

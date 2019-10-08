@@ -30,7 +30,7 @@ if ( ! class_exists( 'WC_SC_Product_Fields' ) ) {
 		/**
 		 * Constructor
 		 */
-		public function __construct() {
+		private function __construct() {
 
 			add_action( 'woocommerce_product_options_general_product_data', array( $this, 'woocommerce_product_options_coupons' ) );
 			add_action( 'save_post', array( $this, 'woocommerce_process_product_meta_coupons' ), 10, 2 );

@@ -855,7 +855,7 @@ if ( ! class_exists( 'WCS_SC_Compatibility' ) ) {
 				),
 			);
 
-			array_splice( $settings, ( count( $settings ) - 15 ), 0, $wc_subscriptions_options );
+			array_splice( $settings, ( count( $settings ) - 16 ), 0, $wc_subscriptions_options );
 
 			return $settings;
 

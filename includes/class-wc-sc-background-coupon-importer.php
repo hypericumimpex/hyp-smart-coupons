@@ -59,7 +59,7 @@ if ( ! class_exists( 'WC_SC_Background_Coupon_Importer' ) ) {
 		/**
 		 * Initiate new background process.
 		 */
-		public function __construct() {
+		private function __construct() {
 			// Uses unique prefix per blog so each blog has separate queue.
 			$this->prefix     = 'wp_' . get_current_blog_id();
 			$this->identifier = 'wc_sc_coupon_importer';
@@ -69,6 +69,7 @@ if ( ! class_exists( 'WC_SC_Background_Coupon_Importer' ) ) {
 			add_action( 'wp_ajax_wc_sc_download_csv', array( $this, 'ajax_download_csv' ) );
 			add_action( 'woo_sc_generate_coupon_csv', array( $this, 'woo_sc_generate_coupon_csv' ) );
 			add_action( 'woo_sc_import_coupons_from_csv', array( $this, 'woo_sc_import_coupons_from_csv' ) );
+			add_action( 'woocommerce_smart_coupons_send_combined_coupon_email', array( $this, 'send_scheduled_combined_email' ) );
 			add_action( 'action_scheduler_failed_action', array( $this, 'restart_failed_action' ) );
 
 			add_filter( 'heartbeat_send', array( $this, 'check_coupon_background_progress' ), 10, 2 );
@@ -655,6 +656,40 @@ if ( ! class_exists( 'WC_SC_Background_Coupon_Importer' ) ) {
 		}
 
 		/**
+		 * Function to send combined emails when receiver is the same.
+		 *
+		 * @param array $action_args Action arguments.
+		 */
+		public function send_scheduled_combined_email( $action_args = array() ) {
+
+			if ( empty( $action_args['receiver_email'] ) || empty( $action_args['coupon_ids'] ) || ! is_array( $action_args['coupon_ids'] ) ) {
+				return;
+			}
+
+			$receiver_email   = $action_args['receiver_email'];
+			$coupon_ids       = $action_args['coupon_ids'];
+			$receiver_details = array();
+
+			foreach ( $coupon_ids as $coupon_id ) {
+				$coupon = new WC_Coupon( $coupon_id );
+				if ( is_a( $coupon, 'WC_Coupon' ) ) {
+					if ( $this->is_wc_gte_30() ) {
+						$coupon_code = $coupon->get_code();
+					} else {
+						$coupon_code = ( ! empty( $coupon->code ) ) ? $coupon->code : '';
+					}
+					$receiver_details[] = array(
+						'code' => $coupon_code,
+					);
+				}
+			}
+
+			if ( ! empty( $receiver_details ) ) {
+				$this->send_combined_coupon_email( $receiver_email, $receiver_details );
+			}
+		}
+
+		/**
 		 * Calculate progress of background coupon process
 		 *
 		 * @return array $progress
@@ -793,6 +828,9 @@ if ( ! class_exists( 'WC_SC_Background_Coupon_Importer' ) ) {
 		 */
 		public function woo_sc_import_coupons_from_csv() {
 
+			$is_send_email             = get_site_option( 'smart_coupons_is_send_email', 'yes' );
+			$combine_emails            = get_site_option( 'smart_coupons_combine_emails', 'no' );
+			$is_email_imported_coupons = get_site_option( 'woo_sc_is_email_imported_coupons' );
 			$posted_data               = get_site_option( 'woo_sc_generate_coupon_posted_data', true );
 			$no_of_coupons_to_generate = $posted_data['no_of_coupons_to_generate'];
 
@@ -828,8 +866,9 @@ if ( ! class_exists( 'WC_SC_Background_Coupon_Importer' ) ) {
 						update_site_option( 'start_time_woo_sc', $batch_start_time );
 					}
 
-					$reading_completed       = false;
-					$no_of_remaining_coupons = -1;
+					$reading_completed         = false;
+					$no_of_remaining_coupons   = -1;
+					$combined_receiver_details = array();
 					for ( $no_of_coupons_created = 1; $no_of_coupons_created <= $no_of_coupons_to_generate; $no_of_coupons_created++ ) {
 
 						$result            = $wc_csv_coupon_import->parser->parse_data_by_row( $csv_file_handler, $csv_header, $file_position, $encoding );
@@ -847,6 +886,18 @@ if ( ! class_exists( 'WC_SC_Background_Coupon_Importer' ) ) {
 							);
 
 							$coupon_id = $this->create_coupon( $coupon_parsed_data );
+
+							if ( ! empty( $parsed_csv_data['customer_email'] ) && 'yes' === $is_send_email && 'yes' === $combine_emails && 'yes' === $is_email_imported_coupons ) {
+								$receiver_emails = explode( ',', $parsed_csv_data['customer_email'] );
+								foreach ( $receiver_emails as $receiver_email ) {
+									if ( ! isset( $combined_receiver_details[ $receiver_email ] ) || ! is_array( $combined_receiver_details[ $receiver_email ] ) ) {
+										$combined_receiver_details[ $receiver_email ] = array();
+									}
+									$combined_receiver_details[ $receiver_email ][] = array(
+										'code' => $parsed_csv_data['post_title'],
+									);
+								}
+							}
 							$counter++;
 						}
 
@@ -883,6 +934,35 @@ if ( ! class_exists( 'WC_SC_Background_Coupon_Importer' ) ) {
 								as_schedule_single_action( time(), 'woo_sc_import_coupons_from_csv' );
 							}
 							break;
+						}
+					}
+					if ( is_array( $combined_receiver_details ) && ! empty( $combined_receiver_details ) ) {
+
+						foreach ( $combined_receiver_details as $receiver_email => $coupon_codes ) {
+							$coupon_ids = array();
+							foreach ( $coupon_codes as $coupon_data ) {
+								$coupon_code = $coupon_data['code'];
+								$coupon      = new WC_Coupon( $coupon_code );
+								if ( is_a( $coupon, 'WC_Coupon' ) ) {
+									if ( $this->is_wc_gte_30() ) {
+										$coupon_id = $coupon->get_id();
+									} else {
+										$coupon_id = ( ! empty( $coupon->id ) ) ? $coupon->id : 0;
+									}
+									$coupon_ids[] = $coupon_id;
+								}
+							}
+							if ( ! empty( $receiver_email ) && ! empty( $coupon_ids ) ) {
+								$action_args = array(
+									'args' => array(
+										'receiver_email' => $receiver_email,
+										'coupon_ids'     => $coupon_ids,
+									),
+								);
+								if ( function_exists( 'as_schedule_single_action' ) ) {
+									as_schedule_single_action( time(), 'woocommerce_smart_coupons_send_combined_coupon_email', $action_args );
+								}
+							}
 						}
 					}
 				}
@@ -930,13 +1010,11 @@ if ( ! class_exists( 'WC_SC_Background_Coupon_Importer' ) ) {
 			$action      = ActionScheduler::store()->fetch_action( $action_id );
 			$action_hook = $action->get_hook();
 
-			if ( 'woo_sc_generate_coupon_csv' === $action_hook ) {
-				as_schedule_single_action( time() + MINUTE_IN_SECONDS, 'woo_sc_generate_coupon_csv' );
-			} elseif ( 'woo_sc_import_coupons_from_csv' === $action_hook ) {
-				as_schedule_single_action( time() + MINUTE_IN_SECONDS, 'woo_sc_import_coupons_from_csv' );
-			} elseif ( 'wc_sc_send_scheduled_coupon_email' === $action_hook ) {
+			if ( in_array( $action_hook, array( 'woo_sc_generate_coupon_csv', 'woo_sc_import_coupons_from_csv' ), true ) ) {
+				as_schedule_single_action( time() + MINUTE_IN_SECONDS, $action_hook );
+			} elseif ( in_array( $action_hook, array( 'wc_sc_send_scheduled_coupon_email', 'woocommerce_smart_coupons_send_combined_coupon_email' ), true ) ) {
 				$action_args = $action->get_args();
-				as_schedule_single_action( time() + MINUTE_IN_SECONDS, 'wc_sc_send_scheduled_coupon_email', $action_args );
+				as_schedule_single_action( time() + MINUTE_IN_SECONDS, $action_hook, $action_args );
 			}
 		}
 

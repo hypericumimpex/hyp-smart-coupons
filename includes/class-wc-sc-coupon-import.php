@@ -212,6 +212,7 @@ if ( ! class_exists( 'WC_SC_Coupon_Import' ) ) {
 						$_POST['export_file'] = $csv_file_data;
 
 						if ( ! isset( $_POST['no_of_coupons_to_generate'] ) ) {
+							ini_set( 'auto_detect_line_endings', true ); // phpcs:ignore
 							$fp = file( $file );
 							if ( is_array( $fp ) && ! empty( $fp ) ) {
 								$_POST['no_of_coupons_to_generate'] = count( $fp ) - 1;

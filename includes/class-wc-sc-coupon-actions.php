@@ -30,7 +30,7 @@ if ( ! class_exists( 'WC_SC_Coupon_Actions' ) ) {
 		/**
 		 * Constructor
 		 */
-		public function __construct() {
+		private function __construct() {
 
 			add_filter( 'woocommerce_add_cart_item', array( $this, 'modify_cart_item_data_in_add_to_cart' ), 15, 2 );
 			add_filter( 'woocommerce_get_cart_item_from_session', array( $this, 'modify_cart_item_in_session' ), 15, 3 );

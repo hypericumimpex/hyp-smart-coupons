@@ -30,7 +30,7 @@ if ( ! class_exists( 'WC_SC_Purchase_Credit' ) ) {
 		/**
 		 * Constructor
 		 */
-		public function __construct() {
+		private function __construct() {
 
 			add_action( 'woocommerce_single_product_summary', array( $this, 'call_for_credit_form' ), 20 );
 			add_filter( 'woocommerce_call_for_credit_form_template', array( $this, 'woocommerce_call_for_credit_form_template_path' ) );
