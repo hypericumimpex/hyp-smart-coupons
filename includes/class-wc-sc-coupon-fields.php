@@ -4,7 +4,7 @@
  *
  * @author      StoreApps
  * @since       3.3.0
- * @version     1.0
+ * @version     1.1.0
  *
  * @package     woocommerce-smart-coupons/includes/
  */
@@ -32,6 +32,7 @@ if ( ! class_exists( 'WC_SC_Coupon_Fields' ) ) {
 		 */
 		private function __construct() {
 
+			add_action( 'add_meta_boxes', array( $this, 'woocommerce_smart_coupons_add_meta_box' ) );
 			add_action( 'woocommerce_coupon_options', array( $this, 'woocommerce_smart_coupon_options' ) );
 			add_action( 'woocommerce_coupon_options_usage_restriction', array( $this, 'sc_woocommerce_coupon_options_usage_restriction' ) );
 			add_filter( 'woocommerce_coupon_discount_types', array( $this, 'add_smart_coupon_discount_type' ) );
@@ -85,6 +86,56 @@ if ( ! class_exists( 'WC_SC_Coupon_Fields' ) ) {
 			}
 
 			return self::$instance;
+		}
+
+		/**
+		 * Add coupon shareable link metabox on coupon edit page.
+		 */
+		public function woocommerce_smart_coupons_add_meta_box() {
+			global $pagenow, $typenow;
+
+			if ( 'post.php' === $pagenow && 'shop_coupon' === $typenow ) {
+				add_meta_box( 'sc-share-link', __( 'Coupon shareable link', 'woocommerce-smart-coupons' ), array( $this, 'wc_sc_shareable_link' ), 'shop_coupon', 'side', 'default' );
+			}
+		}
+
+		/**
+		 * Content for coupon shareable link metabox on coupon edit page.
+		 */
+		public function wc_sc_shareable_link() {
+			global $post;
+
+			if ( empty( $post->post_title ) ) {
+				return;
+			}
+
+			$coupon_share_url = home_url( '/?coupon-code=' . $post->post_title );
+			?>
+			<style type="text/css">
+				#sc-share-link {
+					background-color: #f0fff0;
+				}
+			</style>
+			<h2 style="padding: unset;">
+				<?php
+					echo esc_html__( 'Copy the following link and share it to apply this coupon via URL.', 'woocommerce-smart-coupons' );
+				?>
+			</h2><br>
+			<div class="sc-shareable-link">
+				<textarea id="coupon-link" readonly="readonly" rows="1" cols="25"><?php echo esc_html( $coupon_share_url ); ?></textarea>
+				<br><br>
+				<div class="copy-button" style="float: right;">
+					<button class="button button-primary sc-click-to-copy-btn" id="sc-click-to-copy-btn" onclick="sc_copy_coupon_link_to_clipboard()" data-clipboard-action="copy" data-clipboard-target="#coupon-link"><?php echo esc_html__( 'Click to copy', 'woocommerce-smart-coupons' ); ?></button>
+				</div>
+				<br><br>
+				<div class="sc-multiple-coupons">
+					<?php echo esc_html__( 'You can also apply multiple coupon codes via a single URL. For example:', 'woocommerce-smart-coupons' ); ?><br>
+					<?php
+						echo esc_html( home_url( '/?coupon-code=coupon1,coupon2,coupon3' ) );
+					?>
+				</div>
+			</div>
+			<?php
 		}
 
 		/**
@@ -408,6 +459,10 @@ if ( ! class_exists( 'WC_SC_Coupon_Fields' ) ) {
 			$post_wc_sc_add_product_ids         = ( isset( $_POST['wc_sc_add_product_ids'] ) ) ? wc_clean( wp_unslash( $_POST['wc_sc_add_product_ids'] ) ) : array(); // phpcs:ignore
 			$post_wc_sc_product_discount_amount = ( isset( $_POST['wc_sc_product_discount_amount'] ) ) ? wc_clean( wp_unslash( $_POST['wc_sc_product_discount_amount'] ) ) : ''; // phpcs:ignore
 			$post_wc_sc_product_discount_type   = ( isset( $_POST['wc_sc_product_discount_type'] ) ) ? wc_clean( wp_unslash( $_POST['wc_sc_product_discount_type'] ) ) : 'percent'; // phpcs:ignore
+			$post_original_post_status          = ( isset( $_POST['original_post_status'] ) ) ? wc_clean( wp_unslash( $_POST['original_post_status'] ) ) : ''; // phpcs:ignore
+			$post_post_status                   = ( isset( $_POST['post_status'] ) ) ? wc_clean( wp_unslash( $_POST['post_status'] ) ) : ''; // phpcs:ignore
+			$post_discount_type                 = ( isset( $_POST['discount_type'] ) ) ? wc_clean( wp_unslash( $_POST['discount_type'] ) ) : ''; // phpcs:ignore
+			$post_coupon_amount                 = ( isset( $_POST['coupon_amount'] ) ) ? wc_clean( wp_unslash( $_POST['coupon_amount'] ) ) : 0; // phpcs:ignore
 
 			if ( isset( $_POST['sc_restrict_to_new_user'] ) ) { // phpcs:ignore
 				update_post_meta( $post_id, 'sc_restrict_to_new_user', $post_sc_restrict_to_new_user );
@@ -501,6 +556,10 @@ if ( ! class_exists( 'WC_SC_Coupon_Fields' ) ) {
 			if( isset( $_POST['wc_sc_expiry_time'] ) ) { // phpcs:ignore
 				$expiry_time = wc_clean( wp_unslash( $_POST['wc_sc_expiry_time'] ) ); // phpcs:ignore
 				update_post_meta( $post_id, 'wc_sc_expiry_time', $expiry_time );
+			}
+
+			if ( ! empty( $post_discount_type ) && 'smart_coupon' === $post_discount_type && ! empty( $post_original_post_status ) && 'auto-draft' === $post_original_post_status && ! empty( $post_coupon_amount ) ) {
+				update_post_meta( $post_id, 'wc_sc_original_amount', $post_coupon_amount );
 			}
 
 		}
@@ -989,6 +1048,24 @@ if ( ! class_exists( 'WC_SC_Coupon_Fields' ) ) {
 
 				if ( ! wp_script_is( 'jquery-ui-timepicker' ) ) {
 					wp_enqueue_script( 'jquery-ui-timepicker' );
+				}
+
+				$screen = get_current_screen();
+				if ( 'shop_coupon' === $screen->id ) {
+					?>
+					<script type="text/javascript" class="sc-copy">
+						function sc_copy_coupon_link_to_clipboard() {
+							var copyText = document.getElementById("coupon-link");
+							jQuery.trim(copyText);
+							copyText.select();
+							document.execCommand("copy");
+							document.getElementById("sc-click-to-copy-btn").innerHTML = '<?php echo esc_html__( 'Copied!', 'woocommerce-smart-coupons' ); ?>';
+							setTimeout(function(){
+								document.getElementById("sc-click-to-copy-btn").innerHTML = '<?php echo esc_html__( 'Click To Copy', 'woocommerce-smart-coupons' ); ?>';
+							}, 1000);
+						}
+					</script>
+					<?php
 				}
 			}
 

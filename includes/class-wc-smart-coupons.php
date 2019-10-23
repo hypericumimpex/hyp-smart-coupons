@@ -4,7 +4,7 @@
  *
  * @author      StoreApps
  * @since       3.3.0
- * @version     1.0
+ * @version     1.1.1
  *
  * @package     woocommerce-smart-coupons/includes/
  */
@@ -197,7 +197,7 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 			include_once 'class-wc-sc-order-fields.php';
 			include_once 'class-wc-sc-coupon-process.php';
 			include_once 'class-wc-sc-global-coupons.php';
-			include_once 'class-wc-sc-duplicate-coupon.php';
+			include_once 'class-wc-sc-admin-coupons-dashboard-actions.php';
 			include_once 'class-wc-sc-privacy.php';
 			include_once 'class-wc-sc-coupon-actions.php';
 			include_once 'class-wc-sc-coupons-by-location.php';
@@ -247,7 +247,10 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 			add_option( 'wc_sc_setting_max_coupon_to_show', '5', '', 'no' );
 			add_option( 'smart_coupons_show_invalid_coupons_on_myaccount', 'no', '', 'no' );
 			add_option( 'smart_coupons_sell_store_credit_at_less_price', 'no', '', 'no' );
+			add_option( 'smart_coupons_display_coupon_receiver_details_form', 'yes', '', 'no' );
 
+			$custom_design_default_css = $this->get_custom_design_default_css();
+			add_option( 'wc_sc_custom_design_css', $custom_design_default_css, '', 'no' );
 		}
 
 		/**
@@ -981,11 +984,17 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 		 */
 		public function get_coupon_style_attributes() {
 
-			$styles = array(
-				'background-color: ' . get_option( 'wc_sc_setting_coupon_background_color', '#39cccc' ) . ' !important;',
-				'color: ' . get_option( 'wc_sc_setting_coupon_foreground_color', '#30050b' ) . ' !important;',
-				'border-color: ' . get_option( 'wc_sc_setting_coupon_foreground_color', '#30050b' ) . ' !important;',
-			);
+			$styles = array();
+
+			$coupon_design = get_option( 'wc_sc_setting_coupon_design', 'round-dashed' );
+
+			if ( 'custom-design' !== $coupon_design ) {
+				$styles = array(
+					'background-color: ' . get_option( 'wc_sc_setting_coupon_background_color', '#39cccc' ) . ' !important;',
+					'color: ' . get_option( 'wc_sc_setting_coupon_foreground_color', '#30050b' ) . ' !important;',
+					'border-color: ' . get_option( 'wc_sc_setting_coupon_foreground_color', '#30050b' ) . ' !important;',
+				);
+			}
 
 			$styles = implode( ' ', $styles );
 
@@ -2526,6 +2535,11 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 				$exclude_product_categories = ( ! empty( $coupon_excluded_product_categories ) ) ? $coupon_excluded_product_categories : array();
 
 				update_post_meta( $smart_coupon_id, 'discount_type', $type );
+
+				if ( 'smart_coupon' === $type ) {
+					update_post_meta( $smart_coupon_id, 'wc_sc_original_amount', $amount );
+				}
+
 				update_post_meta( $smart_coupon_id, 'coupon_amount', $amount );
 				update_post_meta( $smart_coupon_id, 'individual_use', $individual_use );
 				update_post_meta( $smart_coupon_id, 'minimum_amount', $minimum_amount );
@@ -2662,22 +2676,23 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 			}
 
 			?>
-				<style type="text/css">
-					button#export_coupons {
-						padding: 0px 5px;
-					}
-					button#export_coupons > span.dashicons {
-						transform: translateY(15%);
-					}
-				</style>
-				<div class="alignright" style="margin-top: 1px;" >
-					<?php
-					if ( ! empty( $_SERVER['QUERY_STRING'] ) ) {
-						echo '<input type="hidden" name="sc_export_query_args" value="' . esc_attr( wc_clean( wp_unslash( $_SERVER['QUERY_STRING'] ) ) ) . '">'; // phpcs:ignore
-					}
-					?>
-					<button type="submit" class="button" id="export_coupons" name="export_coupons" value="<?php echo esc_attr__( 'Export', 'woocommerce-smart-coupons' ); ?>"><span class="dashicons dashicons-upload"></span><?php echo esc_html__( 'Export', 'woocommerce-smart-coupons' ); ?></button>
-				</div>
+			<style type="text/css">
+				button#export_coupons {
+					padding: 0px 5px;
+					background-color: #f0fff0;
+				}
+				button#export_coupons > span.dashicons {
+					transform: translateY(15%);
+				}
+			</style>
+			<div class="alignright" style="margin-top: 1px;" >
+				<?php
+				if ( ! empty( $_SERVER['QUERY_STRING'] ) ) {
+					echo '<input type="hidden" name="sc_export_query_args" value="' . esc_attr( wc_clean( wp_unslash( $_SERVER['QUERY_STRING'] ) ) ) . '">'; // phpcs:ignore
+				}
+				?>
+				<button type="submit" class="button" id="export_coupons" name="export_coupons" value="<?php echo esc_attr__( 'Export', 'woocommerce-smart-coupons' ); ?>"><span class="dashicons dashicons-upload"></span><?php echo esc_html__( 'Export', 'woocommerce-smart-coupons' ); ?></button>
+			</div>
 			<?php
 		}
 
@@ -3354,12 +3369,13 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 		public function get_wc_sc_coupon_styles() {
 
 			$all_styles = array(
-				'inner'        => __( 'Style 1', 'woocommerce-smart-coupons' ),
-				'round-corner' => __( 'Style 2', 'woocommerce-smart-coupons' ),
-				'round-dashed' => __( 'Style 3', 'woocommerce-smart-coupons' ),
-				'outer-dashed' => __( 'Style 4', 'woocommerce-smart-coupons' ),
-				'left'         => __( 'Style 5', 'woocommerce-smart-coupons' ),
-				'bottom'       => __( 'Style 6', 'woocommerce-smart-coupons' ),
+				'inner'         => __( 'Style 1', 'woocommerce-smart-coupons' ),
+				'round-corner'  => __( 'Style 2', 'woocommerce-smart-coupons' ),
+				'round-dashed'  => __( 'Style 3', 'woocommerce-smart-coupons' ),
+				'outer-dashed'  => __( 'Style 4', 'woocommerce-smart-coupons' ),
+				'left'          => __( 'Style 5', 'woocommerce-smart-coupons' ),
+				'bottom'        => __( 'Style 6', 'woocommerce-smart-coupons' ),
+				'custom-design' => __( 'Custom Style', 'woocommerce-smart-coupons' ),
 			);
 
 			return apply_filters( 'wc_sc_get_wc_sc_coupon_styles', $all_styles );
@@ -3382,21 +3398,31 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 
 			if ( empty( $style_name ) ) {
 				foreach ( $all_styles as $style => $style_label ) {
-					$file = trailingslashit( WP_PLUGIN_DIR . '/' . WC_SC_PLUGIN_DIRNAME ) . 'assets/css/wc-sc-style-' . $style . $suffix . '.css';
+					if ( 'custom-design' === $style ) {
+						$custom_design_css = get_option( 'wc_sc_custom_design_css', '' );
+						echo $custom_design_css; // phpcs:ignore
+					} else {
+						$file = trailingslashit( WP_PLUGIN_DIR . '/' . WC_SC_PLUGIN_DIRNAME ) . 'assets/css/wc-sc-style-' . $style . $suffix . '.css';
+						if ( file_exists( $file ) ) {
+							include $file;
+						} else {
+							/* translators: File path */
+							$this->log( 'error', sprintf( __( 'File not found %s', 'woocommerce-smart-coupons' ), '<code>' . $file . '</code>' ) . ' ' . __FILE__ . ' ' . __LINE__ );
+						}
+					}
+				}
+			} else {
+				if ( 'custom-design' === $style_name ) {
+					$custom_design_css = get_option( 'wc_sc_custom_design_css', '' );
+					echo $custom_design_css;  // phpcs:ignore
+				} else {
+					$file = trailingslashit( WP_PLUGIN_DIR . '/' . WC_SC_PLUGIN_DIRNAME ) . 'assets/css/wc-sc-style-' . $style_name . $suffix . '.css';
 					if ( file_exists( $file ) ) {
 						include $file;
 					} else {
 						/* translators: File path */
 						$this->log( 'error', sprintf( __( 'File not found %s', 'woocommerce-smart-coupons' ), '<code>' . $file . '</code>' ) . ' ' . __FILE__ . ' ' . __LINE__ );
 					}
-				}
-			} else {
-				$file = trailingslashit( WP_PLUGIN_DIR . '/' . WC_SC_PLUGIN_DIRNAME ) . 'assets/css/wc-sc-style-' . $style_name . $suffix . '.css';
-				if ( file_exists( $file ) ) {
-					include $file;
-				} else {
-					/* translators: File path */
-					$this->log( 'error', sprintf( __( 'File not found %s', 'woocommerce-smart-coupons' ), '<code>' . $file . '</code>' ) . ' ' . __FILE__ . ' ' . __LINE__ );
 				}
 			}
 
@@ -3509,6 +3535,24 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 				}
 			}
 			return $coupon_codes;
+		}
+
+		/**
+		 * Function to get default CSS for custom coupon design
+		 *
+		 * @return string $default_css Default custom CSS.
+		 */
+		public function get_custom_design_default_css() {
+			$default_css = '/* Coupon style for custom-design */
+.coupon-container.custom-design {
+    background: #39cccc;
+}
+
+.coupon-container.custom-design .coupon-content {
+    border: solid 1px lightgrey;
+    color: #30050b;
+}';
+			return apply_filters( 'wc_sc_coupon_custom_design_default_css', $default_css );
 		}
 
 	}//end class

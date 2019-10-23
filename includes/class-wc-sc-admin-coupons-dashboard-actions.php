@@ -1,10 +1,10 @@
 <?php
 /**
- * Duplication of coupon feature
+ * Actions for coupons dashboard
  *
  * @author      StoreApps
- * @since       3.3.0
- * @version     1.0
+ * @since       4.4.0
+ * @version     1.0.0
  * @package     WooCommerce Smart Coupons
  */
 
@@ -12,15 +12,15 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit; // Exit if accessed directly.
 }
 
-if ( ! class_exists( 'WC_SC_Duplicate_Coupon' ) ) {
+if ( ! class_exists( 'WC_SC_Admin_Coupons_Dashboard_Actions' ) ) {
 
 	/**
-	 * Class for handling duplication of coupon
+	 * Class for actions on coupons dashboard
 	 */
-	class WC_SC_Duplicate_Coupon {
+	class WC_SC_Admin_Coupons_Dashboard_Actions {
 
 		/**
-		 * Variable to hold instance of WC_SC_Duplicate_Coupon
+		 * Variable to hold instance of WC_SC_Admin_Coupons_Dashboard_Actions
 		 *
 		 * @var $instance
 		 */
@@ -31,8 +31,9 @@ if ( ! class_exists( 'WC_SC_Duplicate_Coupon' ) ) {
 		 */
 		private function __construct() {
 
-			add_filter( 'post_row_actions', array( $this, 'woocommerce_duplicate_coupon_link_row' ), 1, 2 );
+			add_filter( 'post_row_actions', array( $this, 'woocommerce_sc_add_custom_actions' ), 1, 2 );
 			add_action( 'admin_action_duplicate_coupon', array( $this, 'woocommerce_duplicate_coupon_action' ) );
+			add_action( 'admin_footer', array( $this, 'add_post_row_script' ) );
 
 		}
 
@@ -59,9 +60,9 @@ if ( ! class_exists( 'WC_SC_Duplicate_Coupon' ) ) {
 		}
 
 		/**
-		 * Get single instance of WC_SC_Duplicate_Coupon
+		 * Get single instance of WC_SC_Admin_Coupons_Dashboard_Actions
 		 *
-		 * @return WC_SC_Duplicate_Coupon Singleton object of WC_SC_Duplicate_Coupon
+		 * @return WC_SC_Admin_Coupons_Dashboard_Actions Singleton object of WC_SC_Admin_Coupons_Dashboard_Actions
 		 */
 		public static function get_instance() {
 			// Check if instance is already exists.
@@ -73,14 +74,14 @@ if ( ! class_exists( 'WC_SC_Duplicate_Coupon' ) ) {
 		}
 
 		/**
-		 * Funtion to add "duplicate" action for coupons
+		 * Add Smart Coupons actions on WC Coupons dashboard
 		 *
 		 * @param array   $actions Array of existing actions.
 		 * @param WP_Post $post Post object.
 		 * @return array  $actions including duplicate action of coupons
 		 */
-		public function woocommerce_duplicate_coupon_link_row( $actions, $post ) {
-			if ( function_exists( 'duplicate_post_plugin_activation' ) ) {
+		public function woocommerce_sc_add_custom_actions( $actions, $post ) {
+			if ( 'shop_coupon' !== $post->post_type ) {
 				return $actions;
 			}
 
@@ -88,12 +89,19 @@ if ( ! class_exists( 'WC_SC_Duplicate_Coupon' ) ) {
 				return $actions;
 			}
 
-			if ( 'shop_coupon' !== $post->post_type ) {
-				return $actions;
-			}
+			$coupon_code      = $post->post_title;
+			$coupon_id        = $post->ID;
+			$coupon_share_url = home_url( '/?coupon-code=' . $coupon_code );
 
-			$actions['duplicate'] = '<a href="' . wp_nonce_url( admin_url( 'admin.php?action=duplicate_coupon&amp;post=' . $post->ID ), 'woocommerce-duplicate-coupon_' . $post->ID ) . '" title="' . __( 'Make a duplicate from this coupon', 'woocommerce-smart-coupons' )
-			. '" rel="permalink">' . __( 'Duplicate', 'woocommerce-smart-coupons' ) . '</a>';
+			$actions['copy'] = '<a href="#" id="sc-click-to-copy-' . $coupon_id . '" onclick="sc_copy_to_clipboard(' . "'" . $coupon_code . "'" . ')" data-clipboard-action="copy" data-clipboard-target=".row-title" title="' . __( 'Copy this coupon code', 'woocommerce-smart-coupons' ) . '" rel="permalink">' . __( 'Copy', 'woocommerce-smart-coupons' ) . '</a>';
+
+			$actions['share-link'] = '<a href="#" id="sc-click-to-share-' . $coupon_id . '" onclick="sc_copy_to_clipboard(' . "'" . $coupon_share_url . "'" . ')" data-clipboard-action="copy" data-clipboard-target=".row-title" title="' . __( 'Copy coupon shareable link and apply via URL', 'woocommerce-smart-coupons' ) . '" rel="permalink">' . __( 'Get shareable link', 'woocommerce-smart-coupons' ) . '</a>';
+
+			if ( function_exists( 'duplicate_post_plugin_activation' ) ) {
+				return $actions;
+			} else {
+				$actions['duplicate'] = '<a href="' . wp_nonce_url( admin_url( 'admin.php?action=duplicate_coupon&amp;post=' . $coupon_id ), 'woocommerce-duplicate-coupon_' . $coupon_id ) . '" title="' . __( 'Make a duplicate from this coupon', 'woocommerce-smart-coupons' ) . '" rel="permalink">' . __( 'Duplicate', 'woocommerce-smart-coupons' ) . '</a>';
+			}
 
 			return $actions;
 		}
@@ -126,7 +134,6 @@ if ( ! class_exists( 'WC_SC_Duplicate_Coupon' ) ) {
 			}
 		}
 
-
 		/**
 		 * Function to duplicate post taxonomies for the duplicate coupon
 		 *
@@ -137,11 +144,13 @@ if ( ! class_exists( 'WC_SC_Duplicate_Coupon' ) ) {
 		public function woocommerce_duplicate_coupon_post_taxonomies( $id, $new_id, $post_type ) {
 			global $wpdb;
 			$taxonomies = get_object_taxonomies( $post_type );
+
 			foreach ( $taxonomies as $taxonomy ) {
 				$post_terms       = wp_get_object_terms( $id, $taxonomy );
 				$post_terms_count = count( $post_terms );
+
 				for ( $i = 0; $i < $post_terms_count; $i++ ) {
-						wp_set_object_terms( $new_id, $post_terms[ $i ]->slug, $taxonomy, true );
+					wp_set_object_terms( $new_id, $post_terms[ $i ]->slug, $taxonomy, true );
 				}
 			}
 		}
@@ -171,47 +180,47 @@ if ( ! class_exists( 'WC_SC_Duplicate_Coupon' ) ) {
 				$suffix      = __( '(Copy)', 'woocommerce-smart-coupons' );
 			}
 
-				$new_post_type         = $post->post_type;
-				$post_content          = str_replace( "'", "''", $post->post_content );
-				$post_content_filtered = str_replace( "'", "''", $post->post_content_filtered );
-				$post_excerpt          = str_replace( "'", "''", $post->post_excerpt );
-				$post_title            = strtolower( str_replace( "'", "''", $post->post_title ) . $suffix );
-				$post_name             = str_replace( "'", "''", $post->post_name );
-				$comment_status        = str_replace( "'", "''", $post->comment_status );
-				$ping_status           = str_replace( "'", "''", $post->ping_status );
+			$new_post_type         = $post->post_type;
+			$post_content          = str_replace( "'", "''", $post->post_content );
+			$post_content_filtered = str_replace( "'", "''", $post->post_content_filtered );
+			$post_excerpt          = str_replace( "'", "''", $post->post_excerpt );
+			$post_title            = strtolower( str_replace( "'", "''", $post->post_title ) . $suffix );
+			$post_name             = str_replace( "'", "''", $post->post_name );
+			$comment_status        = str_replace( "'", "''", $post->comment_status );
+			$ping_status           = str_replace( "'", "''", $post->ping_status );
 
-				$wpdb->insert(
-					$wpdb->posts,
-					array(
-						'post_author'           => $new_post_author->ID,
-						'post_date'             => $new_post_date,
-						'post_date_gmt'         => $new_post_date_gmt,
-						'post_content'          => $post_content,
-						'post_content_filtered' => $post_content_filtered,
-						'post_title'            => $post_title,
-						'post_excerpt'          => $post_excerpt,
-						'post_status'           => $post_status,
-						'post_type'             => $new_post_type,
-						'comment_status'        => $comment_status,
-						'ping_status'           => $ping_status,
-						'post_password'         => $post->post_password,
-						'to_ping'               => $post->to_ping,
-						'pinged'                => $post->pinged,
-						'post_modified'         => $new_post_date,
-						'post_modified_gmt'     => $new_post_date_gmt,
-						'post_parent'           => $post_parent,
-						'menu_order'            => $post->menu_order,
-						'post_mime_type'        => $post->post_mime_type,
-					)
-				); // WPCS: db call ok.
+			$wpdb->insert(
+				$wpdb->posts,
+				array(
+					'post_author'           => $new_post_author->ID,
+					'post_date'             => $new_post_date,
+					'post_date_gmt'         => $new_post_date_gmt,
+					'post_content'          => $post_content,
+					'post_content_filtered' => $post_content_filtered,
+					'post_title'            => $post_title,
+					'post_excerpt'          => $post_excerpt,
+					'post_status'           => $post_status,
+					'post_type'             => $new_post_type,
+					'comment_status'        => $comment_status,
+					'ping_status'           => $ping_status,
+					'post_password'         => $post->post_password,
+					'to_ping'               => $post->to_ping,
+					'pinged'                => $post->pinged,
+					'post_modified'         => $new_post_date,
+					'post_modified_gmt'     => $new_post_date_gmt,
+					'post_parent'           => $post_parent,
+					'menu_order'            => $post->menu_order,
+					'post_mime_type'        => $post->post_mime_type,
+				)
+			); // WPCS: db call ok.
 
-				$new_post_id = $wpdb->insert_id;
+			$new_post_id = $wpdb->insert_id;
 
-				$this->woocommerce_duplicate_coupon_post_taxonomies( $post->ID, $new_post_id, $post->post_type );
+			$this->woocommerce_duplicate_coupon_post_taxonomies( $post->ID, $new_post_id, $post->post_type );
 
-				$this->woocommerce_duplicate_coupon_post_meta( $post->ID, $new_post_id );
+			$this->woocommerce_duplicate_coupon_post_meta( $post->ID, $new_post_id );
 
-				return $new_post_id;
+			return $new_post_id;
 		}
 
 		/**
@@ -222,12 +231,12 @@ if ( ! class_exists( 'WC_SC_Duplicate_Coupon' ) ) {
 		 */
 		public function woocommerce_get_coupon_to_duplicate( $id ) {
 			global $wpdb;
-				$post = $wpdb->get_results( $wpdb->prepare( "SELECT * FROM $wpdb->posts WHERE ID=%d", $id ) ); // WPCS: cache ok, db call ok.
+			$post = $wpdb->get_results( $wpdb->prepare( "SELECT * FROM $wpdb->posts WHERE ID=%d", $id ) ); // WPCS: cache ok, db call ok.
 			if ( isset( $post->post_type ) && 'revision' === $post->post_type ) {
 				$id   = $post->post_parent;
 				$post = $wpdb->get_results( $wpdb->prepare( "SELECT * FROM $wpdb->posts WHERE ID=%d", $id ) ); // WPCS: cache ok, db call ok.
 			}
-				return $post[0];
+			return $post[0];
 		}
 
 		/**
@@ -267,7 +276,29 @@ if ( ! class_exists( 'WC_SC_Duplicate_Coupon' ) ) {
 		public function woocommerce_duplicate_coupon_action() {
 			$this->woocommerce_duplicate_coupon();
 		}
+
+		/**
+		 * Function to copy and share coupon via jQuery.
+		 */
+		public function add_post_row_script() {
+			$screen = get_current_screen();
+			if ( 'edit-shop_coupon' === $screen->id ) {
+				?>
+				<script type="text/javascript" class="sc-copy-share">
+					function sc_copy_to_clipboard(copyElement) {
+						var copyText = copyElement;
+						var temp = jQuery('<input>');
+						jQuery("body").append(temp);
+						temp.val(copyText).select();
+						document.execCommand("copy");
+						temp.remove();
+					}
+				</script>
+				<?php
+			}
+		}
+
 	}
 }
 
-WC_SC_Duplicate_Coupon::get_instance();
+WC_SC_Admin_Coupons_Dashboard_Actions::get_instance();

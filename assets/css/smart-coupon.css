@@ -45,6 +45,10 @@ span.wc-sc-coupon-preview-container {
 	margin: 0 0 0 1em;
 }
 
+.wc_sc_custom_design_css_doc_div {
+	margin: 15px 0;
+}
+
 /*Shortcode fields*/
 #coupon-selector #coupon-option label span {
 	display: inline-block;
@@ -168,6 +172,19 @@ a#single_multi {
 	padding: .5em 1em 0 !important;
 	background-color: #f7f6f7;
 }
+tr.wc_sc_custom_design_css_wrapper .CodeMirror + span.wc-sc-coupon-preview-container {
+	top: 15px;
+}
+
+tr.wc_sc_custom_design_css_wrapper td.forminp.forminp-textarea {
+	position: relative;
+}
+
+tr.wc_sc_custom_design_css_wrapper .CodeMirror {
+	width: 100%;
+	max-width: 400px;
+	height: 200px;
+}
 
 @media (min-width: 768px) {
 	.sc_info_box {
@@ -190,6 +207,10 @@ a#single_multi {
 	label[for="smart_coupons_schedule_store_credit"] span.woocommerce-help-tip {
 		float: left;
 		margin: 1px 4px 1px -1.7em !important;
+	}
+
+	tr.wc_sc_custom_design_css_wrapper .CodeMirror + span.wc-sc-coupon-preview-container {
+		left: 415px;
 	}
 }
 
@@ -282,19 +303,13 @@ input#credit_called {
 	display: inline-block;
 }
 
-@media screen and (min-width: 320px) and (max-width: 479px) {
+@media screen and (max-width: 767px) {
 	.wc-sc-description {
 		margin-left: 0;
 	}
-}
-@media screen and (min-width: 480px) and (max-width: 639px) {
-	.wc-sc-description {
-		margin-left: 0;
-	}
-}
-@media screen and (min-width: 640px) and (max-width: 767px) {
-	.wc-sc-description {
-		margin-left: 0;
+	tr.wc_sc_custom_design_css_wrapper .CodeMirror + span.wc-sc-coupon-preview-container {
+		position: static;
+		margin-top: 15px;
 	}
 }
 @media screen and (min-width: 768px) and (max-width: 799px) {

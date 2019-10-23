@@ -4,7 +4,7 @@
  *
  * @author      StoreApps
  * @since       3.3.0
- * @version     1.1
+ * @version     1.1.1
  * @package     WooCommerce Smart Coupons
  */
 
@@ -855,7 +855,7 @@ if ( ! class_exists( 'WCS_SC_Compatibility' ) ) {
 				),
 			);
 
-			array_splice( $settings, ( count( $settings ) - 16 ), 0, $wc_subscriptions_options );
+			array_splice( $settings, ( count( $settings ) - 17 ), 0, $wc_subscriptions_options );
 
 			return $settings;
 

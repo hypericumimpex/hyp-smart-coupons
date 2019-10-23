@@ -179,7 +179,12 @@ if ( ! class_exists( 'WC_SC_Admin_Pages' ) ) {
 
 			wp_enqueue_style( 'woocommerce_admin_menu_styles', WC()->plugin_url() . '/assets/css/menu.css', array(), WC()->version );
 			wp_enqueue_style( 'woocommerce_admin_styles', WC()->plugin_url() . '/assets/css/admin.css', array(), WC()->version );
-			wp_enqueue_style( 'jquery-ui-style', '//code.jquery.com/ui/' . $jquery_version . '/themes/smoothness/jquery-ui.css', array(), $jquery_version );
+			if ( ! wp_style_is( 'jquery-ui-style', 'registered' ) ) {
+				wp_register_style( 'jquery-ui-style', WC()->plugin_url() . '/assets/css/jquery-ui/jquery-ui' . $suffix . '.css', array(), WC()->version );
+			}
+			if ( ! wp_style_is( 'jquery-ui-style' ) ) {
+				wp_enqueue_style( 'jquery-ui-style' );
+			}
 
 			$woocommerce_admin_params = array(
 				/* translators: Decimal point */

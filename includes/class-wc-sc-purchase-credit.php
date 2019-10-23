@@ -4,7 +4,7 @@
  *
  * @author      StoreApps
  * @since       3.3.0
- * @version     1.0
+ * @version     1.1.0
  *
  * @package     woocommerce-smart-coupons/includes/
  */
@@ -566,8 +566,16 @@ if ( ! class_exists( 'WC_SC_Purchase_Credit' ) ) {
 						if ( array_key_exists( $discount_type, $all_discount_types ) || ( 'yes' === $pick_price_of_prod && '' === $price ) || ( 'yes' === $pick_price_of_prod && '' !== $price && $coupon_amount > 0 ) ) {
 
 							if ( ! $form_started ) {
+								$is_show_coupon_receiver_form = get_option( 'smart_coupons_display_coupon_receiver_details_form', 'yes' );
+								if ( 'no' === $is_show_coupon_receiver_form ) {
+									?>
+									<div class="gift-certificate sc_info_box">
+										<p><?php echo esc_html__( 'Your order contains coupons. You will receive them after completion of this order.', 'woocommerce-smart-coupons' ); ?></p>
+									</div>
+									<?php
+								}
 								?>
-								<div class="gift-certificate sc_info_box">
+								<div class="gift-certificate sc_info_box" <?php echo ( 'no' === $is_show_coupon_receiver_form ) ? 'style="' . esc_attr( 'display: none;' ) . '"' : ''; ?>>
 									<h3><?php echo esc_html( stripslashes( $smart_coupon_gift_certificate_form_page_text ) ); ?></h3>
 										<?php if ( ! empty( $smart_coupon_gift_certificate_form_details_text ) ) { ?>
 										<p><?php echo esc_html( stripslashes( $smart_coupon_gift_certificate_form_details_text ) ); ?></p>

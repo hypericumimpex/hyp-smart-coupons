@@ -1,5 +1,18 @@
 *** WooCommerce Smart Coupons Changelog ***
 
+2019.10.19 - version 4.4.0
+* New: Option to add custom style for coupons using CSS
+* New: Apply multiple coupons from URL
+* New: Setting to allow the buyer to send coupons to someone else (By default: Enabled)
+* New: Save original store credit value in the coupon meta when it is auto-generated
+* New: Copy coupon code action on coupons dashboard
+* New: Get coupon shareable link on coupons dashaboard and edit coupon page
+* Update: Support for performing smart coupons actions on order statuses which are added by 3rd party plugins
+* Update: Docs, Support & Review links on plugins page
+* Update: Admin Footer text for Smart Coupons pages
+* Tweak: Export button on coupons dashboard
+* Update: POT file
+
 2019.10.08 - version 4.3.0
 * New: Setting to allow combining of coupons emails when multiple emails are sent to the same recipient
 * New: Restrict Coupons by User Roles
@@ -32,11 +45,11 @@
 
 2019.09.03 - version 4.1.1
 * New: Set a max discount amount for percentage discount type coupon
-* New: Feature to allow store admin to set expiry time for coupon [WC3.2+]
+* New: Set expiry time for coupon [WC3.2+]
 * Update: POT file
 
 2019.08.23 - version 4.1.0
-* New: Feature to allow buyers to schedule delivery of coupons
+* New: Allow buyers to schedule delivery of coupons during purchase
 * New: WooCommerce 3.7 Compatibility
 * Fix: Import Coupon CSV not working [WC3.7]
 * Fix: Smart Coupons' setting not saving [WC3.7]

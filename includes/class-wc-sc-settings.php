@@ -4,7 +4,7 @@
  *
  * @author      StoreApps
  * @since       3.3.0
- * @version     1.0
+ * @version     1.1.1
  * @package     WooCommerce Smart Coupons
  */
 
@@ -107,6 +107,10 @@ if ( ! class_exists( 'WC_SC_Settings' ) ) {
 				wp_enqueue_style( 'smart-coupon' );
 			}
 
+			$wc_sc_cm_settings = array();
+			if ( function_exists( 'wp_enqueue_code_editor' ) ) {
+				$wc_sc_cm_settings = wp_enqueue_code_editor( array( 'type' => 'text/css' ) );
+			}
 			?>
 			<style type="text/css">
 				#TB_window img#TB_Image {
@@ -143,6 +147,11 @@ if ( ! class_exists( 'WC_SC_Settings' ) ) {
 								text: jQuery('#wc_sc_setting_coupon_design').find(':selected').text()
 							};
 						}
+						let style_attr = '';
+						// If style is custom design then don't add color, background color and border color to coupon design since these will be added by customers.
+						if( 'custom-design' !== style.id ) {
+							style_attr = 'style="background-color: ' + jQuery('#wc_sc_setting_coupon_background_color').val() + '; color: ' + jQuery('#wc_sc_setting_coupon_foreground_color').val() + '; border-color: ' + jQuery('#wc_sc_setting_coupon_foreground_color').val() + ';"';
+						}
 						var coupon_html = ' <style type="text/css">\
 												.coupon-container.left:before,\
 												.coupon-container.bottom:before {\
@@ -154,7 +163,7 @@ if ( ! class_exists( 'WC_SC_Settings' ) ) {
 												}\
 											</style>\
 											<span class="wc-sc-coupon-style-preview">\
-												<div class="coupon-container ' + style.id + ' medium" style="background-color: ' + jQuery('#wc_sc_setting_coupon_background_color').val() + '; color: ' + jQuery('#wc_sc_setting_coupon_foreground_color').val() + '; border-color: ' + jQuery('#wc_sc_setting_coupon_foreground_color').val() + ';">\
+												<div class="coupon-container ' + style.id + ' medium" ' + style_attr + '>\
 													<div class="coupon-content dashed small">\
 														<div class="discount-info">&nbsp;</div>\
 														<div class="code">' + style.text + '</div>\
@@ -168,10 +177,51 @@ if ( ! class_exists( 'WC_SC_Settings' ) ) {
 					};
 
 					var wc_sc_reload_coupon_preview = function() {
-						var preview = wc_sc_get_coupon_html();
-						jQuery('#wc_sc_setting_coupon_background_color').parent().find('.wc-sc-coupon-preview-container').remove();
-						jQuery('#wc_sc_setting_coupon_background_color').parent().append( '<span class="wc-sc-coupon-preview-container">' + preview + '</span>' );
+						let preview = wc_sc_get_coupon_html();
+						let coupon_design = jQuery('#wc_sc_setting_coupon_design').val();
+						let show_selector = '';
+						let hide_selector = '';
+						let preview_selector = '';
+						if( 'custom-design' === coupon_design ) {
+							show_selector = '#wc_sc_custom_design_css';
+							hide_selector = '#wc_sc_setting_coupon_background_color,#wc_sc_setting_coupon_foreground_color';
+							preview_selector = '#wc_sc_custom_design_css';
+							preview += '<div class="wc_sc_custom_design_css_doc_div">\
+											<div class="wc_sc_custom_design_css_text">\
+												<?php echo esc_js( __( 'Put your custom CSS in the left field.', 'woocommerce-smart-coupons' ) ); ?><br/>\
+												<a href="https://docs.woocommerce.com/document/smart-coupons/how-to-customize-coupon-style-smart-coupons/" target="_blank"><small>[<?php echo esc_js( __( 'Read More', 'woocommerce-smart-coupons' ) ); ?>]</small></a>\
+											</div>\
+										<div></div></div>';
+						} else {
+							show_selector = '#wc_sc_setting_coupon_background_color,#wc_sc_setting_coupon_foreground_color';
+							hide_selector = '#wc_sc_custom_design_css';
+							preview_selector = '#wc_sc_setting_coupon_background_color';
+						}
+						jQuery(hide_selector).closest('tr').hide();
+						jQuery(show_selector).closest('tr').show();
+						jQuery(preview_selector).parent().find('.wc-sc-coupon-preview-container').remove();
+						jQuery(preview_selector).parent().append( '<span class="wc-sc-coupon-preview-container">' + preview + '</span>' );
 					};
+
+					let wc_sc_initialize_code_mirror = function() {
+						<?php
+						if ( is_array( $wc_sc_cm_settings ) && ! empty( $wc_sc_cm_settings ) ) {
+							?>
+							let wc_sc_cm_settings = <?php echo wp_json_encode( $wc_sc_cm_settings ); ?>;
+							let custom_design_css_editor = wp.codeEditor.initialize( jQuery( '#wc_sc_custom_design_css' ), wc_sc_cm_settings );
+							custom_design_css_editor.codemirror.on('change', function(cm, change) {
+								let custom_style = '<style type="text/css" id="wc-sc-custom-design-style">' + cm.getValue() + '</style>';
+								jQuery('body #wc-sc-custom-design-style').remove();
+								jQuery('body').append(custom_style);
+							});
+							jQuery('#wc_sc_custom_design_css,#wc_sc_setting_coupon_background_color,#wc_sc_setting_coupon_foreground_color').each(function(){
+								let field_id = jQuery(this).attr('id');
+								jQuery(this).closest('tr').addClass(field_id + '_wrapper');
+							});
+							<?php
+						}
+						?>
+					}
 
 					var wc_sc_add_coupon_style_block = function( option ) {
 						if ( ! option.id ) {
@@ -194,6 +244,7 @@ if ( ! class_exists( 'WC_SC_Settings' ) ) {
 					};
 
 					jQuery(document).ready(function(){
+						wc_sc_initialize_code_mirror();
 						wc_sc_reload_coupon_design();
 						wc_sc_reload_coupon_preview();
 					});
@@ -237,10 +288,22 @@ if ( ! class_exists( 'WC_SC_Settings' ) ) {
 
 			$valid_order_statuses = get_option( 'wc_sc_valid_order_statuses_for_coupon_auto_generation' );
 
+			$paid_statuses = wc_get_is_paid_statuses();
+
 			if ( false === $valid_order_statuses ) {
-				add_option( 'wc_sc_valid_order_statuses_for_coupon_auto_generation', array( 'processing', 'completed' ), '', 'no' );
+				add_option( 'wc_sc_valid_order_statuses_for_coupon_auto_generation', $paid_statuses, '', 'no' );
 			} elseif ( ! is_array( $valid_order_statuses ) ) {
-				update_option( 'wc_sc_valid_order_statuses_for_coupon_auto_generation', array( 'processing', 'completed' ), 'no' );
+				update_option( 'wc_sc_valid_order_statuses_for_coupon_auto_generation', $paid_statuses, 'no' );
+			}
+
+			$all_order_statuses      = wc_get_order_statuses();
+			$all_paid_order_statuses = array();
+
+			foreach ( $paid_statuses as $paid_status ) {
+				$wc_paid_status = 'wc-' . $paid_status;
+				if ( array_key_exists( $wc_paid_status, $all_order_statuses ) ) {
+					$all_paid_order_statuses[ $paid_status ] = $all_order_statuses[ $wc_paid_status ];
+				}
 			}
 
 			$sc_settings = array(
@@ -251,8 +314,8 @@ if ( ! class_exists( 'WC_SC_Settings' ) ) {
 					'id'    => 'sc_display_coupon_settings',
 				),
 				array(
-					'name'              => __( 'Coupon design', 'woocommerce-smart-coupons' ),
-					'desc'              => __( 'Choose a design of the coupon', 'woocommerce-smart-coupons' ),
+					'name'              => __( 'Coupon style', 'woocommerce-smart-coupons' ),
+					'desc'              => __( 'Choose a style of the coupon', 'woocommerce-smart-coupons' ),
 					'id'                => 'wc_sc_setting_coupon_design',
 					'default'           => 'round-dashed',
 					'type'              => 'select',
@@ -261,7 +324,7 @@ if ( ! class_exists( 'WC_SC_Settings' ) ) {
 					'desc_tip'          => true,
 					'options'           => $this->get_wc_sc_coupon_styles(),
 					'custom_attributes' => array(
-						'data-placeholder' => __( 'Select a coupon design&hellip;', 'woocommerce-smart-coupons' ),
+						'data-placeholder' => __( 'Select a coupon style&hellip;', 'woocommerce-smart-coupons' ),
 					),
 					'autoload'          => false,
 				),
@@ -286,6 +349,14 @@ if ( ! class_exists( 'WC_SC_Settings' ) ) {
 					'css'         => 'width:6em;',
 					'default'     => '#30050b',
 					'autoload'    => false,
+				),
+				array(
+					'name'     => '&nbsp;',
+					'desc'     => __( 'Custom CSS for coupon style', 'woocommerce-smart-coupons' ),
+					'id'       => 'wc_sc_custom_design_css',
+					'type'     => 'textarea',
+					'desc_tip' => true,
+					'autoload' => false,
 				),
 				array(
 					'name'     => __( 'Number of coupons to show', 'woocommerce-smart-coupons' ),
@@ -315,15 +386,12 @@ if ( ! class_exists( 'WC_SC_Settings' ) ) {
 					'name'              => __( 'Valid order status for auto-generating coupon', 'woocommerce-smart-coupons' ),
 					'desc'              => __( 'Choose order status which will trigger the auto-generation of coupon, if the order contains product which will generate the coupon.', 'woocommerce-smart-coupons' ),
 					'id'                => 'wc_sc_valid_order_statuses_for_coupon_auto_generation',
-					'default'           => array( 'processing', 'completed' ),
+					'default'           => $paid_statuses,
 					'type'              => 'multiselect',
 					'class'             => 'wc-enhanced-select',
 					'css'               => 'min-width: 350px;',
 					'desc_tip'          => true,
-					'options'           => array(
-						'processing' => __( 'Processing', 'woocommerce-smart-coupons' ),
-						'completed'  => __( 'Completed', 'woocommerce-smart-coupons' ),
-					),
+					'options'           => $all_paid_order_statuses,
 					'custom_attributes' => array(
 						'data-placeholder' => __( 'Select order status&hellip;', 'woocommerce-smart-coupons' ),
 					),
@@ -501,6 +569,15 @@ if ( ! class_exists( 'WC_SC_Settings' ) ) {
 					'type'  => 'title',
 					'desc'  => __( 'Buyers can send purchased coupons to anyone – right while they\'re checking out.', 'woocommerce-smart-coupons' ),
 					'id'    => 'sc_coupon_receiver_settings',
+				),
+				array(
+					'name'     => __( 'Allow sending of coupons to others', 'woocommerce-smart-coupons' ),
+					'desc'     => __( 'Allow the buyer to send coupons to someone else.', 'woocommerce-smart-coupons' ) . ' <a class="thickbox" href="' . add_query_arg( array( 'TB_iframe' => 'true' ), 'https://docs.woocommerce.com/wp-content/uploads/2012/08/sc-coupon-receiver-details-form.png' ) . '"><small>' . __( '[Preview]', 'woocommerce-smart-coupons' ) . '</small></a>',
+					'id'       => 'smart_coupons_display_coupon_receiver_details_form',
+					'type'     => 'checkbox',
+					'default'  => 'yes',
+					'autoload' => false,
+					'desc_tip' => '',
 				),
 				array(
 					'name'        => __( 'Title', 'woocommerce-smart-coupons' ),

@@ -4,7 +4,7 @@
  *
  * @author      StoreApps
  * @since       3.3.0
- * @version     1.0
+ * @version     1.1.0
  *
  * @package     woocommerce-smart-coupons/includes/
  */
@@ -336,6 +336,11 @@ if ( ! class_exists( 'WC_SC_Shortcode' ) ) {
 
 						// Add meta for coupons.
 						update_post_meta( $new_coupon_id, 'discount_type', $_discount_type );
+
+						if ( 'smart_coupon' === $_discount_type ) {
+							update_post_meta( $new_coupon_id, 'wc_sc_original_amount', $_coupon_amount );
+						}
+
 						update_post_meta( $new_coupon_id, 'coupon_amount', $_coupon_amount );
 						update_post_meta( $new_coupon_id, 'individual_use', $individual_use );
 						update_post_meta( $new_coupon_id, 'minimum_amount', $minimum_amount );

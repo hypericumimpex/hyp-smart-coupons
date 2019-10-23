@@ -4,7 +4,7 @@
  *
  * @author      StoreApps
  * @since       3.3.0
- * @version     1.0
+ * @version     1.1.0
  *
  * @package     woocommerce-smart-coupons/includes/
  */
@@ -100,14 +100,37 @@ if ( ! class_exists( 'WC_SC_URL_Coupon' ) ) {
 
 				$coupon_args['coupon-code'] = urldecode( $coupon_args['coupon-code'] );
 
+				$coupon_codes = explode( ',', $coupon_args['coupon-code'] );
+
+				$coupon_codes = array_filter( $coupon_codes ); // Remove empty coupon codes if any.
+
 				$cart = ( is_object( WC() ) && isset( WC()->cart ) ) ? WC()->cart : null;
 
-				if ( empty( $cart ) || WC()->cart->is_empty() ) {
-					$this->hold_applied_coupon( $coupon_args );
-				} else {
+				$coupons_data = array();
 
-					if ( ! WC()->cart->has_discount( $coupon_args['coupon-code'] ) ) {
-						WC()->cart->add_discount( trim( $coupon_args['coupon-code'] ) );
+				foreach ( $coupon_codes as $coupon_index => $coupon_code ) {
+					// Process only first five coupons to avoid GET request parameter limit.
+					if ( apply_filters( 'wc_sc_max_url_coupons_limit', 5 ) === $coupon_index ) {
+						break;
+					}
+
+					if ( empty( $coupon_code ) ) {
+						continue;
+					}
+
+					$coupons_data[] = array(
+						'coupon-code' => $coupon_code,
+					);
+				}
+
+				if ( empty( $cart ) || WC()->cart->is_empty() ) {
+						$this->hold_applied_coupon( $coupons_data );
+				} else {
+					foreach ( $coupons_data as $coupon_data ) {
+						$coupon_code = $coupon_data['coupon-code'];
+						if ( ! WC()->cart->has_discount( $coupon_code ) ) {
+							WC()->cart->add_discount( trim( $coupon_code ) );
+						}
 					}
 				}
 
@@ -182,26 +205,32 @@ if ( ! class_exists( 'WC_SC_URL_Coupon' ) ) {
 		/**
 		 * Apply coupon code from session, if any
 		 *
-		 * @param array $coupon_args The coupon arguments.
+		 * @param array $coupons_args The coupon arguments.
 		 */
-		public function hold_applied_coupon( $coupon_args ) {
+		public function hold_applied_coupon( $coupons_args = array() ) {
 
 			$user_id      = get_current_user_id();
-			$saved_status = '';
+			$saved_status = array();
 
 			if ( 0 === $user_id ) {
-				$saved_status = $this->save_applied_coupon_in_cookie( $coupon_args );
+				$saved_status = $this->save_applied_coupon_in_cookie( $coupons_args );
 			} else {
-				$saved_status = $this->save_applied_coupon_in_account( $coupon_args, $user_id );
+				$saved_status = $this->save_applied_coupon_in_account( $coupons_args, $user_id );
 			}
 
 			if ( ! empty( $saved_status ) ) {
-				if ( 'saved' === $saved_status ) {
-					$notice = __( 'Coupon code applied successfully. Please add some products to the cart to see the discount.', 'woocommerce-smart-coupons' );
-					$this->set_coupon_notices( $notice, 'success' );
-				} elseif ( 'already_saved' === $saved_status ) {
-					$notice = __( 'Coupon code already applied! Please add some products to the cart to see the discount.', 'woocommerce-smart-coupons' );
-					$this->set_coupon_notices( $notice, 'error' );
+				foreach ( $coupons_args as $coupon_args ) {
+					$coupon_code = $coupon_args['coupon-code'];
+					$save_status = isset( $saved_status[ $coupon_code ] ) ? $saved_status[ $coupon_code ] : '';
+					if ( 'saved' === $save_status ) {
+						/* translators: %s: $coupon_code coupon code */
+						$notice = sprintf( __( 'Coupon code "%s" applied successfully. Please add some products to the cart to see the discount.', 'woocommerce-smart-coupons' ), $coupon_code );
+						$this->set_coupon_notices( $notice, 'success' );
+					} elseif ( 'already_saved' === $save_status ) {
+						/* translators: %s: $coupon_code coupon code */
+						$notice = sprintf( __( 'Coupon code "%s" already applied! Please add some products to the cart to see the discount.', 'woocommerce-smart-coupons' ), $coupon_code );
+						$this->set_coupon_notices( $notice, 'error' );
+					}
 				}
 			}
 
@@ -210,14 +239,14 @@ if ( ! class_exists( 'WC_SC_URL_Coupon' ) ) {
 		/**
 		 * Apply coupon code from session, if any
 		 *
-		 * @param array $coupon_args The coupon arguments.
-		 * @return string $saved_status
+		 * @param array $coupons_args The coupon arguments.
+		 * @return array $saved_status
 		 */
-		public function save_applied_coupon_in_cookie( $coupon_args ) {
+		public function save_applied_coupon_in_cookie( $coupons_args = array() ) {
 
-			$saved_status = ''; // Variable to store whether coupon saved/already saved in cookie.
+			$saved_status = array(); // Variable to store whether coupons saved/already saved in cookie.
 
-			if ( ! empty( $coupon_args['coupon-code'] ) ) {
+			if ( ! empty( $coupons_args ) ) {
 
 				if ( empty( $_COOKIE['sc_applied_coupon_profile_id'] ) ) {
 					$unique_id = $this->generate_unique_id();
@@ -227,14 +256,18 @@ if ( ! class_exists( 'WC_SC_URL_Coupon' ) ) {
 
 				$applied_coupons = get_option( 'sc_applied_coupon_profile_' . $unique_id, array() );
 
-				if ( ! in_array( $coupon_args['coupon-code'], $applied_coupons, true ) ) {
-					$applied_coupons[] = $coupon_args['coupon-code'];
-					$saved_status      = 'saved';
-					update_option( 'sc_applied_coupon_profile_' . $unique_id, $applied_coupons, 'no' );
-					wc_setcookie( 'sc_applied_coupon_profile_id', $unique_id, $this->get_cookie_life() );
-				} else {
-					$saved_status = 'already_saved';
+				foreach ( $coupons_args as $coupon_args ) {
+					$coupon_code = isset( $coupon_args['coupon-code'] ) ? $coupon_args['coupon-code'] : '';
+					if ( ! in_array( $coupon_code, $applied_coupons, true ) ) {
+						$applied_coupons[]            = $coupon_code;
+						$saved_status[ $coupon_code ] = 'saved';
+					} else {
+						$saved_status[ $coupon_code ] = 'already_saved';
+					}
 				}
+
+				update_option( 'sc_applied_coupon_profile_' . $unique_id, $applied_coupons, 'no' );
+				wc_setcookie( 'sc_applied_coupon_profile_id', $unique_id, $this->get_cookie_life() );
 			}
 
 			return $saved_status;
@@ -244,15 +277,15 @@ if ( ! class_exists( 'WC_SC_URL_Coupon' ) ) {
 		/**
 		 * Apply coupon code from session, if any
 		 *
-		 * @param array $coupon_args The coupon arguments.
+		 * @param array $coupons_args The coupon arguments.
 		 * @param int   $user_id The user id.
-		 * @return string $saved_status
+		 * @return array $saved_status
 		 */
-		public function save_applied_coupon_in_account( $coupon_args, $user_id ) {
+		public function save_applied_coupon_in_account( $coupons_args = array(), $user_id = 0 ) {
 
-			$saved_status = ''; // Variable to store whether coupon saved/already saved in user meta.
+			$saved_status = array(); // Variable to store whether coupons saved/already saved in user meta.
 
-			if ( ! empty( $coupon_args['coupon-code'] ) ) {
+			if ( ! empty( $coupons_args ) ) {
 
 				$applied_coupons = get_user_meta( $user_id, 'sc_applied_coupon_from_url', true );
 
@@ -260,13 +293,17 @@ if ( ! class_exists( 'WC_SC_URL_Coupon' ) ) {
 					$applied_coupons = array();
 				}
 
-				if ( ! in_array( $coupon_args['coupon-code'], $applied_coupons, true ) ) {
-					$applied_coupons[] = $coupon_args['coupon-code'];
-					$saved_status      = 'saved';
-					update_user_meta( $user_id, 'sc_applied_coupon_from_url', $applied_coupons );
-				} else {
-					$saved_status = 'already_saved';
+				foreach ( $coupons_args as $coupon_args ) {
+					$coupon_code = $coupon_args['coupon-code'];
+					if ( ! in_array( $coupon_code, $applied_coupons, true ) ) {
+						$applied_coupons[]            = $coupon_args['coupon-code'];
+						$saved_status[ $coupon_code ] = 'saved';
+					} else {
+						$saved_status[ $coupon_code ] = 'already_saved';
+					}
 				}
+
+				update_user_meta( $user_id, 'sc_applied_coupon_from_url', $applied_coupons );
 			}
 
 			return $saved_status;

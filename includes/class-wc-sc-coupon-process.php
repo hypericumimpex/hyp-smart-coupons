@@ -4,7 +4,7 @@
  *
  * @author      StoreApps
  * @since       3.3.0
- * @version     1.1
+ * @version     1.1.1
  *
  * @package     woocommerce-smart-coupons/includes/
  */
@@ -63,6 +63,8 @@ if ( ! class_exists( 'WC_SC_Coupon_Process' ) ) {
 			add_action( 'woocommerce_order_status_failed_to_processing', array( $this, 'update_smart_coupon_balance' ) );
 			add_action( 'woocommerce_order_status_failed_to_completed', array( $this, 'update_smart_coupon_balance' ) );
 			add_action( 'sc_after_order_calculate_discount_amount', array( $this, 'update_smart_coupon_balance' ), 10 );
+
+			add_action( 'woocommerce_order_status_changed', array( $this, 'handle_coupon_process_on_3rd_party_order_statuses' ), 10, 3 );
 
 			add_filter( 'woocommerce_paypal_args', array( $this, 'modify_paypal_args' ), 11, 2 );
 
@@ -362,6 +364,52 @@ if ( ! class_exists( 'WC_SC_Coupon_Process' ) ) {
 					}
 				}
 			}
+		}
+
+		/**
+		 * Handle Coupon Process on 3rd party order statuses
+		 *
+		 * @param  integer $order_id   The order id.
+		 * @param  string  $old_status Old order status.
+		 * @param  string  $new_status New order status.
+		 */
+		public function handle_coupon_process_on_3rd_party_order_statuses( $order_id = 0, $old_status = '', $new_status = '' ) {
+
+			if ( empty( $order_id ) ) {
+				return;
+			}
+
+			$hooks_available_for_statuses = array( 'on-hold', 'pending', 'processing', 'completed', 'failed', 'refunded', 'cancelled' );
+
+			if ( in_array( $old_status, $hooks_available_for_statuses, true ) || in_array( $new_status, $hooks_available_for_statuses, true ) ) {
+				return;
+			}
+
+			$paid_statuses    = wc_get_is_paid_statuses();
+			$pending_statuses = wc_get_is_pending_statuses();
+			$return_statuses  = apply_filters( 'wc_sc_return_order_statuses', array() );
+
+			if ( in_array( $new_status, $paid_statuses, true ) ) {
+				$this->sa_add_coupons( $order_id );
+				$this->coupons_used( $order_id );
+			}
+
+			if ( in_array( $new_status, $return_statuses, true ) ) {
+				$this->sa_remove_coupons( $order_id );
+			}
+
+			if ( in_array( $old_status, $paid_statuses, true ) && in_array( $new_status, $return_statuses, true ) ) {
+				$this->sa_restore_smart_coupon_amount( $order_id );
+			}
+
+			if ( in_array( $old_status, $pending_statuses, true ) && in_array( $new_status, $paid_statuses, true ) ) {
+				$this->update_smart_coupon_balance( $order_id );
+			}
+
+			if ( in_array( $old_status, $return_statuses, true ) && in_array( $new_status, $paid_statuses, true ) ) {
+				$this->update_smart_coupon_balance( $order_id );
+			}
+
 		}
 
 		/**
@@ -1099,7 +1147,7 @@ if ( ! class_exists( 'WC_SC_Coupon_Process' ) ) {
 		 * @return boolean
 		 */
 		public function should_coupon_auto_generate( $order_id = 0 ) {
-			$valid_order_statuses = get_option( 'wc_sc_valid_order_statuses_for_coupon_auto_generation', array( 'processing', 'completed' ) );
+			$valid_order_statuses = get_option( 'wc_sc_valid_order_statuses_for_coupon_auto_generation', wc_get_is_paid_statuses() );
 			if ( ! empty( $valid_order_statuses ) ) {
 				$valid_order_statuses = apply_filters( 'wc_sc_valid_order_statuses_for_coupon_auto_generation', $valid_order_statuses, $order_id );
 				if ( ! empty( $valid_order_statuses ) ) {

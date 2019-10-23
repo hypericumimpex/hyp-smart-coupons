@@ -4,7 +4,7 @@
  *
  * @author      StoreApps
  * @since       4.0.0
- * @version     1.0
+ * @version     1.1.0
  *
  * @package     woocommerce-smart-coupons/includes/
  */
@@ -95,6 +95,9 @@ if ( ! class_exists( 'WC_SC_Admin_Notifications' ) ) {
 			$action_links = array(
 				'settings' => '<a href="' . esc_url( admin_url( 'admin.php?page=wc-settings&tab=wc-smart-coupons' ) ) . '">' . esc_html__( 'Settings', 'woocommerce-smart-coupons' ) . '</a>',
 				'faqs'     => '<a href="' . esc_url( admin_url( 'admin.php?page=sc-faqs' ) ) . '">' . esc_html__( 'FAQ\'s', 'woocommerce-smart-coupons' ) . '</a>',
+				'docs'     => '<a target="_blank" href="' . esc_url( 'http://docs.woocommerce.com/document/smart-coupons/' ) . '">' . __( 'Docs', 'woocommerce-smart-coupons' ) . '</a>',
+				'support'  => '<a target="_blank" href="' . esc_url( 'https://woocommerce.com/my-account/create-a-ticket/' ) . '">' . __( 'Support', 'woocommerce-smart-coupons' ) . '</a>',
+				'review'   => '<a target="_blank" href="' . esc_url( 'https://woocommerce.com/products/smart-coupons/#comments' ) . '">' . __( 'Review', 'woocommerce-smart-coupons' ) . '</a>',
 			);
 
 			return array_merge( $action_links, $links );
@@ -143,8 +146,6 @@ if ( ! class_exists( 'WC_SC_Admin_Notifications' ) ) {
 			$valid_post_types      = array( 'shop_coupon', 'shop_order', 'product' );
 			$valid_pagenow         = array( 'edit.php', 'post.php', 'plugins.php' );
 			$is_show_review_notice = get_option( 'wc_sc_is_show_review_notice' );
-			$is_show_380_notice    = get_option( 'wc_sc_is_show_380_notice', 'yes' );
-			$is_show_40_notice     = get_option( 'wc_sc_is_show_40_notice', 'yes' );
 			$is_coupon_enabled     = get_option( 'woocommerce_enable_coupons' );
 			$get_post_type         = ( ! empty( $post->post_type ) ) ? $post->post_type : '';
 			$get_page              = ( ! empty( $_GET['page'] ) ) ? wc_clean( wp_unslash( $_GET['page'] ) ) : ''; // phpcs:ignore
@@ -241,82 +242,6 @@ if ( ! class_exists( 'WC_SC_Admin_Notifications' ) ) {
 				<?php
 			}
 
-			// What's new notice in SC 4.0.
-			if ( $is_page && 'yes' === $is_show_40_notice ) {
-				if ( ! wp_script_is( 'jquery' ) ) {
-					wp_enqueue_script( 'jquery' );
-				}
-				?>
-				<style type="text/css" media="screen">
-					#wc_sc_40_notice .wc_sc_40_notice_action {
-						float: right;
-						padding: 0.5em 0;
-						text-align: right;
-					}
-					#wc_sc_40_notice .wc_sc_40_notice_action.bottom {
-						margin-top: -3em;
-					}
-					#wc_sc_40_notice .dashicons.dashicons-yes {
-						color: #46b450;
-					}
-				</style>
-				<script type="text/javascript">
-					jQuery(function(){
-						jQuery('body').on('click', '#wc_sc_40_notice .wc_sc_40_notice_action a.wc_sc_40_notice_remove', function( e ){
-							jQuery.ajax({
-								url: '<?php echo esc_url( admin_url( 'admin-ajax.php' ) ); ?>',
-								type: 'post',
-								dataType: 'json',
-								data: {
-									action: 'wc_sc_40_notice_action',
-									security: '<?php echo esc_html( wp_create_nonce( 'wc-sc-40-notice-action' ) ); ?>'
-								},
-								success: function( response ){
-									if ( response.success != undefined && response.success != '' && response.success == 'yes' ) {
-										jQuery('#wc_sc_40_notice').fadeOut(500, function(){ jQuery('#wc_sc_40_notice').remove(); });
-									}
-								}
-							});
-							return false;
-						});
-						jQuery( '#wc_sc_40_notice a.wc-sc-rating-link' ).click( function() {
-							jQuery( this ).parent().text( jQuery( this ).data( 'rated' ) );
-						});
-					});
-				</script>
-				<div class="notice notice-info" id="wc_sc_40_notice">
-					<div class="wc_sc_40_notice_action">
-						<a href="javascript:void(0)" class="wc_sc_40_notice_remove" title="<?php echo esc_attr__( 'Dismiss', 'woocommerce-smart-coupons' ); ?>"><?php echo esc_html__( 'I have seen these features, now hide it', 'woocommerce-smart-coupons' ); ?></a>
-					</div>
-					<div class="wc_sc_40_notice_content">
-						<h1><?php echo esc_html__( 'Welcome to Smart Coupons 4.0', 'woocommerce-smart-coupons' ); ?></h1>
-						<h3><?php echo esc_html__( 'Here\'s what\'s new:', 'woocommerce-smart-coupons' ); ?></h3>
-						<ul style="list-style-type: none; padding-left: 2em;">
-							<li><span class="dashicons dashicons-yes"></span>&nbsp;<?php echo '<strong>' . esc_html__( 'Restrict Coupons by Location', 'woocommerce-smart-coupons' ) . '</strong> &mdash; ' . esc_html__( 'Supports Country, City, State, Zip code.', 'woocommerce-smart-coupons' ); ?></li>
-							<li><span class="dashicons dashicons-yes"></span>&nbsp;<?php echo '<strong>' . esc_html__( 'Coupon action - Display Message', 'woocommerce-smart-coupons' ) . '</strong> &mdash; ' . esc_html__( 'Show Custom Messages on cart/checkout pages on successful coupon application.', 'woocommerce-smart-coupons' ); ?></li>
-							<?php if ( 'yes' === $is_show_380_notice ) { ?>
-								<li><span class="dashicons dashicons-yes"></span>&nbsp;<?php echo '<strong>' . esc_html__( 'Coupon action - Add products with/without discount', 'woocommerce-smart-coupons' ) . '</strong> &mdash; ' . esc_html__( 'Giveaway a product on application of a coupon.', 'woocommerce-smart-coupons' ); ?> <small><i><a href="https://docs.woocommerce.com/document/smart-coupons/#section-19" target="sa_wc_smart_coupons_docs"><?php echo esc_html__( '[Know more]', 'woocommerce-smart-coupons' ); ?></a></i></small></li>
-								<li><span class="dashicons dashicons-yes"></span>&nbsp;<?php echo '<strong>' . esc_html__( 'Coupon for new users', 'woocommerce-smart-coupons' ) . '</strong> &mdash; ' . esc_html__( 'Create special coupons that only first time shoppers can use.', 'woocommerce-smart-coupons' ); ?> <small><i><a href="https://docs.woocommerce.com/document/smart-coupons/#section-18" target="sa_wc_smart_coupons_docs"><?php echo esc_html__( '[Know more]', 'woocommerce-smart-coupons' ); ?></a></i></small></li>
-								<li><span class="dashicons dashicons-yes"></span>&nbsp;<?php echo '<strong>' . esc_html__( 'Customize coupon designs', 'woocommerce-smart-coupons' ) . '</strong> &mdash; ' . esc_html__( 'Choose from six readymade coupon designs.', 'woocommerce-smart-coupons' ); ?> <small><i><a href="https://docs.woocommerce.com/document/smart-coupons/#section-17" target="sa_wc_smart_coupons_docs"><?php echo esc_html__( '[Know more]', 'woocommerce-smart-coupons' ); ?></a></i></small></li>
-								<li><span class="dashicons dashicons-yes"></span>&nbsp;<?php echo '<strong>' . esc_html__( 'Customize coupon code length', 'woocommerce-smart-coupons' ) . '</strong> &mdash; ' . esc_html__( 'Control the length of auto generated coupon code.', 'woocommerce-smart-coupons' ); ?> <small><i><a href="https://docs.woocommerce.com/document/smart-coupons/#section-21" target="sa_wc_smart_coupons_docs"><?php echo esc_html__( '[Know more]', 'woocommerce-smart-coupons' ); ?></a></i></small></li>
-								<li><span class="dashicons dashicons-yes"></span>&nbsp;<?php echo '<strong>' . esc_html__( 'Rename the label - "Store Credit / Gift Certificate"', 'woocommerce-smart-coupons' ) . '</strong> &mdash; ' . esc_html__( 'Change "Store Credit / Gift Certificate" to gift cards/bonus card etc in entire store.', 'woocommerce-smart-coupons' ); ?> <small><i><a href="https://docs.woocommerce.com/document/smart-coupons/#section-20" target="sa_wc_smart_coupons_docs"><?php echo esc_html__( '[Know more]', 'woocommerce-smart-coupons' ); ?></a></i></small></li>
-							<?php } ?>
-						</ul>
-						<hr>
-						<p>
-							<?php
-								/* translators: %s: link to submit idea for Smart Coupons on WooCommerce idea board */
-								echo sprintf( esc_html__( 'Hope you enjoy these new features! If you have any other feature request, %s.', 'woocommerce-smart-coupons' ), '<a href="' . esc_url( 'http://ideas.woocommerce.com/forums/133476-woocommerce?category_id=163716' ) . '" target="_blank">let us know here</a>' );
-							?>
-						</p>
-					</div>
-					<div class="wc_sc_40_notice_action bottom">
-						<?php echo esc_html__( 'Rate', 'woocommerce-smart-coupons' ); ?>&nbsp;<a href="https://woocommerce.com/products/smart-coupons/#reviews-start" target="_blank" class="wc-sc-rating-link" data-rated="<?php echo esc_attr__( 'Thanks :)', 'woocommerce-smart-coupons' ); ?>" title="<?php echo esc_attr__( 'Rate WooCommerce Smart Coupons', 'woocommerce-smart-coupons' ); ?>">&#9733;&#9733;&#9733;&#9733;&#9733;</a>
-					</div>
-				</div>
-				<?php
-			}
-
 		}
 
 		/**
@@ -337,7 +262,7 @@ if ( ! class_exists( 'WC_SC_Admin_Notifications' ) ) {
 
 				if ( in_array( $get_page, $sc_pages, true ) || 'shop_coupon' === $get_post_type || 'wc-smart-coupons' === $get_tab ) {
 					/* translators: %s: link to review WooCommerce Smart Coupons */
-					$sc_rating_text = wp_kses_post( sprintf( __( 'If you are liking WooCommerce Smart Coupons, can you do us a favor? <strong>Please consider leaving us a %s</strong>. A huge thanks in advance from WooCommerce & StoreApps!', 'woocommerce-smart-coupons' ), '<a target="_blank" href="' . esc_url( 'https://woocommerce.com/products/smart-coupons/#reviews-start' ) . '">5-star rating here</a>' ) );
+					$sc_rating_text = wp_kses_post( sprintf( __( 'If you are liking WooCommerce Smart Coupons, please consider leaving us a %s. A huge thank you from WooCommerce & StoreApps in advance!', 'woocommerce-smart-coupons' ), '<a target="_blank" href="' . esc_url( 'https://woocommerce.com/products/smart-coupons/#reviews-start' ) . '" style="color: #96588a;">5-star rating here</a>' ) );
 				}
 			}
 
@@ -363,7 +288,7 @@ if ( ! class_exists( 'WC_SC_Admin_Notifications' ) ) {
 
 				if ( in_array( $get_page, $sc_pages, true ) || 'shop_coupon' === $get_post_type || 'wc-smart-coupons' === $get_tab ) {
 					/* translators: %s: link to submit idea for Smart Coupons on WooCommerce idea board */
-					$sc_text = sprintf( __( '<strong>Have a feature request? Submit your request from our %s.</strong>', 'woocommerce-smart-coupons' ), '<a href="' . esc_url( 'http://ideas.woocommerce.com/forums/133476-woocommerce?category_id=163716' ) . '" target="_blank">idea board</a>' );
+					$sc_text = sprintf( __( 'Have a feature request? Submit your request from our %s.', 'woocommerce-smart-coupons' ), '<a href="' . esc_url( 'http://ideas.woocommerce.com/forums/133476-woocommerce?category_id=163716' ) . '" target="_blank" style="color: #96588a;">idea board</a>' );
 				}
 			}
 
