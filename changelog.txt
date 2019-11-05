@@ -1,5 +1,13 @@
 *** WooCommerce Smart Coupons Changelog ***
 
+2019.11.04 - version 4.4.1
+* New: Move coupon emails in the WooCommerce email system for better handling
+* New: Plain text emails for coupons
+* Fix: Coupon actions not working in case of fixed amount gift voucher products
+* Fix: Unable to empty coupon expiry time
+* Developer: Filter 'wc_sc_calculate_totals_stop_at' to handle discount calculation for store credit
+* Update: POT file
+
 2019.10.19 - version 4.4.0
 * New: Option to add custom style for coupons using CSS
 * New: Apply multiple coupons from URL

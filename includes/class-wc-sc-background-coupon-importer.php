@@ -4,7 +4,7 @@
  *
  * @author      StoreApps
  * @since       3.8.6
- * @version     1.0.0
+ * @version     1.0.1
  *
  * @package     woocommerce-smart-coupons/includes/
  */
@@ -828,8 +828,8 @@ if ( ! class_exists( 'WC_SC_Background_Coupon_Importer' ) ) {
 		 */
 		public function woo_sc_import_coupons_from_csv() {
 
-			$is_send_email             = get_site_option( 'smart_coupons_is_send_email', 'yes' );
-			$combine_emails            = get_site_option( 'smart_coupons_combine_emails', 'no' );
+			$is_send_email             = $this->is_email_template_enabled();
+			$combine_emails            = $this->is_email_template_enabled( 'combine' );
 			$is_email_imported_coupons = get_site_option( 'woo_sc_is_email_imported_coupons' );
 			$posted_data               = get_site_option( 'woo_sc_generate_coupon_posted_data', true );
 			$no_of_coupons_to_generate = $posted_data['no_of_coupons_to_generate'];

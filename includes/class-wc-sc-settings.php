@@ -4,8 +4,8 @@
  *
  * @author      StoreApps
  * @since       3.3.0
- * @version     1.1.1
- * @package     WooCommerce Smart Coupons
+ * @version     1.1.2
+ * @package     woocommerce-smart-coupons/includes/
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -398,16 +398,6 @@ if ( ! class_exists( 'WC_SC_Settings' ) ) {
 					'autoload'          => false,
 				),
 				array(
-					'name'        => __( 'Subject for Coupon emails', 'woocommerce-smart-coupons' ),
-					'desc'        => __( 'Subject for coupon details emails to customers', 'woocommerce-smart-coupons' ),
-					'placeholder' => __( 'Congratulations! You\'ve received a coupon', 'woocommerce-smart-coupons' ),
-					'id'          => 'smart_coupon_email_subject',
-					'type'        => 'textarea',
-					'desc_tip'    => true,
-					'css'         => 'min-width:300px;',
-					'autoload'    => false,
-				),
-				array(
 					'name'          => __( 'Displaying Coupons', 'woocommerce-smart-coupons' ),
 					/* translators: %s: Preview link */
 					'desc'          => sprintf( __( 'Include coupon details on product\'s page, for products that issue coupons %s', 'woocommerce-smart-coupons' ), '<a class="thickbox" href="' . add_query_arg( array( 'TB_iframe' => 'true' ), 'https://docs.woocommerce.com/wp-content/uploads/2012/08/sc-associated-coupons.png' ) . '"><small>' . __( '[Preview]', 'woocommerce-smart-coupons' ) . '</small></a>' ),
@@ -654,6 +644,22 @@ if ( ! class_exists( 'WC_SC_Settings' ) ) {
 			}
 
 			woocommerce_update_options( $sc_settings );
+
+			// Update WC Email settings when SC admin settings are updated.
+			$is_send_email  = get_site_option( 'smart_coupons_is_send_email', 'yes' );
+			$combine_emails = get_site_option( 'smart_coupons_combine_emails', 'no' );
+
+			$email_settings = get_site_option( 'woocommerce_wc_sc_email_coupon_settings', array() );
+			if ( is_array( $email_settings ) ) {
+				$email_settings['enabled'] = $is_send_email;
+				update_site_option( 'woocommerce_wc_sc_email_coupon_settings', $email_settings );
+			}
+
+			$combine_email_settings = get_site_option( 'woocommerce_wc_sc_combined_email_coupon_settings', array() );
+			if ( is_array( $combine_email_settings ) ) {
+				$combine_email_settings['enabled'] = $combine_emails;
+				update_site_option( 'woocommerce_wc_sc_combined_email_coupon_settings', $combine_email_settings );
+			}
 		}
 
 		/**

@@ -262,10 +262,10 @@ if ( ! class_exists( 'WC_SC_Coupon_Fields' ) ) {
 										let expiry_hours = parseInt( expiry_time[0] );
 										let expiry_minutes = parseInt( expiry_time[1] );
 										if( Number.isInteger( expiry_hours ) && Number.isInteger( expiry_minutes ) ) {
-											let expiry_time = expiry_hours * 60 * 60 + expiry_minutes * 60;
-											jQuery('#wc_sc_expiry_time').val( expiry_time );
+											expiry_time = expiry_hours * 60 * 60 + expiry_minutes * 60;
 										}
 									}
+									jQuery('#wc_sc_expiry_time').val( expiry_time );
 								});
 						});
 					<?php } ?>

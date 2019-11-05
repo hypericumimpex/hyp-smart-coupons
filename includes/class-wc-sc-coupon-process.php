@@ -4,7 +4,7 @@
  *
  * @author      StoreApps
  * @since       3.3.0
- * @version     1.1.1
+ * @version     1.1.2
  *
  * @package     woocommerce-smart-coupons/includes/
  */
@@ -845,7 +845,7 @@ if ( ! class_exists( 'WC_SC_Coupon_Process' ) ) {
 			$receivers_messages = get_post_meta( $order_id, 'gift_receiver_message', true );
 			$sending_timestamps = get_post_meta( $order_id, 'gift_sending_timestamp', true );
 			$is_coupon_sent     = get_post_meta( $order_id, 'coupon_sent', true );
-			$is_send_email      = get_option( 'smart_coupons_is_send_email', 'yes' );
+			$is_send_email      = $this->is_email_template_enabled();
 
 			if ( 'yes' === $is_coupon_sent ) {
 				return;
@@ -1056,7 +1056,7 @@ if ( ! class_exists( 'WC_SC_Coupon_Process' ) ) {
 				}
 
 				if ( $flag && 'add' === $operation ) {
-					$combine_emails = get_option( 'smart_coupons_combine_emails', 'no' );
+					$combine_emails = $this->is_email_template_enabled( 'combine' );
 					if ( 'yes' === $is_send_email && 'yes' === $combine_emails ) {
 						$coupon_receiver_details = get_post_meta( $order_id, 'sc_coupon_receiver_details', true );
 						if ( is_array( $coupon_receiver_details ) && ! empty( $coupon_receiver_details ) ) {
@@ -1073,7 +1073,7 @@ if ( ! class_exists( 'WC_SC_Coupon_Process' ) ) {
 							}
 							if ( ! empty( $combined_coupon_receiver_details ) ) {
 								foreach ( $combined_coupon_receiver_details as $combined_receiver_email => $combined_receiver_details ) {
-									$this->send_combined_coupon_email( $combined_receiver_email, $combined_receiver_details, $order_id );
+									$this->send_combined_coupon_email( $combined_receiver_email, $combined_receiver_details, $order_id, $gift_certificate_sender_name, $gift_certificate_sender_email );
 								}
 							}
 						}

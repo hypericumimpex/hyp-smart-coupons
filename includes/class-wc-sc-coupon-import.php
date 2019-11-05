@@ -4,7 +4,7 @@
  *
  * @author      StoreApps
  * @since       3.3.0
- * @version     1.0
+ * @version     1.0.1
  *
  * @package     woocommerce-smart-coupons/includes/
  */
@@ -776,7 +776,7 @@ if ( ! class_exists( 'WC_SC_Coupon_Import' ) ) {
 								<li><span class="dashicons dashicons-yes"></span> <?php echo esc_html__( 'File uploaded OK', 'woocommerce-smart-coupons' ); ?></li>
 								<li><span class="dashicons dashicons-yes"></span> <?php echo esc_html__( 'File format seems OK', 'woocommerce-smart-coupons' ); ?></li>
 							</ul>
-							<?php $is_send_email = get_option( 'smart_coupons_is_send_email', 'yes' ); ?>
+							<?php $is_send_email = $this->is_email_template_enabled(); ?>
 							<?php if ( 'yes' === $is_send_email && $is_email_present ) { ?>
 							<p>
 								<label for="woo_sc_is_email_imported_coupons"><input type="checkbox" name="woo_sc_is_email_imported_coupons" id="woo_sc_is_email_imported_coupons"  />

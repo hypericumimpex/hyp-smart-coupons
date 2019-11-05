@@ -157,6 +157,7 @@ if ( ! class_exists( 'WC_SC_Coupon_Actions' ) ) {
 									$product = wc_get_product( $product_id );
 								}
 								$product_price = $product->get_price();
+								$regular_price = $product->get_regular_price();
 								$discount_type = ( ! empty( $product_data['discount_type'] ) ) ? $product_data['discount_type'] : 'percent';
 								switch ( $discount_type ) {
 									case 'flat':
@@ -170,7 +171,7 @@ if ( ! class_exists( 'WC_SC_Coupon_Actions' ) ) {
 								$discount         = wc_cart_round_discount( min( $product_price, $discount ), 2 );
 								$discounted_price = $product_price - $discount;
 								$cart_item_data['data']->set_price( $discounted_price );
-								$cart_item_data['data']->set_regular_price( $discounted_price );
+								$cart_item_data['data']->set_regular_price( $regular_price );
 								$cart_item_data['data']->set_sale_price( $discounted_price );
 							}
 							break;

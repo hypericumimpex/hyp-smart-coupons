@@ -4,7 +4,7 @@
  *
  * @author      StoreApps
  * @since       3.3.0
- * @version     1.1.1
+ * @version     1.1.2
  *
  * @package     woocommerce-smart-coupons/includes/
  */
@@ -140,6 +140,9 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 
 			// Filter to validate coupon expiry time.
 			add_filter( 'woocommerce_coupon_validate_expiry_date', array( $this, 'validate_coupon_expiry_time' ), 10, 2 );
+
+			// Filter to register Smart Coupons' email classes.
+			add_filter( 'woocommerce_email_classes', array( $this, 'register_email_classes' ) );
 		}
 
 		/**
@@ -251,6 +254,27 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 
 			$custom_design_default_css = $this->get_custom_design_default_css();
 			add_option( 'wc_sc_custom_design_css', $custom_design_default_css, '', 'no' );
+
+			// Convert SC admin email settings into WC email settings.
+			$is_send_email = get_site_option( 'smart_coupons_is_send_email' );
+			if ( false !== $is_send_email ) {
+				$coupon_email_settings = get_site_option( 'woocommerce_wc_sc_email_coupon_settings' );
+				if ( false === $coupon_email_settings ) {
+					$coupon_email_settings            = array();
+					$coupon_email_settings['enabled'] = $is_send_email;
+					update_site_option( 'woocommerce_wc_sc_email_coupon_settings', $coupon_email_settings );
+				}
+			}
+
+			$is_combine_email = get_site_option( 'smart_coupons_combine_emails' );
+			if ( false !== $is_send_email ) {
+				$combine_email_settings = get_site_option( 'woocommerce_wc_sc_combined_email_coupon_settings' );
+				if ( false === $combine_email_settings ) {
+					$combine_email_settings            = array();
+					$combine_email_settings['enabled'] = $is_combine_email;
+					update_site_option( 'woocommerce_wc_sc_combined_email_coupon_settings', $combine_email_settings );
+				}
+			}
 		}
 
 		/**
@@ -346,46 +370,13 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 		 * @param boolean $is_gift Whether it is a gift certificate or store credit.
 		 */
 		public function sa_email_coupon( $coupon_title, $discount_type, $order_id = '', $gift_certificate_receiver_name = '', $message_from_sender = '', $gift_certificate_sender_name = '', $gift_certificate_sender_email = '', $is_gift = '' ) {
-			global $store_credit_label;
 
-			$blogname = wp_specialchars_decode( get_option( 'blogname' ), ENT_QUOTES );
+			$is_send_email  = $this->is_email_template_enabled();
+			$combine_emails = $this->is_email_template_enabled( 'combine' );
 
-			$is_send_email  = get_option( 'smart_coupons_is_send_email', 'yes' );
-			$combine_emails = get_option( 'smart_coupons_combine_emails', 'no' );
-
-			if ( $this->is_wc_gte_30() ) {
-				$page_id = wc_get_page_id( 'shop' );
-			} else {
-				$page_id = woocommerce_get_page_id( 'shop' );
+			if ( 'yes' === $is_send_email && 'no' === $combine_emails ) {
+				WC()->mailer();
 			}
-
-			$url = ( get_option( 'permalink_structure' ) ) ? get_permalink( $page_id ) : get_post_type_archive_link( 'product' );
-
-			if ( 'smart_coupon' === $discount_type && 'yes' === $is_gift ) {
-				$gift_certificate_sender_name = trim( $gift_certificate_sender_name );
-				$sender                       = ( ! empty( $gift_certificate_sender_name ) ) ? $gift_certificate_sender_name : '';
-				$sender                      .= ( ! empty( $gift_certificate_sender_name ) ) ? ' (' : '';
-				$sender                      .= ( ! empty( $gift_certificate_sender_email ) ) ? $gift_certificate_sender_email : '';
-				$sender                      .= ( ! empty( $gift_certificate_sender_name ) ) ? ')' : '';
-				$from                         = ' ' . __( 'from', 'woocommerce-smart-coupons' ) . ' ';
-				$smart_coupon_type            = __( 'Gift Card', 'woocommerce-smart-coupons' );
-			} else {
-				$from              = '';
-				$smart_coupon_type = __( 'Store Credit', 'woocommerce-smart-coupons' );
-			}
-
-			if ( ! empty( $store_credit_label['singular'] ) ) {
-				$smart_coupon_type = ucwords( $store_credit_label['singular'] );
-			}
-
-			/* translators: %s: coupon type */
-			$subject_string  = sprintf( __( "Congratulations! You've received a %s ", 'woocommerce-smart-coupons' ), ( ( 'smart_coupon' === $discount_type && ! empty( $smart_coupon_type ) ) ? $smart_coupon_type : 'coupon' ) );
-			$subject_string  = ( get_option( 'smart_coupon_email_subject' ) && '' !== get_option( 'smart_coupon_email_subject' ) ) ? get_option( 'smart_coupon_email_subject' ) : $subject_string;
-			$subject_string .= ( ! empty( $gift_certificate_sender_name ) ) ? $from . $gift_certificate_sender_name : '';
-
-			$subject = apply_filters( 'woocommerce_email_subject_gift_certificate', sprintf( '%1$s: %2$s', $blogname, $subject_string ) );
-
-			$all_discount_types = wc_get_coupon_types();
 
 			foreach ( $coupon_title as $email => $coupon ) {
 
@@ -410,119 +401,24 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 					update_post_meta( $order_id, 'sc_coupon_receiver_details', $coupon_receiver_details );
 				}
 
+				$action_args = apply_filters(
+					'wc_sc_email_coupon_notification_args',
+					array(
+						'order_id'                      => $order_id,
+						'email'                         => $email,
+						'coupon'                        => $coupon,
+						'discount_type'                 => $discount_type,
+						'receiver_name'                 => $gift_certificate_receiver_name,
+						'message_from_sender'           => $message_from_sender,
+						'gift_certificate_sender_name'  => $gift_certificate_sender_name,
+						'gift_certificate_sender_email' => $gift_certificate_sender_email,
+						'is_gift'                       => $is_gift,
+					)
+				);
+
 				if ( 'yes' === $is_send_email && 'no' === $combine_emails ) {
-					$_coupon = new WC_Coupon( $coupon_code );
-
-					if ( $this->is_wc_gte_30() ) {
-						$_coupon_id                   = ( is_object( $_coupon ) && is_callable( array( $_coupon, 'get_id' ) ) ) ? $_coupon->get_id() : 0;
-						$_is_free_shipping            = ( $_coupon->get_free_shipping() ) ? 'yes' : 'no';
-						$_discount_type               = $_coupon->get_discount_type();
-						$_product_ids                 = $_coupon->get_product_ids();
-						$_excluded_product_ids        = $_coupon->get_excluded_product_ids();
-						$_product_categories          = $_coupon->get_product_categories();
-						$_excluded_product_categories = $_coupon->get_excluded_product_categories();
-					} else {
-						$_coupon_id                   = ( ! empty( $_coupon->id ) ) ? $_coupon->id : 0;
-						$_is_free_shipping            = ( ! empty( $_coupon->free_shipping ) ) ? $_coupon->free_shipping : '';
-						$_discount_type               = ( ! empty( $_coupon->discount_type ) ) ? $_coupon->discount_type : '';
-						$_product_ids                 = ( ! empty( $_coupon->product_ids ) ) ? $_coupon->product_ids : array();
-						$_excluded_product_ids        = ( ! empty( $_coupon->exclude_product_ids ) ) ? $_coupon->exclude_product_ids : array();
-						$_product_categories          = ( ! empty( $_coupon->product_categories ) ) ? $_coupon->product_categories : array();
-						$_excluded_product_categories = ( ! empty( $_coupon->exclude_product_categories ) ) ? $_coupon->exclude_product_categories : array();
-					}
-
-					switch ( $discount_type ) {
-
-						case 'smart_coupon':
-							/* translators: 1: coupon type 2: coupon amount */
-							$email_heading = sprintf( __( 'You have received a %1$s worth %2$s ', 'woocommerce-smart-coupons' ), $smart_coupon_type, wc_price( $amount ) );
-							break;
-
-						case 'fixed_cart':
-							/* translators: %s: coupon amount */
-							$email_heading = sprintf( __( 'You have received a coupon worth %s (for entire purchase) ', 'woocommerce-smart-coupons' ), wc_price( $amount ) );
-							break;
-
-						case 'fixed_product':
-							if ( ! empty( $_product_ids ) || ! empty( $_excluded_product_ids ) || ! empty( $_product_categories ) || ! empty( $_excluded_product_categories ) ) {
-								$_discount_for_text = __( 'for some products', 'woocommerce-smart-coupons' );
-							} else {
-								$_discount_for_text = __( 'for all products', 'woocommerce-smart-coupons' );
-							}
-
-							/* translators: 1: coupon amount 2: discount for text */
-							$email_heading = sprintf( __( 'You have received a coupon worth %1$s (%2$s) ', 'woocommerce-smart-coupons' ), wc_price( $amount ), $_discount_for_text );
-							break;
-
-						case 'percent_product':
-							if ( ! empty( $_product_ids ) || ! empty( $_excluded_product_ids ) || ! empty( $_product_categories ) || ! empty( $_excluded_product_categories ) ) {
-								$_discount_for_text = __( 'for some products', 'woocommerce-smart-coupons' );
-							} else {
-								$_discount_for_text = __( 'for all products', 'woocommerce-smart-coupons' );
-							}
-
-							/* translators: 1: coupon amount 2: discount for text */
-							$email_heading = sprintf( __( 'You have received a coupon worth %1$s%% (%2$s) ', 'woocommerce-smart-coupons' ), $amount, $_discount_for_text );
-							break;
-
-						case 'percent':
-							if ( ! empty( $_product_ids ) || ! empty( $_excluded_product_ids ) || ! empty( $_product_categories ) || ! empty( $_excluded_product_categories ) ) {
-								$_discount_for_text = __( 'for some products', 'woocommerce-smart-coupons' );
-							} else {
-								$_discount_for_text = __( 'for entire purchase', 'woocommerce-smart-coupons' );
-							}
-
-							$max_discount_text = '';
-							$max_discount      = get_post_meta( $_coupon_id, 'wc_sc_max_discount', true );
-							if ( ! empty( $max_discount ) && is_numeric( $max_discount ) ) {
-								/* translators: %s: Maximum coupon discount amount */
-								$max_discount_text = sprintf( __( ' upto %s', 'woocommerce-smart-coupons' ), wc_price( $max_discount ) );
-							}
-
-							/* translators: 1: coupon amount 2: max discount text 3: discount for text */
-							$email_heading = sprintf( __( 'You have received a coupon worth %1$s%% %2$s (%3$s) ', 'woocommerce-smart-coupons' ), $amount, $max_discount_text, $_discount_for_text );
-							break;
-
-						default:
-							$default_coupon_type = ( ! empty( $all_discount_types[ $discount_type ] ) ) ? $all_discount_types[ $discount_type ] : ucwords( str_replace( array( '_', '-' ), ' ', $discount_type ) );
-							$coupon_type         = apply_filters( 'wc_sc_coupon_type', $default_coupon_type, $_coupon, $all_discount_types );
-							$coupon_amount       = apply_filters( 'wc_sc_coupon_amount', $amount, $_coupon );
-
-							/* translators: 1: coupon type 2: coupon amount */
-							$email_heading = sprintf( __( 'You have received %1$s coupon of %2$s', 'woocommerce-smart-coupons' ), $coupon_type, $coupon_amount ); /* translators: 1: coupon type 2: coupon amount */
-							$email_heading = apply_filters( 'wc_sc_email_heading', $email_heading, $_coupon );
-							break;
-
-					}
-
-					if ( 'yes' === $_is_free_shipping && in_array( $_discount_type, array( 'fixed_cart', 'fixed_product', 'percent_product', 'percent' ), true ) ) {
-						/* translators: 1: email heading 2: suffix */
-						$email_heading = sprintf( __( '%1$s Free Shipping%2$s', 'woocommerce-smart-coupons' ), ( ( ! empty( $amount ) ) ? $email_heading . __( '&', 'woocommerce-smart-coupons' ) : __( 'You have received a', 'woocommerce-smart-coupons' ) ), ( ( empty( $amount ) ) ? __( ' coupon', 'woocommerce-smart-coupons' ) : '' ) );
-					}
-
-					$design           = get_option( 'wc_sc_setting_coupon_design', 'round-dashed' );
-					$background_color = get_option( 'wc_sc_setting_coupon_background_color', '#39cccc' );
-					$foreground_color = get_option( 'wc_sc_setting_coupon_foreground_color', '#30050b' );
-					$coupon_styles    = $this->get_coupon_styles( $design );
-
-					ob_start();
-
-					include apply_filters( 'woocommerce_gift_certificates_email_template', 'templates/email.php' );
-
-					$message = ob_get_clean();
-
-					if ( ! class_exists( 'WC_Email' ) ) {
-						include_once dirname( WC_PLUGIN_FILE ) . '/includes/emails/class-wc-email.php';
-					}
-
-					$mailer         = new WC_Email();
-					$mailer->id     = 'wc_sc_coupon';
-					$mailer->object = wc_get_order( $order_id );
-					$headers        = $mailer->get_headers();
-					$attachments    = $mailer->get_attachments();
-
-					wc_mail( $email, $subject, $message, $headers, $attachments );
-
+					// Trigger email notification.
+					do_action( 'wc_sc_email_coupon_notification', $action_args );
 				}
 			}
 
@@ -534,76 +430,37 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 		 * @param string $receiver_email receiver's email.
 		 * @param array  $receiver_details receiver details(code,message etc).
 		 * @param int    $order_id Associated order id.
+		 * @param string $gift_certificate_sender_name Sender name.
+		 * @param string $gift_certificate_sender_email Sender email.
 		 */
-		public function send_combined_coupon_email( $receiver_email = '', $receiver_details = array(), $order_id = 0 ) {
+		public function send_combined_coupon_email( $receiver_email = '', $receiver_details = array(), $order_id = 0, $gift_certificate_sender_name = '', $gift_certificate_sender_email = '' ) {
 
-			$blogname = wp_specialchars_decode( get_option( 'blogname' ), ENT_QUOTES );
+			$is_send_email  = $this->is_email_template_enabled();
+			$combine_emails = $this->is_email_template_enabled( 'combine' );
 
-			if ( $this->is_wc_gte_30() ) {
-				$page_id = wc_get_page_id( 'shop' );
-			} else {
-				$page_id = woocommerce_get_page_id( 'shop' );
-			}
+			if ( 'yes' === $is_send_email && 'yes' === $combine_emails ) {
+				WC()->mailer();
 
-			$url = ( get_option( 'permalink_structure' ) ) ? get_permalink( $page_id ) : get_post_type_archive_link( 'product' );
-
-			if ( ! empty( $order_id ) ) {
-				$order = wc_get_order( $order_id );
-				if ( $this->is_wc_gte_30() ) {
-					$order_billing_email      = $order->get_billing_email();
-					$order_billing_first_name = $order->get_billing_first_name();
-					$order_billing_last_name  = $order->get_billing_last_name();
-				} else {
-					$order_billing_email      = ( ! empty( $order->billing_email ) ) ? $order->billing_email : '';
-					$order_billing_first_name = ( ! empty( $order->billing_first_name ) ) ? $order->billing_first_name : '';
-					$order_billing_last_name  = ( ! empty( $order->billing_last_name ) ) ? $order->billing_last_name : '';
+				$is_gift = '';
+				if ( 0 !== $order_id ) {
+					$is_gift = get_post_meta( $order_id, 'is_gift', true );
 				}
 
-				$sender_name  = $order_billing_first_name . ' ' . $order_billing_last_name;
-				$sender_email = $order_billing_email;
+				$action_args = apply_filters(
+					'wc_sc_email_coupon_notification_args',
+					array(
+						'order_id'                      => $order_id,
+						'email'                         => $receiver_email,
+						'receiver_details'              => $receiver_details,
+						'gift_certificate_sender_name'  => $gift_certificate_sender_name,
+						'gift_certificate_sender_email' => $gift_certificate_sender_email,
+						'is_gift'                       => $is_gift,
+					)
+				);
 
-				$sender_name = trim( $sender_name );
-				$sender      = ( ! empty( $sender_name ) ) ? $sender_name : '';
-				$sender     .= ( ! empty( $sender_name ) ) ? ' (' : '';
-				$sender     .= ( ! empty( $sender_email ) ) ? $sender_email : '';
-				$sender     .= ( ! empty( $sender_name ) ) ? ')' : '';
-				$from        = ' ' . __( 'from', 'woocommerce-smart-coupons' ) . ' ';
+				// Trigger email notification.
+				do_action( 'wc_sc_combined_email_coupon_notification', $action_args );
 			}
-
-			$subject_string  = __( "Congratulations! You've received coupons", 'woocommerce-smart-coupons' );
-			$subject_string  = ( get_option( 'smart_coupon_email_subject' ) && '' !== get_option( 'smart_coupon_email_subject' ) ) ? get_option( 'smart_coupon_email_subject' ) : $subject_string;
-			$subject_string .= ( ! empty( $sender ) ) ? $from . $sender : '';
-
-			$subject       = apply_filters( 'woocommerce_email_subject_gift_certificate', sprintf( '%1$s: %2$s', $blogname, $subject_string ) );
-			$email_heading = __( 'You have received coupons.', 'woocommerce-smart-coupons' );
-
-			if ( empty( $receiver_email ) ) {
-				$receiver_email = $sender_email;
-			}
-
-			$design           = get_option( 'wc_sc_setting_coupon_design', 'round-dashed' );
-			$background_color = get_option( 'wc_sc_setting_coupon_background_color', '#39cccc' );
-			$foreground_color = get_option( 'wc_sc_setting_coupon_foreground_color', '#30050b' );
-			$coupon_styles    = $this->get_coupon_styles( $design );
-
-			ob_start();
-
-			include apply_filters( 'woocommerce_combined_gift_certificates_email_template', 'templates/combined-email.php' );
-
-			$message = ob_get_clean();
-
-			if ( ! class_exists( 'WC_Email' ) ) {
-				include_once dirname( WC_PLUGIN_FILE ) . '/includes/emails/class-wc-email.php';
-			}
-
-			$mailer         = new WC_Email();
-			$mailer->id     = 'wc_sc_coupon';
-			$mailer->object = wc_get_order( $order_id );
-			$headers        = $mailer->get_headers();
-			$attachments    = $mailer->get_attachments();
-
-			wc_mail( $receiver_email, $subject, $message, $headers, $attachments );
-
 		}
 
 		/**
@@ -1577,6 +1434,8 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 			if ( ! empty( $cart_total ) ) {
 
 				$stop_at = did_action( 'woocommerce_cart_reset' );
+
+				$stop_at = apply_filters( 'wc_sc_calculate_totals_stop_at', $stop_at, $cart );
 
 				if ( empty( $stop_at ) ) {
 					$stop_at = 1;
@@ -3083,6 +2942,25 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
 		}
 
 		/**
+		 *  Register Smart Coupons' email classes to WooCommerce's emails class list
+		 *
+		 * @param array $email_classes available email classes list.
+		 * @return array $email_classes modified email classes list
+		 */
+		public function register_email_classes( $email_classes = array() ) {
+
+			include_once 'emails/class-wc-sc-email.php';
+			include_once 'emails/class-wc-sc-email-coupon.php';
+			include_once 'emails/class-wc-sc-combined-email-coupon.php';
+
+			// Add the email class to the list of email classes that WooCommerce loads.
+			$email_classes['WC_SC_Email_Coupon']          = new WC_SC_Email_Coupon();
+			$email_classes['WC_SC_Combined_Email_Coupon'] = new WC_SC_Combined_Email_Coupon();
+
+			return $email_classes;
+		}
+
+		/**
 		 * Get coupon column headers
 		 *
 		 * @return array
@@ -3553,6 +3431,40 @@ if ( ! class_exists( 'WC_Smart_Coupons' ) ) {
     color: #30050b;
 }';
 			return apply_filters( 'wc_sc_coupon_custom_design_default_css', $default_css );
+		}
+
+		/**
+		 * Function to check if coupon email is enabled or not
+		 *
+		 * TODO: Can be removed in future
+		 *
+		 * @param  string $template The template's setting to check for.
+		 * @return boolean $is_email_enabled Is email enabled
+		 */
+		public function is_email_template_enabled( $template = 'send' ) {
+
+			if ( 'combine' === $template ) {
+				$wc_email_settings_key = 'woocommerce_wc_sc_combined_email_coupon_settings';
+				$sc_email_setting_key  = 'smart_coupons_combine_emails';
+				$default               = 'no';
+			} else {
+				$wc_email_settings_key = 'woocommerce_wc_sc_email_coupon_settings';
+				$sc_email_setting_key  = 'smart_coupons_is_send_email';
+				$default               = 'yes';
+			}
+
+			$is_email_enabled = '';
+
+			$wc_email_settings = get_site_option( $wc_email_settings_key );
+
+			// If setting is not found in WC Email settings fetch it from SC admin settings.
+			if ( false === $wc_email_settings ) {
+				$is_email_enabled = get_site_option( $sc_email_setting_key, $default );
+			} elseif ( is_array( $wc_email_settings ) && ! empty( $wc_email_settings ) ) {
+				$is_email_enabled = ( isset( $wc_email_settings['enabled'] ) ) ? $wc_email_settings['enabled'] : $default;
+			}
+
+			return $is_email_enabled;
 		}
 
 	}//end class
